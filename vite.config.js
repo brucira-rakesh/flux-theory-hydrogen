@@ -1,4 +1,6 @@
+import {cp} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
+import {dirname, join} from 'node:path';
 import {defineConfig} from 'vite';
 import {hydrogen} from '@shopify/hydrogen/vite';
 import {oxygen} from '@shopify/mini-oxygen/vite';
@@ -6,15 +8,6 @@ import {reactRouter} from '@react-router/dev/vite';
 import tailwindcss from '@tailwindcss/vite';
 import glsl from 'vite-plugin-glsl';
 
-/**
- * Vite 8 / Rolldown injects `import { createRequire } from "module"` when the
- * SSR bundle is built with platform: "node". Oxygen/workerd has no `module`
- * builtin (nodejs_compat is not exposed on Oxygen, and `module` is not a
- * supported worker module anyway). React Router's SSR config replaces
- * `build` and can wipe a top-level rolldown platform override, so this plugin
- * re-applies it after other plugins and strips the import if it still lands.
- * @see https://github.com/vitejs/vite/issues/21962
- */
 function oxygenWorkerPlatform() {
   const workerBuild = {
     ssr: {target: 'webworker'},
@@ -51,6 +44,59 @@ function oxygenWorkerPlatform() {
   };
 }
 
+const OXYGEN_PUBLIC_DIRS = [
+  'draco',
+  'basis',
+  'models',
+  'textures',
+  'environment',
+  'rain',
+  'images',
+];
+
+/**
+ * Oxygen only serves wasm/ktx2 (not on STATIC_ASSET_EXTENSIONS) when the
+ * request path starts with `/assets/`. Copy public 3D trees there on build,
+ * and rewrite those URLs to `public/` in dev so the same `/assets/...` paths
+ * work in both environments.
+ */
+function oxygenPublicAssets() {
+  const root = dirname(fileURLToPath(import.meta.url));
+  const publicRoot = join(root, 'public');
+  const underAssets = new RegExp(
+    `^/assets/(${OXYGEN_PUBLIC_DIRS.join('|')})(/|\\?|$)`,
+  );
+
+  return {
+    name: 'oxygen-public-assets',
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        const path = req.url?.split('?')[0] ?? '';
+        if (underAssets.test(path)) {
+          req.url = req.url.replace(/^\/assets/, '');
+        }
+        next();
+      });
+    },
+    async writeBundle(options) {
+      const outDir = options.dir;
+      if (!outDir || outDir.includes(`${join('dist', 'server')}`) || /[/\\]server$/.test(outDir)) {
+        return;
+      }
+      await Promise.all(
+        OXYGEN_PUBLIC_DIRS.map((dir) =>
+          cp(join(publicRoot, dir), join(outDir, 'assets', dir), {
+            recursive: true,
+            force: true,
+          }).catch((error) => {
+            if (error?.code !== 'ENOENT') throw error;
+          }),
+        ),
+      );
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     tailwindcss(),
@@ -59,6 +105,7 @@ export default defineConfig({
     reactRouter(),
     glsl(),
     oxygenWorkerPlatform(),
+    oxygenPublicAssets(),
   ],
   resolve: {
     alias: {

@@ -20,17 +20,18 @@ import {
   addTransformGui,
 } from "../gui/guiHelpers";
 import { disposeObject } from "../disposeObject";
+import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl';
 
-const MODEL_URL = "/models/Final-Player-Bake9-v1.glb";
-const LIGHT_MAP_URL = "/textures/Player_Light_Map_7_etc1s.ktx2";
-const STONES_URL = "/textures/Player_Stones_etc1s.ktx2";
-const BG_TEXTURE_URL = "/images/sceneonebg.ktx2";
+const MODEL_URL = oxygenPublicUrl("/models/Final-Player-Bake9-v1.glb");
+const LIGHT_MAP_URL = oxygenPublicUrl("/textures/Player_Light_Map_7_etc1s.ktx2");
+const STONES_URL = oxygenPublicUrl("/textures/Player_Stones_etc1s.ktx2");
+const BG_TEXTURE_URL = oxygenPublicUrl("/images/sceneonebg.ktx2");
 
 // The Player bake ships geometry only (no glTF materials, no fog/droplet
 // planes), so fogone/fogtwo/shower water.001 still come out of the previous
 // Scene One export. Both glTF roots sit at identity, so the lifted nodes
 // keep their tuned local transforms when reparented onto the new model.
-const FOG_SOURCE_URL = "/models/sceneonev1.glb";
+const FOG_SOURCE_URL = oxygenPublicUrl("/models/sceneonev1.glb");
 const DROPLET_NAME = PropertyBinding.sanitizeNodeName("shower water.001");
 
 // Ports Scene.jsx's Scene One model+material setup (glTF traverse ->

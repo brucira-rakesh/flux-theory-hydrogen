@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import createCanvas from './createCanvas'
 import Raindrops from './raindrops'
 import RainRenderer from './rainRenderer'
+import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl'
 
 const TEXTURE_BG = { width: 1280, height: 720 }
 const TEXTURE_FG = { width: 640, height: 360 }
@@ -31,6 +32,7 @@ const RENDER_OPTIONS = {
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image()
+    img.crossOrigin = 'anonymous'
     img.onload = () => resolve(img)
     img.onerror = () => reject(new Error(`Failed to load ${src}`))
     img.src = src
@@ -65,8 +67,8 @@ function sourceSize(source) {
 export default function RainOverlay({
   getVideo,
   active = true,
-  dropAlphaSrc = '/rain/drop-alpha.png',
-  dropColorSrc = '/rain/drop-color.png',
+  dropAlphaSrc = oxygenPublicUrl('/rain/drop-alpha.png'),
+  dropColorSrc = oxygenPublicUrl('/rain/drop-color.png'),
   className,
 }) {
   const canvasRef = useRef(null)

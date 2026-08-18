@@ -31,6 +31,7 @@ export function createSequenceLoader({ frameCount, getFramePath, concurrency = P
 
     return new Promise((resolve) => {
       const img = new Image()
+      img.crossOrigin = 'anonymous'
       img.decoding = 'async'
 
       const finish = (result) => {

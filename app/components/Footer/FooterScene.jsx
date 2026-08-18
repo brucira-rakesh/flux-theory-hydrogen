@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import GUI from 'lil-gui'
+import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl'
 
 // A single flat plane textured with the footer artwork (base / normal / metalness),
 // viewed through an orthographic camera pointed straight at it so it reads as a flat
@@ -11,7 +12,7 @@ import GUI from 'lil-gui'
 // a soft, noise-edged blob that follows the cursor with a fading temporal trail.
 // Ported from src/pages/Test.jsx (the two-plane tuning sandbox) down to one plane.
 
-const TEXTURE_BASE = '/textures/test/'
+const TEXTURE_BASE = oxygenPublicUrl('/textures/test/')
 const NOISE_URL = `${TEXTURE_BASE}perlinnoise.jpg`
 
 // Downscaled from the original 2880x1645 sources (FTbaseimage.png / FTnormalmap.png /

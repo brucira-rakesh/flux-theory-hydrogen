@@ -23,13 +23,14 @@ import {
   SCENE_THREE_BLOOM_LAYER,
   defaultSceneThreeBloomParams,
 } from "../selectiveBloomConstants";
+import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl';
 
-const MODEL_THREE_PILLAR_URL = "/models/Final-Lover-Pillar2_compressed.glb";
-const MODEL_THREE_BAKE_URL = "/models/Final-Lover-Bake_13_compressed.glb";
-const TEXTURE_THREE_PILLARS_URL = "/textures/Lover_Pillars_etc1s.ktx2";
-const TEXTURE_THREE_LIGHT_MAP_URL = "/textures/Lover-Light_Map4_etc1s.ktx2";
-const TEXTURE_THREE_BG_URL = "/textures/Lover_Bg_etc1s.ktx2";
-const TEXTURE_THREE_TREE_URL = "/textures/Lover_Tree_etc1s.ktx2";
+const MODEL_THREE_PILLAR_URL = oxygenPublicUrl("/models/Final-Lover-Pillar2_compressed.glb");
+const MODEL_THREE_BAKE_URL = oxygenPublicUrl("/models/Final-Lover-Bake_13_compressed.glb");
+const TEXTURE_THREE_PILLARS_URL = oxygenPublicUrl("/textures/Lover_Pillars_etc1s.ktx2");
+const TEXTURE_THREE_LIGHT_MAP_URL = oxygenPublicUrl("/textures/Lover-Light_Map4_etc1s.ktx2");
+const TEXTURE_THREE_BG_URL = oxygenPublicUrl("/textures/Lover_Bg_etc1s.ktx2");
+const TEXTURE_THREE_TREE_URL = oxygenPublicUrl("/textures/Lover_Tree_etc1s.ktx2");
 
 export default function SceneThreeV2({
   visible = true,

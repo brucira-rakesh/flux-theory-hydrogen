@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import GUI from 'lil-gui'
+import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl'
 
 // Two flat planes stacked vertically, each textured with a /textures/test image
 // set and viewed through an orthographic camera pointed straight at them.
@@ -8,7 +9,7 @@ import GUI from 'lil-gui'
 // Each plane gets its own cursor-driven reveal mask + temporal trail; a single
 // cursor light follows the raycast hit across whichever plane it's over.
 
-const TEXTURE_BASE = '/textures/test/'
+const TEXTURE_BASE = oxygenPublicUrl('/textures/test/')
 const NOISE_URL = `${TEXTURE_BASE}perlinnoise.jpg`
 
 // The stacked image sets, top-to-bottom. Each is loaded and driven identically

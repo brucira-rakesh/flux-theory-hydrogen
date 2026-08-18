@@ -36,6 +36,7 @@ export function createFrameCache(frameCount = FRAME_COUNT) {
 
     return new Promise((resolve) => {
       const img = new Image()
+      img.crossOrigin = 'anonymous'
       img.decoding = 'async'
 
       const finish = (result) => {

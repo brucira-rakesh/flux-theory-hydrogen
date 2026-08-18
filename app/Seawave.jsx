@@ -21,6 +21,7 @@ import cloudsVertex from './shaders/clouds/vertex.glsl'
 import cloudsFragment from './shaders/clouds/fragment.glsl'
 import planeCloudsFragment from './shaders/planeClouds/fragment.glsl'
 import { sampleOceanHeight } from './oceanHeight.js'
+import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl'
 
 // Flat plane driven by a raging-sea height field (vertex.glsl) and shaded as
 // polished liquid metal / mercury via procedural environment reflection +
@@ -44,19 +45,19 @@ const PLANE_SEGMENTS = 640 // surface resolution — high enough to keep wave no
 // PBR materials (MeshStandardMaterial, upgraded to MeshPhysicalMaterial for
 // the clearcoat plastic) — same pattern as Scene.jsx's bottle flavors — so
 // it needs actual scene lights to be visible; the sea shader ignores them.
-const BOTTLE_MODEL_URL = '/models/bottle_nolabel_compressed.glb'
+const BOTTLE_MODEL_URL = oxygenPublicUrl('/models/bottle_nolabel_compressed.glb')
 // NEW: sky clouds model — a flat cloud-card plane rendered with a custom
 // ShaderMaterial (see the loader below and shaders/clouds/) that reads its
 // baked texture's R/G channels as density/alpha data rather than displaying
 // them as colour.
-const CLOUDS_MODEL_URL = '/models/clouds.glb'
+const CLOUDS_MODEL_URL = oxygenPublicUrl('/models/clouds.glb')
 // NEW: a second, differently-authored cloud-bank asset — same treatment
 // (loaded once, expanded into several InstancedMesh copies, see
 // createCloudLayer below), layered on top of CLOUDS_MODEL_URL for a denser
 // sky. Its reference texture is a plain grayscale JPEG (black = empty sky)
 // rather than clouds.glb's density+green-key packing, so it gets its own
 // fragment shader (planeClouds/fragment.glsl) that keys black to alpha.
-const PLANE_CLOUDS_MODEL_URL = '/models/plane_clouds.glb'
+const PLANE_CLOUDS_MODEL_URL = oxygenPublicUrl('/models/plane_clouds.glb')
 const BOTTLE_TARGET_HEIGHT = 1.6 // world units — normalize scale so the bottle reads at a consistent size regardless of its authored units
 // Interaction radius the water reaction uses at the waterline. Tuned by hand
 // (0.58) rather than derived from the mesh bounds — the compressed bottle's
@@ -431,7 +432,7 @@ const Seawave = () => {
     const pmremGenerator = new THREE.PMREMGenerator(renderer)
     pmremGenerator.compileCubemapShader()
     const cubeTextureLoader = new THREE.CubeTextureLoader()
-    cubeTextureLoader.setPath('/environment/')
+    cubeTextureLoader.setPath(oxygenPublicUrl('/environment/'))
     cubeTextureLoader.load(
       ['px.png', 'nx.png', 'py.png', 'ny.png', 'pz.png', 'nz.png'],
       (loadedCubeTexture) => {
@@ -1456,10 +1457,10 @@ const Seawave = () => {
     window.addEventListener('scroll', markScrollFallbackDirty, { passive: true })
 
     const dracoLoader = new DRACOLoader()
-    dracoLoader.setDecoderPath('/draco/')
+    dracoLoader.setDecoderPath(oxygenPublicUrl('/draco/'))
 
     const ktx2Loader = new KTX2Loader()
-    ktx2Loader.setTranscoderPath('/basis/')
+    ktx2Loader.setTranscoderPath(oxygenPublicUrl('/basis/'))
     ktx2Loader.detectSupport(renderer)
 
     const gltfLoader = new GLTFLoader()

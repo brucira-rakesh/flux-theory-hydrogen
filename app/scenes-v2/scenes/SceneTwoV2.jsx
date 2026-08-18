@@ -12,11 +12,12 @@ import { useSceneEngine, applyFolderSettings } from "../SceneEngineContext";
 import { useLoaderManager } from "../useLoaderManager";
 import { addSeaGui, addEmissiveGui, addTransformGui } from "../gui/guiHelpers";
 import { disposeObject } from "../disposeObject";
+import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl';
 
-const MODEL_TWO_URL = "/models/sage_new_9-v1.glb";
-const TEXTURE_TWO_URL = "/textures/Sage-new_1_etc1s.ktx2";
-const BG_TEXTURE_TWO_URL = "/textures/Sage_Bg_etc1s.ktx2";
-const TREE_TEXTURE_TWO_URL = "/textures/Lover_Tree1_etc1s.ktx2";
+const MODEL_TWO_URL = oxygenPublicUrl("/models/sage_new_9-v1.glb");
+const TEXTURE_TWO_URL = oxygenPublicUrl("/textures/Sage-new_1_etc1s.ktx2");
+const BG_TEXTURE_TWO_URL = oxygenPublicUrl("/textures/Sage_Bg_etc1s.ktx2");
+const TREE_TEXTURE_TWO_URL = oxygenPublicUrl("/textures/Lover_Tree1_etc1s.ktx2");
 
 export default function SceneTwoV2({ visible = true, sharedMaps }) {
   const groupRef = useRef(null);

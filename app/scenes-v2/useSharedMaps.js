@@ -3,17 +3,19 @@ import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useLoaderManager } from "./useLoaderManager";
 import { prepColorTexture, prepDataTexture } from "./loaders";
+import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl';
 
 // Sea-surface maps + the perlin noise driving fogone/fogtwo — loaded ONCE
 // here and shared (same texture instances, like Scene.jsx's seaMaps/fogNoise
 // closures) by every scene's own water/fog ShaderMaterial instances.
-const SEA_BASECOLOR_URL = "/textures/waterwavetex/basecolor.png";
-const SEA_NORMAL_URL = "/textures/waterwavetex/normalmap.png";
-const SEA_DISPLACEMENT_URL = "/textures/waterwavetex/displacement.png";
-const SEA_AO_URL = "/textures/waterwavetex/ambientocculsion.png";
-const SEA_ORM_URL = "/textures/waterwavetex/orm.png";
-const SEA_TRANSMISSION_URL = "/textures/waterwavetex/transmission.png";
-const FOG_NOISE_URL = "/textures/perlin.png";
+
+const SEA_BASECOLOR_URL = oxygenPublicUrl('/textures/waterwavetex/basecolor.png');
+const SEA_NORMAL_URL = oxygenPublicUrl('/textures/waterwavetex/normalmap.png');
+const SEA_DISPLACEMENT_URL = oxygenPublicUrl('/textures/waterwavetex/displacement.png');
+const SEA_AO_URL = oxygenPublicUrl('/textures/waterwavetex/ambientocculsion.png');
+const SEA_ORM_URL = oxygenPublicUrl('/textures/waterwavetex/orm.png');
+const SEA_TRANSMISSION_URL = oxygenPublicUrl('/textures/waterwavetex/transmission.png');
+const FOG_NOISE_URL = oxygenPublicUrl('/textures/perlin.png');
 
 export function useSharedMaps() {
   const { gl } = useThree();

@@ -13,6 +13,7 @@ import { getProductById } from '../data/products'
 import { getPdpByProductId } from '../data/pdp'
 import ProductDetailsV2 from '../components/ProductShelf/ProductDetailsV2'
 import AnimatedDescription from '../components/AnimatedDescription/AnimatedDescription'
+import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl'
 
 // Overlay content shown for every clicked bottle (see the reveal/return
 // wiring on isRevealed below) — the 3D scene has 9 independently-clickable
@@ -23,8 +24,8 @@ const OVERLAY_PRODUCT = getProductById('the-sport')
 
 gsap.registerPlugin(ScrollTrigger)
 
-const MODEL_URL = '/models/washroom_compressed.glb'
-const TEXTURE_URL = '/textures/bathroom_etc1s.ktx2'
+const MODEL_URL = oxygenPublicUrl('/models/washroom_compressed.glb')
+const TEXTURE_URL = oxygenPublicUrl('/textures/bathroom_etc1s.ktx2')
 
 // Both bottle models ship their own materials + embedded KTX2 (basisu)
 // label/normal textures, unlike the room (which has no material at all).
@@ -33,8 +34,8 @@ const TEXTURE_URL = '/textures/bathroom_etc1s.ktx2'
 // upgrades to MeshPhysicalMaterial. Per spec, every mesh here is rebuilt as
 // a plain THREE.MeshStandardMaterial (dropping clearcoat), lit by the
 // scene's existing ambient + directional lights — see the bottle setup below.
-const BATHROOM_BOTTLE_MODEL_URL = '/models/bathroom_bottle.glb'
-const WASHBASIN_BOTTLE_MODEL_URL = '/models/washbasin_bottle.glb'
+const BATHROOM_BOTTLE_MODEL_URL = oxygenPublicUrl('/models/bathroom_bottle.glb')
+const WASHBASIN_BOTTLE_MODEL_URL = oxygenPublicUrl('/models/washbasin_bottle.glb')
 
 // Camera.glb (verified by actually running GLTFLoader against it in Node —
 // see the git history for the throwaway probe script) holds two root nodes
@@ -55,7 +56,7 @@ const WASHBASIN_BOTTLE_MODEL_URL = '/models/washbasin_bottle.glb'
 // order, which is unaffected by node-name sanitization and was confirmed
 // (by identity check against the traversed scene) to line up as
 // cameras[0] === the "Camera" node, cameras[1] === the "Camera.002" node.
-const CAMERA_MODEL_URL = '/models/Camera.glb'
+const CAMERA_MODEL_URL = oxygenPublicUrl('/models/Camera.glb')
 const CAMERA_CLIP_ONE_NAME = 'CameraAction'
 const CAMERA_CLIP_TWO_NAME = 'Camera.002Action'
 
@@ -965,10 +966,10 @@ export default function Product() {
 
     // --- Loaders: Draco geometry + KTX2 (basisu) texture, shared across both loads ---
     const dracoLoader = new DRACOLoader()
-    dracoLoader.setDecoderPath('/draco/')
+    dracoLoader.setDecoderPath(oxygenPublicUrl('/draco/'))
 
     const ktx2Loader = new KTX2Loader()
-    ktx2Loader.setTranscoderPath('/basis/')
+    ktx2Loader.setTranscoderPath(oxygenPublicUrl('/basis/'))
     ktx2Loader.detectSupport(renderer)
 
     const gltfLoader = new GLTFLoader()
@@ -1574,7 +1575,7 @@ export default function Product() {
         aria-hidden={!isRevealed}
       >
         <img
-          src="/images/product_text.svg"
+          src={oxygenPublicUrl('/images/product_text.svg')}
           alt={OVERLAY_PRODUCT?.focusTitle ?? ''}
           draggable={false}
           className="pointer-events-none absolute left-1/2 top-[8%] w-[min(85%,380px)] -translate-x-1/2 select-none"

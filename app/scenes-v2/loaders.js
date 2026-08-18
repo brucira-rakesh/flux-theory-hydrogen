@@ -1,3 +1,4 @@
+import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl';
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
@@ -9,7 +10,7 @@ let sharedDracoLoader = null;
 const getDracoLoader = () => {
   if (!sharedDracoLoader) {
     sharedDracoLoader = new DRACOLoader();
-    sharedDracoLoader.setDecoderPath("/draco/");
+    sharedDracoLoader.setDecoderPath(oxygenPublicUrl('/draco/'));
   }
   return sharedDracoLoader;
 };
@@ -25,7 +26,7 @@ let sharedKtx2Loader = null;
 const getKtx2Loader = (manager, renderer) => {
   if (!sharedKtx2Loader) {
     sharedKtx2Loader = new KTX2Loader(manager);
-    sharedKtx2Loader.setTranscoderPath("/basis/");
+    sharedKtx2Loader.setTranscoderPath(oxygenPublicUrl('/basis/'));
     sharedKtx2Loader.detectSupport(renderer);
   }
   return sharedKtx2Loader;

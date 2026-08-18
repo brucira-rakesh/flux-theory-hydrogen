@@ -19,13 +19,14 @@ import {
   addTransformGui,
 } from "../gui/guiHelpers";
 import { disposeObject } from "../disposeObject";
+import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl';
 
-const MODEL_FOUR_URL = "/models/scenefourv6.glb";
-const TEXTURE_FOUR_URL = "/textures/scenefourv4.ktx2";
-const TEXTURE_FOUR_STARS_URL = "/textures/stars_etc1s.ktx2";
-const TEXTURE_FOUR_PLANT_URL = "/textures/plant_etc1s.ktx2";
-const TEXTURE_FOUR_BIRDS_URL = "/textures/birds_etc1s.ktx2";
-const TEXTURE_FOUR_BACKDROP_URL = "/textures/background_etc1s.ktx2";
+const MODEL_FOUR_URL = oxygenPublicUrl("/models/scenefourv6.glb");
+const TEXTURE_FOUR_URL = oxygenPublicUrl("/textures/scenefourv4.ktx2");
+const TEXTURE_FOUR_STARS_URL = oxygenPublicUrl("/textures/stars_etc1s.ktx2");
+const TEXTURE_FOUR_PLANT_URL = oxygenPublicUrl("/textures/plant_etc1s.ktx2");
+const TEXTURE_FOUR_BIRDS_URL = oxygenPublicUrl("/textures/birds_etc1s.ktx2");
+const TEXTURE_FOUR_BACKDROP_URL = oxygenPublicUrl("/textures/background_etc1s.ktx2");
 
 const WARM_WHITE = [3.929002201330844, 3.4854684767838267, 4];
 
