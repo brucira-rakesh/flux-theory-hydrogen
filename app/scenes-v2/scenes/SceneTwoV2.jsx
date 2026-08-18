@@ -13,11 +13,14 @@ import { useLoaderManager } from "../useLoaderManager";
 import { addSeaGui, addEmissiveGui, addTransformGui } from "../gui/guiHelpers";
 import { disposeObject } from "../disposeObject";
 import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl';
+import sageTextureUrl from '~/assets/ktx2/Sage-new_1_etc1s.ktx2?url';
+import sageBgUrl from '~/assets/ktx2/Sage_Bg_etc1s.ktx2?url';
+import loverTree1Url from '~/assets/ktx2/Lover_Tree1_etc1s.ktx2?url';
 
 const MODEL_TWO_URL = oxygenPublicUrl("/models/sage_new_9-v1.glb");
-const TEXTURE_TWO_URL = oxygenPublicUrl("/textures/Sage-new_1_etc1s.ktx2");
-const BG_TEXTURE_TWO_URL = oxygenPublicUrl("/textures/Sage_Bg_etc1s.ktx2");
-const TREE_TEXTURE_TWO_URL = oxygenPublicUrl("/textures/Lover_Tree1_etc1s.ktx2");
+const TEXTURE_TWO_URL = sageTextureUrl;
+const BG_TEXTURE_TWO_URL = sageBgUrl;
+const TREE_TEXTURE_TWO_URL = loverTree1Url;
 
 export default function SceneTwoV2({ visible = true, sharedMaps }) {
   const groupRef = useRef(null);

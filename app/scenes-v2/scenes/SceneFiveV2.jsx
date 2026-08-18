@@ -19,12 +19,15 @@ import {
 } from "../gui/guiHelpers";
 import { disposeObject } from "../disposeObject";
 import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl';
+import rebelBakeUrl from '~/assets/ktx2/Rebel_New_Bake_2_etc1s.ktx2?url';
+import rebelSlatesUrl from '~/assets/ktx2/Rebel_slates_etc1s.ktx2?url';
+import rebelBgUrl from '~/assets/ktx2/Rebel_new_bg.ktx2?url';
 
 const MODEL_MAIN_URL = oxygenPublicUrl("/models/Rebel_new_2-v1.glb");
 const MODEL_SLABS_URL = oxygenPublicUrl("/models/Rebel_new_Stones_Slabs-v1.glb");
-const TEXTURE_URL = oxygenPublicUrl("/textures/Rebel_New_Bake_2_etc1s.ktx2");
-const SLATES_TEXTURE_URL = oxygenPublicUrl("/textures/Rebel_slates_etc1s.ktx2");
-const BG_TEXTURE_URL = oxygenPublicUrl("/textures/Rebel_new_bg.ktx2");
+const TEXTURE_URL = rebelBakeUrl;
+const SLATES_TEXTURE_URL = rebelSlatesUrl;
+const BG_TEXTURE_URL = rebelBgUrl;
 
 // Rebel_new_2-v1.glb ships five nodes: Water (sea shader, same as the other
 // scenes' pools), "Fluted Glass Divider" (same glass shader as Scene Four's

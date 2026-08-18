@@ -45,8 +45,6 @@ function oxygenWorkerPlatform() {
 }
 
 const OXYGEN_PUBLIC_DIRS = [
-  'draco',
-  'basis',
   'models',
   'textures',
   'environment',
@@ -55,10 +53,9 @@ const OXYGEN_PUBLIC_DIRS = [
 ];
 
 /**
- * Oxygen only serves wasm/ktx2 (not on STATIC_ASSET_EXTENSIONS) when the
- * request path starts with `/assets/`. Copy public 3D trees there on build,
- * and rewrite those URLs to `public/` in dev so the same `/assets/...` paths
- * work in both environments.
+ * Copy allowlisted public trees (GLB/PNG/etc.) under dist/client/assets on
+ * build. wasm/ktx2 are not on Oxygen's static allowlist even under /assets/,
+ * so those stay on Vite's hashed CDN pipeline instead.
  */
 function oxygenPublicAssets() {
   const root = dirname(fileURLToPath(import.meta.url));
@@ -115,6 +112,7 @@ export default defineConfig({
     },
     tsconfigPaths: true,
   },
+  assetsInclude: ['**/*.ktx2'],
   build: {
     // Allow a strict Content-Security-Policy
     // without inlining assets as base64:

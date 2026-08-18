@@ -1457,10 +1457,8 @@ const Seawave = () => {
     window.addEventListener('scroll', markScrollFallbackDirty, { passive: true })
 
     const dracoLoader = new DRACOLoader()
-    dracoLoader.setDecoderPath(oxygenPublicUrl('/draco/'))
 
     const ktx2Loader = new KTX2Loader()
-    ktx2Loader.setTranscoderPath(oxygenPublicUrl('/basis/'))
     ktx2Loader.detectSupport(renderer)
 
     const gltfLoader = new GLTFLoader()

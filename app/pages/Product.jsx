@@ -14,6 +14,7 @@ import { getPdpByProductId } from '../data/pdp'
 import ProductDetailsV2 from '../components/ProductShelf/ProductDetailsV2'
 import AnimatedDescription from '../components/AnimatedDescription/AnimatedDescription'
 import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl'
+import bathroomTextureUrl from '~/assets/ktx2/bathroom_etc1s.ktx2?url'
 
 // Overlay content shown for every clicked bottle (see the reveal/return
 // wiring on isRevealed below) — the 3D scene has 9 independently-clickable
@@ -25,7 +26,7 @@ const OVERLAY_PRODUCT = getProductById('the-sport')
 gsap.registerPlugin(ScrollTrigger)
 
 const MODEL_URL = oxygenPublicUrl('/models/washroom_compressed.glb')
-const TEXTURE_URL = oxygenPublicUrl('/textures/bathroom_etc1s.ktx2')
+const TEXTURE_URL = bathroomTextureUrl
 
 // Both bottle models ship their own materials + embedded KTX2 (basisu)
 // label/normal textures, unlike the room (which has no material at all).
@@ -966,10 +967,8 @@ export default function Product() {
 
     // --- Loaders: Draco geometry + KTX2 (basisu) texture, shared across both loads ---
     const dracoLoader = new DRACOLoader()
-    dracoLoader.setDecoderPath(oxygenPublicUrl('/draco/'))
 
     const ktx2Loader = new KTX2Loader()
-    ktx2Loader.setTranscoderPath(oxygenPublicUrl('/basis/'))
     ktx2Loader.detectSupport(renderer)
 
     const gltfLoader = new GLTFLoader()

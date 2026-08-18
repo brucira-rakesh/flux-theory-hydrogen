@@ -1,4 +1,3 @@
-import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl';
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
@@ -6,11 +5,13 @@ import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js";
 
 // One DRACOLoader (and its wasm decoder) shared by every scene component —
 // same as Scene.jsx's single module-level dracoLoader.
+// Do not setDecoderPath: three.js r185 resolves decoder wasm via
+// import.meta.url, which Vite hashes onto Oxygen's CDN. Origin /draco and
+// /assets/draco 404 because wasm is not on Oxygen's static allowlist.
 let sharedDracoLoader = null;
 const getDracoLoader = () => {
   if (!sharedDracoLoader) {
     sharedDracoLoader = new DRACOLoader();
-    sharedDracoLoader.setDecoderPath(oxygenPublicUrl('/draco/'));
   }
   return sharedDracoLoader;
 };
@@ -22,11 +23,11 @@ const getDracoLoader = () => {
 // "Multiple active KTX2 loaders" warning, and real main-thread/worker
 // contention (visible as jank on the very next wheel tick while they spin
 // up). Never disposed, same lifetime as sharedDracoLoader above.
+// Same CDN rule as Draco: empty transcoderPath uses import.meta.url.
 let sharedKtx2Loader = null;
 const getKtx2Loader = (manager, renderer) => {
   if (!sharedKtx2Loader) {
     sharedKtx2Loader = new KTX2Loader(manager);
-    sharedKtx2Loader.setTranscoderPath(oxygenPublicUrl('/basis/'));
     sharedKtx2Loader.detectSupport(renderer);
   }
   return sharedKtx2Loader;

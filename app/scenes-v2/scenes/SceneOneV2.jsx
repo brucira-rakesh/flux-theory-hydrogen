@@ -21,11 +21,14 @@ import {
 } from "../gui/guiHelpers";
 import { disposeObject } from "../disposeObject";
 import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl';
+import playerLightMapUrl from '~/assets/ktx2/Player_Light_Map_7_etc1s.ktx2?url';
+import playerStonesUrl from '~/assets/ktx2/Player_Stones_etc1s.ktx2?url';
+import sceneOneBgUrl from '~/assets/ktx2/sceneonebg.ktx2?url';
 
 const MODEL_URL = oxygenPublicUrl("/models/Final-Player-Bake9-v1.glb");
-const LIGHT_MAP_URL = oxygenPublicUrl("/textures/Player_Light_Map_7_etc1s.ktx2");
-const STONES_URL = oxygenPublicUrl("/textures/Player_Stones_etc1s.ktx2");
-const BG_TEXTURE_URL = oxygenPublicUrl("/images/sceneonebg.ktx2");
+const LIGHT_MAP_URL = playerLightMapUrl;
+const STONES_URL = playerStonesUrl;
+const BG_TEXTURE_URL = sceneOneBgUrl;
 
 // The Player bake ships geometry only (no glTF materials, no fog/droplet
 // planes), so fogone/fogtwo/shower water.001 still come out of the previous

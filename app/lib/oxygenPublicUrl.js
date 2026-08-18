@@ -1,11 +1,10 @@
 /**
  * Oxygen (and MiniOxygen) only serves file types outside its static-asset
- * allowlist when the path starts with `/assets/`. wasm and ktx2 are not on
- * that list, so `/draco/*.wasm` and `/textures/*.ktx2` 404 in production
- * even though the files exist in `public/` and `dist/client`. Vite's hashed
- * JS/CSS already live under `/assets/`; public 3D files must too.
+ * allowlist when the path starts with `/assets/` — and on real Oxygen that
+ * prefix is not a generic bypass. GLB/PNG/JS are allowlisted and can stay
+ * as public/ URLs. wasm/ktx2 must go through Vite's hashed CDN pipeline.
  *
- * @param {string} publicPath pathname as it exists under `public/` (e.g. `/draco/`)
+ * @param {string} publicPath pathname as it exists under `public/` (e.g. `/models/`)
  */
 export function oxygenPublicUrl(publicPath) {
   if (!publicPath) return '/assets/';
