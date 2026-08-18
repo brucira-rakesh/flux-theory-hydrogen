@@ -6,7 +6,6 @@ import {
   Links,
   Meta,
   Scripts,
-  ScrollRestoration,
   useRouteLoaderData,
 } from 'react-router';
 import favicon from '~/assets/favicon.svg';
@@ -15,6 +14,31 @@ import resetStyles from '~/styles/reset.css?url';
 import appStyles from '~/styles/app.css?url';
 import tailwindCss from './styles/tailwind.css?url';
 import {PageLayout} from './components/PageLayout';
+import {CartProvider} from './components/Cart/CartProvider';
+
+/**
+ * Flux Theory URLs (Step 5). These render a bare <Outlet /> — no Hydrogen
+ * header/footer/aside — and skip header/footer Storefront queries.
+ * Cart still loads so the branded drawer can Add to Cart.
+ * Skeleton commerce chrome stays on cart, collections, search, etc.
+ */
+function isBrandedPath(pathname) {
+  if (
+    pathname === '/' ||
+    pathname === '/home' ||
+    pathname === '/product' ||
+    pathname === '/test' ||
+    pathname === '/seawave' ||
+    pathname === '/scene2' ||
+    pathname === '/scene-preview'
+  ) {
+    return true;
+  }
+  if (pathname === '/shop' || pathname.startsWith('/shop/')) return true;
+  if (pathname.startsWith('/products/')) return true;
+  if (pathname === '/account' || pathname.startsWith('/account/')) return true;
+  return false;
+}
 
 /**
  * This is important to avoid re-fetching root queries on sub-navigations
@@ -55,6 +79,19 @@ export function links() {
       rel: 'preconnect',
       href: 'https://shop.app',
     },
+    {
+      rel: 'preconnect',
+      href: 'https://fonts.googleapis.com',
+    },
+    {
+      rel: 'preconnect',
+      href: 'https://fonts.gstatic.com',
+      crossOrigin: 'anonymous',
+    },
+    {
+      rel: 'stylesheet',
+      href: 'https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Mohave:wght@700&family=Oswald:wght@600;700&display=swap',
+    },
     {rel: 'icon', type: 'image/svg+xml', href: favicon},
   ];
 }
@@ -63,15 +100,33 @@ export function links() {
  * @param {Route.LoaderArgs} args
  */
 export async function loader(args) {
+  const {env} = args.context;
+  const pathname = new URL(args.request.url).pathname;
+
+  if (isBrandedPath(pathname)) {
+    return {
+      branded: true,
+      header: null,
+      footer: null,
+      // Shop + PDP cart drawer needs the Hydrogen cart even without PageLayout.
+      cart: args.context.cart.get(),
+      isLoggedIn: args.context.customerAccount.isLoggedIn(),
+      publicStoreDomain: env.PUBLIC_STORE_DOMAIN,
+      shop: null,
+      consent: null,
+    };
+  }
+
   // Start fetching non-critical data without blocking time to first byte
   const deferredData = loadDeferredData(args);
 
   // Await the critical data required to render initial state of the page
   const criticalData = await loadCriticalData(args);
 
-  const {storefront, env} = args.context;
+  const {storefront} = args.context;
 
   return {
+    branded: false,
     ...deferredData,
     ...criticalData,
     publicStoreDomain: env.PUBLIC_STORE_DOMAIN,
@@ -145,6 +200,9 @@ function loadDeferredData({context}) {
  */
 export function Layout({children}) {
   const nonce = useNonce();
+  /** @type {RootLoader | undefined} */
+  const data = useRouteLoaderData('root');
+  const branded = !data || data.branded;
 
   return (
     <html lang="en">
@@ -152,14 +210,13 @@ export function Layout({children}) {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <link rel="stylesheet" href={tailwindCss}></link>
-        <link rel="stylesheet" href={resetStyles}></link>
-        <link rel="stylesheet" href={appStyles}></link>
+        {!branded && <link rel="stylesheet" href={resetStyles}></link>}
+        {!branded && <link rel="stylesheet" href={appStyles}></link>}
         <Meta />
         <Links />
       </head>
       <body>
         {children}
-        <ScrollRestoration nonce={nonce} />
         <Scripts nonce={nonce} />
       </body>
     </html>
@@ -170,8 +227,12 @@ export default function App() {
   /** @type {RootLoader} */
   const data = useRouteLoaderData('root');
 
-  if (!data) {
-    return <Outlet />;
+  if (!data || data.branded) {
+    return (
+      <CartProvider cart={data?.cart ?? null}>
+        <Outlet />
+      </CartProvider>
+    );
   }
 
   return (

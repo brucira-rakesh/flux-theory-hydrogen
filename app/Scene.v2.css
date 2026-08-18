@@ -1,0 +1,141 @@
+/* Sticky, not fixed: scrolls in as a normal block (in flow, at the top of
+   .scene-v2__scroll-section below) until it hits the viewport top, then
+   pins there for the rest of that section's scroll range, then unsticks
+   and scrolls away with it — the carousel's own scroll math is unaffected
+   either way, since it reads .scene-v2__scroll-section's own position
+   (see swingCarousel.js), never this element's. */
+.scene-v2 {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: #000;
+  pointer-events: auto;
+  /* z-index:auto (the default) loses to ANY sibling with an explicit
+     z-index, regardless of DOM order — KeyHighlightsV2 (z-[1..3]) was
+     painting over this layer's lower half the moment it scrolled within
+     reach, even mid-carousel. Must stay under the header (z-40/50, see
+     HeaderV2) but above every section's own z-index. */
+  z-index: 20;
+}
+
+.scene-v2__canvas {
+  position: absolute;
+  inset: 0;
+}
+
+/* Empty vertical run outside the 100vh sticky window above — kept
+   non-interactive so it never intercepts the carousel's own window-level
+   wheel handling. */
+.scene-v2__scroll-section {
+  position: relative;
+  width: 100%;
+  pointer-events: none;
+}
+
+/* Lines up with MINIMAP_SIZE/MINIMAP_PAD in PostFX.jsx — the actual pixels
+   come from a scissored gl.render() straight into the canvas, this is just
+   a cosmetic border + label drawn on top of that rect. */
+.scene-v2__minimap-frame {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 20;
+  width: 400px;
+  height: 400px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.scene-v2__minimap-label {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+/* Bottom-of-screen caption — ports Figma node 1089:267 (heading) / 1089:268
+   (paragraph). All 5 scenes' pairs (.scene-v2__caption-pair) are mounted at
+   once, see SceneCaption.jsx — this is just their shared full-bleed
+   container. pointer-events: none so it never intercepts the carousel's
+   own window-level wheel handling (same reasoning as
+   .scene-v2__scroll-section above). */
+.scene-v2__caption {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* One per scene, permanently mounted and stacked directly on top of one
+   another (inset: 0, not a flex row) — only opacity ever changes here, never
+   a position, so the heading/desc below always land at the exact same spot no
+   matter which scene is showing.
+
+   Just the resting/off-screen state: opacity and visibility are both driven
+   inline by GSAP from here on (see CaptionPair's phase effect), deliberately
+   with no CSS transition — an inline tween and a class transition on the same
+   property fight each other, and the tween has to stay interruptible mid-fade
+   when scenes flip faster than the exit lasts. */
+.scene-v2__caption-pair {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Both anchored directly off .scene-v2__caption-pair's own box (which is
+   inset:0 on the sticky, viewport-filling .scene-v2) — fixed left/right/bottom
+   values, never flex-computed, so they can't drift depending on how long
+   this scene's copy happens to be. */
+.scene-v2__caption-heading {
+  position: absolute;
+  left: clamp(1.5rem, 4vw, 4.5rem);
+  bottom: clamp(1.5rem, 6vh, 4.5rem);
+  margin: 0;
+  max-width: 42vw;
+  font-family: var(--font-title);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.05em;
+  line-height: 0.94;
+  color: #fff;
+  font-size: clamp(2rem, 6vw, 5.5rem);
+}
+
+.scene-v2__caption-desc {
+  position: absolute;
+  right: clamp(1.5rem, 4vw, 4.5rem);
+  bottom: clamp(1.5rem, 6vh, 4.5rem);
+  margin: 0;
+  max-width: min(24rem, 30vw);
+  font-family: var(--font-body);
+  font-weight: 500;
+  line-height: 1.35;
+  color: #fff;
+  text-align: right;
+  font-size: clamp(0.9rem, 1.1vw, 1.15rem);
+}
+
+@media (max-width: 720px) {
+  .scene-v2__caption-heading,
+  .scene-v2__caption-desc {
+    max-width: calc(100% - 3rem);
+    text-align: left;
+  }
+
+  .scene-v2__caption-heading {
+    bottom: clamp(4.75rem, 16vh, 7.5rem);
+  }
+
+  .scene-v2__caption-desc {
+    left: clamp(1.5rem, 4vw, 4.5rem);
+    right: auto;
+    bottom: clamp(1.5rem, 6vh, 4.5rem);
+  }
+}

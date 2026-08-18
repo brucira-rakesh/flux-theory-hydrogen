@@ -1,0 +1,1268 @@
+/* =========================================================
+   ProductShelf — Flux Theory interactive bathroom shelf
+   Design stage: 1440 × 900, positions in % of .ps-stage
+   ========================================================= */
+
+.ps-root {
+  --ps-ink: #1a1c1f;
+  --ps-muted: #5c616a;
+  --ps-paper: #f3efe8;
+  --ps-card: #ffffff;
+  --ps-accent: #2a6db5;
+  --ps-line: rgba(26, 28, 31, 0.12);
+  --ps-wall-top: #8c988c;
+  --ps-wall-bottom: #7b857a;
+  --ps-display: var(--font-title, 'Oswald', sans-serif);
+  --ps-body: var(--font-body, 'Geist', sans-serif);
+
+  position: relative;
+  /* Above KeyHighlights sticky panel so the bottom shelf isn't covered mid-scroll */
+  z-index: 2;
+  width: 100%;
+  min-height: 100svh;
+  background: linear-gradient(to bottom, var(--ps-wall-top), var(--ps-wall-bottom));
+  color: var(--ps-ink);
+  font-family: var(--ps-body);
+  overflow: clip;
+  isolation: isolate;
+}
+
+/* Lift the entire shelf stacking context above KeyHighlights / VideoHero /
+   Footer while the product modal is open — .ps-focus lives inside .ps-root,
+   so a high z-index on the overlay alone cannot escape this context. */
+.ps-root.is-focused {
+  z-index: 50;
+  overflow: visible;
+}
+
+.ps-stage {
+  position: relative;
+  width: min(100%, 1440px);
+  margin: 0 auto;
+  aspect-ratio: 1440 / 900;
+  /* Keep full Figma stage visible — don't crush bottom shelf under 100svh */
+  min-height: min(100svh, 900px);
+  max-height: none;
+  height: auto;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+.ps-root.is-focused .ps-stage {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  aspect-ratio: auto;
+  min-height: 100svh;
+  max-height: 100svh;
+}
+
+@media (max-width: 900px) {
+  .ps-stage {
+    aspect-ratio: auto;
+    min-height: 100svh;
+    max-height: none;
+    height: auto;
+    padding-bottom: 8vh;
+  }
+}
+
+/* ---------- Shelf layer (blurs as a unit in focus) ---------- */
+
+.ps-shelf-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  will-change: filter;
+  transform-origin: 50% 50%;
+}
+
+.ps-wall {
+  position: absolute;
+  inset: 0;
+  /* Figma 1142:6 wall fill — soft sage gradient (not a photo) */
+  background: linear-gradient(to bottom, var(--ps-wall-top), var(--ps-wall-bottom));
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ps-ambient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ps-shelf-glow {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.7);
+  filter: blur(167px);
+  opacity: 0.85;
+}
+
+/* Header — floating homepage chrome at top; full-bleed glass when pinned (sticky). */
+
+.ps-header {
+  /* Floating cluster matches Figma Frame 144 (white on 13% glass).
+     Pinned bar uses denser fill so chrome stays readable on light pages. */
+  --ps-nav-bg: rgba(255, 255, 255, 0.13);
+  --ps-nav-fg: #fff;
+  --ps-chrome-bg: rgba(255, 255, 255, 0.82);
+  --ps-chrome-blur: 12.85px;
+  --ps-chrome-line: rgba(0, 0, 0, 0.06);
+
+  position: fixed;
+  top: 24px;
+  left: 24px;
+  right: 24px;
+  z-index: 100;
+  pointer-events: none;
+  transform: translateY(0);
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    top 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    left 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    right 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.25s ease,
+    visibility 0.25s ease;
+  will-change: transform;
+}
+
+/* Sticky / scroll-up reveal — edge-to-edge glass bar */
+.ps-header.is-pinned {
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+/* Dawn-style: slide away while scrolling down */
+.ps-header.is-hidden {
+  transform: translateY(calc(-100% - 24px));
+  pointer-events: none;
+}
+
+.ps-header.is-pinned.is-hidden {
+  transform: translateY(-100%);
+}
+
+/* Hide header while a product is in focus */
+main[data-focus-active] .ps-header {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(calc(-100% - 24px));
+}
+
+main[data-focus-active] .ps-header.is-pinned {
+  transform: translateY(-100%);
+}
+
+.ps-header__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 0;
+  box-sizing: border-box;
+  pointer-events: none;
+  background: transparent;
+  border-bottom: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition:
+    background 0.28s ease,
+    border-color 0.28s ease,
+    box-shadow 0.28s ease,
+    padding 0.28s ease;
+}
+
+.ps-header.is-pinned .ps-header__bar {
+  padding: 12px 24px;
+  pointer-events: auto;
+  background: var(--ps-chrome-bg);
+  backdrop-filter: blur(var(--ps-chrome-blur));
+  -webkit-backdrop-filter: blur(var(--ps-chrome-blur));
+  border-bottom: 1px solid var(--ps-chrome-line);
+  box-shadow: none;
+}
+
+.ps-logo {
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
+  display: grid;
+  place-items: center;
+  line-height: 0;
+  text-decoration: none;
+  flex-shrink: 0;
+  pointer-events: auto;
+}
+
+.ps-logo__img {
+  display: block;
+  width: 45px;
+  height: 44px;
+  /* White artwork — reads on dark hero; invert when pinned on light pages. */
+  filter: none;
+  transition: filter 0.28s ease;
+}
+
+.ps-header.is-pinned .ps-logo__img {
+  filter: invert(1);
+}
+
+.ps-header__cluster {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 40px;
+  padding: 16px 24px;
+  background: var(--ps-nav-bg);
+  backdrop-filter: blur(var(--ps-chrome-blur));
+  -webkit-backdrop-filter: blur(var(--ps-chrome-blur));
+  color: var(--ps-nav-fg);
+  box-shadow: none;
+  pointer-events: auto;
+  transition:
+    background 0.28s ease,
+    color 0.28s ease,
+    box-shadow 0.28s ease,
+    padding 0.28s ease;
+}
+
+/* When pinned, glass lives on the full bar — cluster goes clear + dark ink */
+.ps-header.is-pinned .ps-header__cluster {
+  --ps-nav-fg: #000;
+  padding: 4px 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  color: var(--ps-nav-fg);
+}
+
+.ps-header__nav {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  min-width: 0;
+  max-width: 40rem;
+  overflow: hidden;
+  opacity: 1;
+  transition:
+    opacity 0.22s ease,
+    max-width 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    gap 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ps-header.is-searching .ps-header__nav {
+  max-width: 0;
+  gap: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ps-header__nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--ps-body, var(--font-body, 'Geist', sans-serif));
+  font-size: 12px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: inherit;
+  opacity: 0.6;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.ps-header__nav-link:hover,
+.ps-header__nav-link:focus-visible {
+  opacity: 1;
+}
+
+.ps-header__nav-link.is-active {
+  opacity: 1;
+}
+
+.ps-header__nav-marker {
+  display: block;
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border: 1px solid currentColor;
+  background: transparent;
+}
+
+.ps-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.ps-header__icon-btn {
+  display: grid;
+  place-items: center;
+  width: auto;
+  height: auto;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  text-decoration: none;
+  position: relative;
+}
+
+.ps-header__icon-btn.is-logged-in::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ps-header__icon {
+  display: block;
+  line-height: 0;
+  overflow: hidden;
+}
+
+.ps-header__icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* White SVG glyphs — invert only when pinned (dark ink on light bar). */
+  filter: none;
+  transition: filter 0.28s ease;
+}
+
+.ps-header.is-pinned .ps-header__icon img {
+  filter: invert(1);
+}
+
+/* Shop / PDP — floating cluster needs dark ink on denser glass (white pages). */
+.ps-header.is-on-light:not(.is-pinned) .ps-header__cluster {
+  --ps-nav-fg: #000;
+  background: var(--ps-chrome-bg);
+  color: var(--ps-nav-fg);
+}
+
+.ps-header.is-on-light:not(.is-pinned) .ps-logo__img,
+.ps-header.is-on-light:not(.is-pinned) .ps-header__icon img {
+  filter: invert(1);
+}
+
+.ps-header__icon-btn:hover,
+.ps-header__icon-btn:focus-visible {
+  opacity: 0.75;
+}
+
+.ps-header__menu-btn {
+  display: none;
+  width: 24px;
+  height: 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ps-header {
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+  }
+
+  .ps-header.is-hidden {
+    transform: none;
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@media (max-width: 960px) {
+  .ps-header__nav {
+    display: none;
+  }
+
+  .ps-header__cluster {
+    gap: 20px;
+    padding: 12px 16px;
+  }
+
+  .ps-header.is-pinned .ps-header__cluster {
+    padding: 4px 0;
+  }
+
+  .ps-header__menu-btn {
+    display: grid;
+  }
+}
+
+@media (max-width: 600px) {
+  .ps-header {
+    top: 12px;
+    left: 12px;
+    right: 12px;
+  }
+
+  .ps-header.is-pinned {
+    top: 0;
+    left: 0;
+    right: 0;
+  }
+
+  .ps-header.is-hidden {
+    transform: translateY(calc(-100% - 12px));
+  }
+
+  .ps-header.is-pinned.is-hidden {
+    transform: translateY(-100%);
+  }
+
+  .ps-header.is-pinned .ps-header__bar {
+    padding: 10px 12px;
+  }
+
+  .ps-header__cluster {
+    gap: 16px;
+    padding: 10px 14px;
+  }
+
+  .ps-header.is-pinned .ps-header__cluster {
+    padding: 4px 0;
+  }
+
+  .ps-header__actions {
+    gap: 16px;
+  }
+
+  .ps-logo__img {
+    width: 36px;
+    height: 35px;
+  }
+}
+
+/* Drawer menu — sibling of `.ps-header`, not a child. Fixed positioning must
+   resolve against the viewport; nesting under the header's hide-on-scroll
+   `transform` left a ~6px olive (#2c2e1c) strip visible on the left edge. */
+
+.ps-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: rgba(26, 28, 18, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.ps-drawer-layer.is-open .ps-drawer-backdrop {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ps-drawer-backdrop[hidden] {
+  display: block;
+}
+
+.ps-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 50;
+  width: min(100%, 360px);
+  height: 100svh;
+  padding: 1.25rem 1.5rem 2rem;
+  box-sizing: border-box;
+  background: #2c2e1c;
+  color: #fff;
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 0.35s;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.ps-drawer-layer.is-open .ps-drawer {
+  transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 0s;
+}
+
+.ps-drawer__top {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.ps-drawer__close {
+  color: #fff;
+}
+
+.ps-drawer__links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ps-drawer__links > li > a,
+.ps-drawer__dropdown-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.85rem 0;
+  font-family: var(--ps-display);
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: #fff;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  appearance: none;
+  transition: opacity 0.2s ease, padding-left 0.2s ease;
+}
+
+.ps-drawer__links > li > a:hover,
+.ps-drawer__links > li > a:focus-visible,
+.ps-drawer__dropdown-trigger:hover,
+.ps-drawer__dropdown-trigger:focus-visible {
+  opacity: 0.75;
+  padding-left: 0.35rem;
+}
+
+.ps-drawer__chevron {
+  flex-shrink: 0;
+  margin-left: 0.75rem;
+  transition: transform 0.25s ease;
+}
+
+.ps-drawer__chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.ps-drawer__submenu {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem 0 0.85rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.ps-drawer__submenu[hidden] {
+  display: none;
+}
+
+.ps-drawer__sublink {
+  display: block;
+  padding: 0.55rem 0;
+  font-family: var(--ps-body);
+  font-size: clamp(0.95rem, 2.4vw, 1.125rem);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.82);
+  border-bottom: 0;
+  transition: opacity 0.2s ease, color 0.2s ease, padding-left 0.2s ease;
+}
+
+.ps-drawer__sublink:hover,
+.ps-drawer__sublink:focus-visible {
+  opacity: 1;
+  color: #fff;
+  padding-left: 0.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ps-drawer,
+  .ps-drawer-backdrop,
+  .ps-drawer__links > li > a,
+  .ps-drawer__dropdown-trigger,
+  .ps-drawer__sublink,
+  .ps-drawer__chevron {
+    transition: none;
+  }
+}
+
+/* Headline */
+
+.ps-headline {
+  position: absolute;
+  left: 50%;
+  top: clamp(8%, 10vh, 14%);
+  transform: translateX(-50%);
+  z-index: 5;
+  margin: 0;
+  width: min(90%, 920px);
+  text-align: center;
+  font-family: var(--ps-display);
+  font-weight: 700;
+  font-size: clamp(2.1rem, 5.6vw, 5.5rem);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: #fff;
+  pointer-events: none;
+}
+
+.ps-headline__heading {
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+}
+
+.ps-headline__line {
+  display: block;
+  margin: 0;
+  color: #fff;
+}
+
+/* Glass planks */
+
+.ps-plank {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  line-height: 0;
+}
+
+.ps-plank__img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  /* No drop-shadow — it redraws the green glass edge + brackets
+     underneath and reads as a duplicated shelf. */
+  filter: none;
+}
+
+/* Decor */
+
+.ps-decor {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  line-height: 0;
+}
+
+.ps-decor__img {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.14));
+}
+
+/* Reflections intentionally removed (see latest shelf build). */
+
+/* Bottles */
+
+.ps-bottle {
+  position: absolute;
+  z-index: 6;
+  transform-origin: 50% 100%;
+}
+
+.ps-bottle__btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ps-bottle__btn:focus-visible {
+  outline: 2px solid var(--ps-accent);
+  outline-offset: 6px;
+}
+
+.ps-bottle__visual {
+  display: block;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  transform-origin: 50% 100%;
+  transform: translate(var(--visual-x, 0px), var(--visual-y, 0px))
+    scale(var(--visual-scale, 1));
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ps-bottle:hover:not(:disabled) .ps-bottle__visual,
+.ps-bottle:focus-within:not(:disabled) .ps-bottle__visual {
+  transform: translate(var(--visual-x, 0px), calc(var(--visual-y, 0px) - 6px))
+    scale(calc(var(--visual-scale, 1) * 1.03));
+}
+
+.ps-root.is-animating .ps-bottle__visual,
+.ps-root.is-focused .ps-bottle__visual,
+.ps-root.is-animating .ps-bottle:hover .ps-bottle__visual,
+.ps-root.is-focused .ps-bottle:hover .ps-bottle__visual {
+  transition: none !important;
+  transform: translate(var(--visual-x, 0px), var(--visual-y, 0px))
+    scale(var(--visual-scale, 1)) !important;
+}
+
+.ps-bottle__img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.12));
+}
+
+/* Hide any leftover reflection containers (defensive). */
+.ps-shelf-reflection {
+  display: none !important;
+}
+
+/* Hotspots — positioned relative to each bottle */
+
+.ps-hotspot {
+  position: absolute;
+  z-index: 8;
+  width: clamp(32px, 2.8vw, 40px);
+  height: clamp(32.8px, 2.87vw, 41px);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  backdrop-filter: blur(3.5px);
+  -webkit-backdrop-filter: blur(3.5px);
+  box-shadow: none;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  appearance: none;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ps-hotspot:focus-visible {
+  outline: 2px solid var(--ps-accent);
+  outline-offset: 3px;
+}
+
+.ps-hotspot:hover:not(:disabled),
+.ps-hotspot:focus-visible:not(:disabled) {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.ps-hotspot:disabled {
+  cursor: default;
+}
+
+.ps-hotspot__icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ---------- Focus overlay ---------- */
+
+.ps-focus {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: none;
+  pointer-events: none;
+}
+
+.ps-focus__backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  /* Figma 1142:101 — Rectangle 61: backdrop-blur 10px + black @ 46% */
+  background: rgba(0, 0, 0, 0.46);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.ps-focus__close {
+  position: absolute;
+  top: clamp(16px, 3vh, 28px);
+  right: clamp(16px, 3vw, 32px);
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.ps-focus__close:hover {
+  background: rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.7);
+  transform: scale(1.08);
+}
+
+.ps-focus__close:disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Focus layout: centered bottle, bottom quote, right card */
+
+.ps-focus__content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.ps-focus__content > * {
+  pointer-events: auto;
+}
+
+.ps-focus__title {
+  position: absolute;
+  top: clamp(4.8rem, 10.6vh, 6.8rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  margin: 0;
+  width: min(92%, 640px);
+  font-family: var(--ps-display);
+  font-weight: 700;
+  font-size: clamp(2rem, 4.2vw, 3.75rem);
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 2px 28px rgba(0, 0, 0, 0.4);
+}
+
+.ps-focus__title-text {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+}
+
+.ps-focus__title-text .at-char {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+}
+
+.ps-focus__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.ps-focus__hero-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: min(100%, 420px);
+  pointer-events: auto;
+}
+
+.ps-focus__hero {
+  position: relative;
+  width: clamp(160px, 16vw, 230px);
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+  will-change: transform, opacity;
+}
+
+.ps-focus__hero:disabled {
+  cursor: default;
+}
+
+.ps-focus__hero-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  /* Soft shadow — heavy black drop-shadow was flashing on handoff */
+  filter: drop-shadow(0 18px 32px rgba(0, 0, 0, 0.28));
+  user-select: none;
+  pointer-events: none;
+  background: transparent;
+}
+
+.ps-nav {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.ps-nav__btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 29px;
+  border: 0;
+  background: #fff;
+  color: #1a1c1f;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  pointer-events: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.ps-nav__btn:hover:not(:disabled),
+.ps-nav__btn:focus-visible:not(:disabled) {
+  transform: translateY(-50%) scale(1.05);
+}
+
+.ps-nav__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ps-nav__btn--prev {
+  left: clamp(-56px, -4vw, -40px);
+}
+
+.ps-nav__btn--next {
+  right: clamp(-56px, -4vw, -40px);
+}
+
+.ps-focus__quote {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(1.25rem, 3.5vh, 2.25rem);
+  transform: translateX(-50%);
+  z-index: 2;
+  width: min(92%, 348px);
+  margin: 0;
+  text-align: center;
+  font-family: var(--ps-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: #fff;
+}
+
+.ps-focus__quote-text {
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+}
+
+.ps-details {
+  position: absolute;
+  right: clamp(0.75rem, 2.2vw, 1.5rem);
+  bottom: clamp(1.25rem, 4vh, 2.5rem);
+  z-index: 3;
+  width: min(calc(100% - 1.5rem), 343px);
+  min-height: 330px;
+  background: #feffff;
+  color: #000;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin: 0;
+}
+
+.ps-details__body {
+  padding: 1.35rem 1rem 0 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.ps-details__price {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.2rem;
+  font-family: var(--ps-display);
+  font-size: clamp(2rem, 2.8vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: #000;
+  text-transform: capitalize;
+}
+
+.ps-details__currency {
+  font-size: 0.95em;
+}
+
+.ps-details__tags {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.ps-details__tag {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--ps-display);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.ps-details__swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 0;
+  flex-shrink: 0;
+  background: var(--ps-accent);
+}
+
+.ps-details__desc {
+  margin: 0;
+  font-family: var(--ps-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: #000;
+  max-width: 295px;
+}
+
+.ps-details__buy {
+  width: calc(100% - 1.9rem);
+  margin: 1.1rem 0.95rem 0.95rem;
+  border: 0;
+  background: #000;
+  color: #fff;
+  font-family: var(--ps-display);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  height: 56px;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.25s ease, transform 0.25s ease;
+}
+
+.ps-details__buy:hover,
+.ps-details__buy:focus-visible {
+  background: #222;
+}
+
+.ps-details__buy:active {
+  transform: scale(0.985);
+}
+
+/* Transition traveler */
+
+.ps-transition-bottle {
+  position: fixed;
+  z-index: 90;
+  pointer-events: none;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.ps-transition-bottle img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  user-select: none;
+  pointer-events: none;
+  /* Match shelf bottle shadow so the handoff doesn't flash */
+  filter: drop-shadow(0 12px 20px rgba(0, 0, 0, 0.16));
+}
+
+/* ---------- Mobile / tablet ---------- */
+
+@media (max-width: 900px) {
+  .ps-headline {
+    top: 10%;
+    font-size: clamp(1.85rem, 9vw, 3rem);
+  }
+
+  .ps-focus__content {
+    overflow-y: auto;
+  }
+
+  .ps-focus__title {
+    top: clamp(4.1rem, 9.2vh, 5.2rem);
+    font-size: clamp(1.6rem, 8vw, 2.4rem);
+  }
+
+  .ps-focus__center {
+    align-items: flex-start;
+    padding-top: clamp(8rem, 22vh, 10rem);
+  }
+
+  .ps-focus__hero-wrap {
+    width: min(100%, 280px);
+  }
+
+  .ps-focus__hero {
+    width: clamp(135px, 40vw, 190px);
+  }
+
+  .ps-focus__quote {
+    bottom: auto;
+    top: auto;
+    position: relative;
+    left: auto;
+    transform: none;
+    width: min(92%, 360px);
+    margin: 1rem auto 1.25rem;
+    order: 3;
+  }
+
+  .ps-details {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    width: min(92%, 360px);
+    margin: 0 auto 1.5rem;
+  }
+
+  .ps-focus__content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 1rem 1.5rem;
+    height: auto;
+    min-height: 100%;
+  }
+
+  .ps-focus__title {
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+    margin: 5rem 0 1rem;
+  }
+
+  .ps-focus__center {
+    position: relative;
+    inset: auto;
+    padding-top: 0;
+    width: 100%;
+  }
+
+  .ps-nav__btn--prev {
+    left: -4px;
+  }
+
+  .ps-nav__btn--next {
+    right: -4px;
+  }
+}
+
+@media (min-width: 2200px) {
+  .ps-stage {
+    width: min(100%, 1440px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ps-bottle,
+  .ps-hotspot,
+  .ps-details__buy,
+  .ps-header__icon-btn {
+    transition: none;
+  }
+
+  .ps-bottle:hover:not(:disabled),
+  .ps-bottle:focus-visible:not(:disabled) {
+    transform: none;
+  }
+}

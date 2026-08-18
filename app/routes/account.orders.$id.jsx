@@ -79,108 +79,89 @@ export default function OrderRoute() {
       {order.confirmationNumber && (
         <p>Confirmation: {order.confirmationNumber}</p>
       )}
-      <br />
-      <div>
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Product</th>
-              <th scope="col">Price</th>
-              <th scope="col">Quantity</th>
-              <th scope="col">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lineItems.map((lineItem, lineItemIndex) => (
-              // eslint-disable-next-line react/no-array-index-key
-              <OrderLineRow key={lineItemIndex} lineItem={lineItem} />
-            ))}
-          </tbody>
-          <tfoot>
-            {((discountValue && discountValue.amount) ||
-              discountPercentage) && (
-              <tr>
-                <th scope="row" colSpan={3}>
-                  <p>Discounts</p>
-                </th>
-                <th scope="row">
-                  <p>Discounts</p>
-                </th>
-                <td>
-                  {discountPercentage ? (
-                    <span>-{discountPercentage}% OFF</span>
-                  ) : (
-                    discountValue && <Money data={discountValue} />
-                  )}
-                </td>
-              </tr>
-            )}
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Product</th>
+            <th scope="col">Price</th>
+            <th scope="col">Quantity</th>
+            <th scope="col">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lineItems.map((lineItem, lineItemIndex) => (
+            // eslint-disable-next-line react/no-array-index-key
+            <OrderLineRow key={lineItemIndex} lineItem={lineItem} />
+          ))}
+        </tbody>
+        <tfoot>
+          {((discountValue && discountValue.amount) || discountPercentage) && (
             <tr>
               <th scope="row" colSpan={3}>
-                <p>Subtotal</p>
-              </th>
-              <th scope="row">
-                <p>Subtotal</p>
+                Discounts
               </th>
               <td>
-                <Money data={order.subtotal} />
+                {discountPercentage ? (
+                  <span>-{discountPercentage}% OFF</span>
+                ) : (
+                  discountValue && <Money data={discountValue} />
+                )}
               </td>
             </tr>
-            <tr>
-              <th scope="row" colSpan={3}>
-                Tax
-              </th>
-              <th scope="row">
-                <p>Tax</p>
-              </th>
-              <td>
-                <Money data={order.totalTax} />
-              </td>
-            </tr>
-            <tr>
-              <th scope="row" colSpan={3}>
-                Total
-              </th>
-              <th scope="row">
-                <p>Total</p>
-              </th>
-              <td>
-                <Money data={order.totalPrice} />
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+          )}
+          <tr>
+            <th scope="row" colSpan={3}>
+              Subtotal
+            </th>
+            <td>
+              <Money data={order.subtotal} />
+            </td>
+          </tr>
+          <tr>
+            <th scope="row" colSpan={3}>
+              Tax
+            </th>
+            <td>
+              <Money data={order.totalTax} />
+            </td>
+          </tr>
+          <tr>
+            <th scope="row" colSpan={3}>
+              Total
+            </th>
+            <td>
+              <Money data={order.totalPrice} />
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+      <div className="account-order__status">
         <div>
-          <h3>Shipping Address</h3>
+          <h3>Shipping address</h3>
           {order?.shippingAddress ? (
             <address>
               <p>{order.shippingAddress.name}</p>
               {order.shippingAddress.formatted ? (
                 <p>{order.shippingAddress.formatted}</p>
-              ) : (
-                ''
-              )}
+              ) : null}
               {order.shippingAddress.formattedArea ? (
                 <p>{order.shippingAddress.formattedArea}</p>
-              ) : (
-                ''
-              )}
+              ) : null}
             </address>
           ) : (
             <p>No shipping address defined</p>
           )}
+        </div>
+        <div>
           <h3>Status</h3>
-          <div>
-            <p>{fulfillmentStatus}</p>
-          </div>
+          <p>{fulfillmentStatus}</p>
+          <p>
+            <a target="_blank" href={order.statusPageUrl} rel="noreferrer">
+              View order status
+            </a>
+          </p>
         </div>
       </div>
-      <br />
-      <p>
-        <a target="_blank" href={order.statusPageUrl} rel="noreferrer">
-          View Order Status →
-        </a>
-      </p>
     </div>
   );
 }
@@ -192,7 +173,7 @@ function OrderLineRow({lineItem}) {
   return (
     <tr key={lineItem.id}>
       <td>
-        <div>
+        <div className="account-order__line">
           {lineItem?.image && (
             <div>
               <Image data={lineItem.image} width={96} height={96} />

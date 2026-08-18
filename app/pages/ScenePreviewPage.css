@@ -1,0 +1,48 @@
+/* Full-viewport, non-scrolling stage for previewing one scene at a time —
+   deliberately simpler than .scene-v2 (no sticky scroll section, no swing
+   carousel): this page never scrolls, it just swaps which scene group is
+   visible in front of the fixed camera (see ScenePreviewPage.jsx). */
+.scene-preview-page {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: #000;
+}
+
+.scene-preview-page__canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.scene-preview-page__label {
+  position: absolute;
+  left: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 5;
+  margin: 0;
+  padding: 0.4rem 0.8rem;
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.scene-preview-page__hint {
+  position: absolute;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 5;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}

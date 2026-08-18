@@ -1,0 +1,23 @@
+/* AnimatedDescription — word-split shell. Visual styling comes from className. */
+
+.ad-description {
+  margin: 0;
+  font-family: var(--font-body, 'Geist', sans-serif);
+}
+
+.ad-line {
+  display: block;
+}
+
+.ad-word {
+  display: inline-block;
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ad-word {
+    will-change: auto;
+    opacity: 1;
+    transform: none;
+  }
+}

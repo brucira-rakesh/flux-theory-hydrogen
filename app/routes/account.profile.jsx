@@ -6,12 +6,13 @@ import {
   useNavigation,
   useOutletContext,
 } from 'react-router';
+import Addresses, {action as addressesAction} from './account.addresses';
 
 /**
  * @type {Route.MetaFunction}
  */
 export const meta = () => {
-  return [{title: 'Profile'}];
+  return [{title: 'Flux Theory | Profile'}];
 };
 
 /**
@@ -26,14 +27,18 @@ export async function loader({context}) {
 /**
  * @param {Route.ActionArgs}
  */
-export async function action({request, context}) {
+export async function action(args) {
+  const form = await args.request.clone().formData();
+  if (form.has('addressId')) {
+    return addressesAction(args);
+  }
+
+  const {request, context} = args;
   const {customerAccount} = context;
 
   if (request.method !== 'PUT') {
     return data({error: 'Method not allowed'}, {status: 405});
   }
-
-  const form = await request.formData();
 
   try {
     const customer = {};
@@ -47,8 +52,7 @@ export async function action({request, context}) {
       }
     }
 
-    // update customer and possibly password
-    const {data, errors} = await customerAccount.mutate(
+    const {data: result, errors} = await customerAccount.mutate(
       CUSTOMER_UPDATE_MUTATION,
       {
         variables: {
@@ -62,13 +66,13 @@ export async function action({request, context}) {
       throw new Error(errors[0].message);
     }
 
-    if (!data?.customerUpdate?.customer) {
+    if (!result?.customerUpdate?.customer) {
       throw new Error('Customer profile update failed.');
     }
 
     return {
       error: null,
-      customer: data?.customerUpdate?.customer,
+      customer: result.customerUpdate.customer,
     };
   } catch (error) {
     return data(
@@ -82,54 +86,66 @@ export async function action({request, context}) {
 
 export default function AccountProfile() {
   const account = useOutletContext();
-  const {state} = useNavigation();
+  const {state, formData} = useNavigation();
   /** @type {ActionReturnData} */
   const action = useActionData();
   const customer = action?.customer ?? account?.customer;
+  const profileBusy = state !== 'idle' && !formData?.has('addressId');
+  const profileError =
+    typeof action?.error === 'string' ? action.error : null;
 
   return (
-    <div className="account-profile">
-      <h2>My profile</h2>
-      <br />
-      <Form method="PUT">
-        <legend>Personal information</legend>
-        <fieldset>
-          <label htmlFor="firstName">First name</label>
-          <input
-            id="firstName"
-            name="firstName"
-            type="text"
-            autoComplete="given-name"
-            placeholder="First name"
-            aria-label="First name"
-            defaultValue={customer.firstName ?? ''}
-            minLength={2}
-          />
-          <label htmlFor="lastName">Last name</label>
-          <input
-            id="lastName"
-            name="lastName"
-            type="text"
-            autoComplete="family-name"
-            placeholder="Last name"
-            aria-label="Last name"
-            defaultValue={customer.lastName ?? ''}
-            minLength={2}
-          />
-        </fieldset>
-        {action?.error ? (
-          <p>
-            <mark>
-              <small>{action.error}</small>
-            </mark>
-          </p>
-        ) : (
-          <br />
-        )}
-        <button type="submit" disabled={state !== 'idle'}>
-          {state !== 'idle' ? 'Updating' : 'Update'}
-        </button>
-      </Form>
+    <div className="account-details">
+      <section className="account-profile" aria-labelledby="account-profile-heading">
+        <h2 id="account-profile-heading">Profile</h2>
+        <Form className="account-form" method="PUT">
+          <fieldset>
+            <legend>Personal information</legend>
+            <div className="account-form__fields">
+              <div className="account-form__field">
+                <label htmlFor="profile-firstName">First name</label>
+                <input
+                  id="profile-firstName"
+                  name="firstName"
+                  type="text"
+                  autoComplete="given-name"
+                  placeholder="First name"
+                  aria-label="First name"
+                  defaultValue={customer.firstName ?? ''}
+                  minLength={2}
+                />
+              </div>
+              <div className="account-form__field">
+                <label htmlFor="profile-lastName">Last name</label>
+                <input
+                  id="profile-lastName"
+                  name="lastName"
+                  type="text"
+                  autoComplete="family-name"
+                  placeholder="Last name"
+                  aria-label="Last name"
+                  defaultValue={customer.lastName ?? ''}
+                  minLength={2}
+                />
+              </div>
+            </div>
+          </fieldset>
+          {profileError ? (
+            <p>
+              <mark>
+                <small>{profileError}</small>
+              </mark>
+            </p>
+          ) : null}
+          <button className="account-btn" type="submit" disabled={profileBusy}>
+            {profileBusy ? 'Updating' : 'Update'}
+          </button>
+        </Form>
+      </section>
+
+      <hr className="account-section-divider" />
+
+      <Addresses />
     </div>
   );
 }

@@ -1,0 +1,101 @@
+/* Wet-glass boot — matches Figma node-id 1089-9 → 1089-5 → 1089-13:
+   solid dark bg, still image opacity-fades in, logo blend-excludes. */
+
+.preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity 0.75s ease;
+  pointer-events: auto;
+  background: #0e0e0e;
+}
+
+.preloader.is-exit {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.preloader__still {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.preloader__tint {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgba(10, 32, 45, 0.41);
+  mix-blend-mode: color;
+  pointer-events: none;
+}
+
+.preloader__center {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  transform: translate(-50%, -50%);
+}
+
+.preloader__logo {
+  width: clamp(96px, 14vw, 148px);
+  height: auto;
+  color: #fff;
+  mix-blend-mode: exclusion;
+  line-height: 0;
+  user-select: none;
+  pointer-events: none;
+}
+
+.preloader__logo svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.preloader__progress {
+  width: clamp(96px, 14vw, 148px);
+  height: 2px;
+  background: rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+
+.preloader__progress.is-done {
+  opacity: 0;
+}
+
+.preloader__progress-fill {
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  transform: scaleX(0);
+  transform-origin: left center;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preloader {
+    transition: none;
+  }
+
+  .preloader__progress {
+    transition: none;
+  }
+}

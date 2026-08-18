@@ -1,0 +1,873 @@
+{
+  "controllers": {
+    "Camera FOV": 45,
+    "Transition FOV": 48,
+    "Debug Minimap": true,
+    "Show FPS Stats": false,
+    "Sweep Angle": 120
+  },
+  "folders": {
+    "Scenes": {
+      "controllers": {
+        "Scene One": true,
+        "Scene Five": true,
+        "Scene Two": true,
+        "Scene Three": true,
+        "Scene Four": true
+      },
+      "folders": {}
+    },
+    "Model Rotation": {
+      "controllers": {
+        "Scene One": 180,
+        "Scene Five": 180,
+        "Scene Two": 180,
+        "Scene Three": 180,
+        "Scene Four": 180
+      },
+      "folders": {}
+    },
+    "Scene Bloom": {
+      "controllers": {},
+      "folders": {
+        "Scene One": {
+          "controllers": {
+            "Strength": 1.6,
+            "Radius": 0.55,
+            "Threshold": 0.65
+          },
+          "folders": {}
+        },
+        "Scene Five": {
+          "controllers": {
+            "Strength": 1.6,
+            "Radius": 0.55,
+            "Threshold": 0.65
+          },
+          "folders": {}
+        },
+        "Scene Two": {
+          "controllers": {
+            "Strength": 1.6,
+            "Radius": 0.55,
+            "Threshold": 0.65
+          },
+          "folders": {}
+        },
+        "Scene Three": {
+          "controllers": {
+            "Strength": 1.6,
+            "Radius": 0.55,
+            "Threshold": 0.65
+          },
+          "folders": {}
+        },
+        "Scene Four": {
+          "controllers": {
+            "Strength": 1.6,
+            "Radius": 0.55,
+            "Threshold": 0.65
+          },
+          "folders": {}
+        }
+      }
+    },
+    "Post FX": {
+      "controllers": {},
+      "folders": {
+        "AO (N8AO)": {
+          "controllers": {
+            "Enabled": true,
+            "AO Radius": 5.95,
+            "Distance Falloff": 2.05,
+            "Intensity": 4.3,
+            "Screen-space Radius": true,
+            "Half Resolution": true
+          },
+          "folders": {}
+        },
+        "Grade": {
+          "controllers": {
+            "Contrast": 0.14,
+            "Vignette Offset": 0.42,
+            "Vignette Darkness": 0.82
+          },
+          "folders": {}
+        }
+      }
+    },
+    "Camera Position": {
+      "controllers": {
+        "x": 0,
+        "y": 0.2,
+        "z": -1
+      },
+      "folders": {}
+    },
+    "Export": {
+      "controllers": {},
+      "folders": {}
+    },
+    "Bottle": {
+      "controllers": {},
+      "folders": {
+        "Transform": {
+          "controllers": {
+            "Position X": 0,
+            "Position Y": 0,
+            "Position Z": 2.95230586992216,
+            "Scale": 7.95,
+            "Base Rotation Y": 0
+          },
+          "folders": {}
+        }
+      }
+    },
+    "Scene Five": {
+      "controllers": {},
+      "folders": {
+        "Model": {
+          "controllers": {
+            "Scale": 1
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": -0.18623998761177063,
+                "Position Y": -0.04607231169939041,
+                "Position Z": 6.19894796319227
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Background": {
+          "controllers": {
+            "Emissive intensity": 1
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": 0,
+                "Position Y": 0.04607231169939041,
+                "Position Z": -11.998235702514648
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Bake": {
+          "controllers": {
+            "Emissive intensity": 1
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": 0.37247997522354126,
+                "Position Y": 0.4335484802722931,
+                "Position Z": -8.874405860900879
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Stone Slabs": {
+          "controllers": {
+            "Emissive intensity": 1.62
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": 0.37247997522354126,
+                "Position Y": 0.4335484802722931,
+                "Position Z": -8.874405860900879
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Sea": {
+          "controllers": {},
+          "folders": {
+            "Ripples": {
+              "controllers": {
+                "Flow direction": 41,
+                "Flow speed": 0.05,
+                "Normal strength": 1,
+                "Tiling X": 4,
+                "Tiling Y": 4,
+                "Displacement strength": 0,
+                "AO strength": 1
+              },
+              "folders": {}
+            },
+            "Color": {
+              "controllers": {
+                "Depth color": "#ffffff",
+                "Surface color": "#000000",
+                "Color offset": 0.145,
+                "Color multiplier": 10,
+                "Opacity": 1
+              },
+              "folders": {}
+            },
+            "Reflection": {
+              "controllers": {
+                "Reflectivity": 1,
+                "Distortion": 0.054,
+                "Blur (softness)": 0.001,
+                "Specular strength": 2,
+                "Shininess": 256
+              },
+              "folders": {}
+            },
+            "Edge fade": {
+              "controllers": {
+                "Fade start Z": -1,
+                "Fade end Z": 1,
+                "Fade start X": -1,
+                "Fade end X": 1
+              },
+              "folders": {}
+            },
+            "Position": {
+              "controllers": {
+                "Position X": 0.027300551533699,
+                "Position Y": 0.39614824205637,
+                "Position Z": -8.84710530936718
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Glass": {
+          "controllers": {
+            "Opacity": 0,
+            "Roughness": 0.05,
+            "Reflectivity": 0.5,
+            "Fresnel power": 3,
+            "Env color (low)": "#000000",
+            "Env color (high)": "#fdf0ff"
+          },
+          "folders": {}
+        }
+      }
+    },
+    "Scene Two": {
+      "controllers": {},
+      "folders": {
+        "Model": {
+          "controllers": {
+            "Scale": 1
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": 0,
+                "Position Y": 0.322883654980707,
+                "Position Z": 8.60567425749908
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Background": {
+          "controllers": {
+            "Emissive intensity": 1
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": 0,
+                "Position Y": -0.05369553714990616,
+                "Position Z": -12.566339492797852
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Neon light": {
+          "controllers": {
+            "Emissive intensity": 1.1155770538639864
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": 0,
+                "Position Y": 0,
+                "Position Z": -10.411531448364258
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Sea": {
+          "controllers": {},
+          "folders": {
+            "Ripples": {
+              "controllers": {
+                "Flow direction": 41,
+                "Flow speed": 0.015,
+                "Normal strength": 1,
+                "Tiling X": 1,
+                "Tiling Y": 1,
+                "Displacement strength": 1.99,
+                "AO strength": 1
+              },
+              "folders": {}
+            },
+            "Color": {
+              "controllers": {
+                "Depth color": "#ffffff",
+                "Surface color": "#000000",
+                "Color offset": 0.145,
+                "Color multiplier": 10,
+                "Opacity": 1
+              },
+              "folders": {}
+            },
+            "Reflection": {
+              "controllers": {
+                "Reflectivity": 1,
+                "Distortion": 0.054,
+                "Blur (softness)": 0.001,
+                "Specular strength": 2,
+                "Shininess": 256
+              },
+              "folders": {}
+            },
+            "Edge fade": {
+              "controllers": {
+                "Fade start Z": -0.999426193237305,
+                "Fade end Z": 1.552390217781067,
+                "Fade start X": -1.298801302909851,
+                "Fade end X": 1.2988234758377075
+              },
+              "folders": {}
+            },
+            "Position": {
+              "controllers": {
+                "Position X": -0.028071045875549316,
+                "Position Y": -1.7949289083480835,
+                "Position Z": -10.411240577697754
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Tree": {
+          "controllers": {
+            "Scale": 1
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": -2.1675398349761963,
+                "Position Y": -0.9046370983123779,
+                "Position Z": -7.904027462005615
+              },
+              "folders": {}
+            }
+          }
+        }
+      }
+    },
+    "Scene One": {
+      "controllers": {},
+      "folders": {
+        "Model": {
+          "controllers": {
+            "Scale": 1
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": 0,
+                "Position Y": -0.13397497160010996,
+                "Position Z": 10.201515870061087
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Background": {
+          "controllers": {
+            "Emissive intensity": 1.16
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": 0,
+                "Position Y": 0,
+                "Position Z": -10.411531448364258
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Cylinder.002": {
+          "controllers": {
+            "Emissive intensity": 0.81
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": 0,
+                "Position Y": 0,
+                "Position Z": -10.411531448364258
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Cylinder.005": {
+          "controllers": {
+            "Emissive intensity": 1
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": 0,
+                "Position Y": 0,
+                "Position Z": -10.411531448364258
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Sea": {
+          "controllers": {},
+          "folders": {
+            "Ripples": {
+              "controllers": {
+                "Flow direction": 0,
+                "Flow speed": 0.015,
+                "Normal strength": 1,
+                "Tiling X": 1,
+                "Tiling Y": 1,
+                "Displacement strength": 4.72,
+                "AO strength": 1
+              },
+              "folders": {}
+            },
+            "Color": {
+              "controllers": {
+                "Depth color": "#000000",
+                "Surface color": "#b3b3b3",
+                "Color offset": 0.08,
+                "Color multiplier": 5.32,
+                "Opacity": 1
+              },
+              "folders": {}
+            },
+            "Reflection": {
+              "controllers": {
+                "Reflectivity": 1,
+                "Distortion": 0.026,
+                "Blur (softness)": 0.0015,
+                "Specular strength": 2,
+                "Shininess": 256
+              },
+              "folders": {}
+            },
+            "Edge fade": {
+              "controllers": {
+                "Fade start Z": 0.0509691853523255,
+                "Fade end Z": 0.549421950817108,
+                "Fade start X": -1.29880142211914,
+                "Fade end X": 1.29880142211914
+              },
+              "folders": {}
+            },
+            "Position": {
+              "controllers": {
+                "Position X": -0.339250977623005,
+                "Position Y": -1.8152765901755,
+                "Position Z": -11.0546808242798
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Water droplets": {
+          "controllers": {
+            "Color": "#9fd8ff",
+            "Opacity": 0,
+            "Transparency": 0,
+            "Speed": 0,
+            "Density": 0.3,
+            "Position X": 13.422625389165546,
+            "Position Y": 0.60738815553745,
+            "Position Z": -10.904281616210938,
+            "Scale X": 0.674784783303738,
+            "Scale Y": 1.0117974281311035,
+            "Scale Z": 0.937974417567253
+          },
+          "folders": {}
+        },
+        "Fog": {
+          "controllers": {},
+          "folders": {
+            "Fog One": {
+              "controllers": {
+                "Color": "#dedede",
+                "Opacity": 0.24,
+                "Density": 0,
+                "Tiling X": 0.9,
+                "Tiling Y": 0.9,
+                "Drift direction": 14.999999999999998,
+                "Drift speed": 0.006,
+                "Wind variation": 0.5,
+                "Wind variation speed": 0.15,
+                "Edge softness": 0.5,
+                "Grazing boost": 1.5,
+                "Wobble amount": 0.15,
+                "Wobble speed": 0.5,
+                "Pulse amount": 0.35,
+                "Pulse speed": 0.6,
+                "Rise/fall amount": 0.08,
+                "Rise/fall speed": 0.35
+              },
+              "folders": {
+                "Position": {
+                  "controllers": {
+                    "Position X": -0.795750617980957,
+                    "Position Y": -1.16504198369925,
+                    "Position Z": -11.6433935006058
+                  },
+                  "folders": {}
+                },
+                "Scale": {
+                  "controllers": {
+                    "Scale X": 5.90528228896736,
+                    "Scale Y": 0.915924486398697,
+                    "Scale Z": 1.71910966772557
+                  },
+                  "folders": {}
+                }
+              }
+            },
+            "Fog Two": {
+              "controllers": {
+                "Color": "#dedede",
+                "Opacity": 0.24,
+                "Density": 1.84,
+                "Tiling X": 0.9,
+                "Tiling Y": 0.9,
+                "Drift direction": 14.999999999999998,
+                "Drift speed": 0.006,
+                "Wind variation": 0.5,
+                "Wind variation speed": 0.15,
+                "Edge softness": 0.5,
+                "Grazing boost": 1.5,
+                "Wobble amount": 0.15,
+                "Wobble speed": 0.5,
+                "Pulse amount": 0.35,
+                "Pulse speed": 0.6,
+                "Rise/fall amount": 0.08,
+                "Rise/fall speed": 0.35
+              },
+              "folders": {
+                "Position": {
+                  "controllers": {
+                    "Position X": 1.2860363721847534,
+                    "Position Y": -1.4404082298278809,
+                    "Position Z": -13.279412269592285
+                  },
+                  "folders": {}
+                },
+                "Scale": {
+                  "controllers": {
+                    "Scale X": 2.13110151171684,
+                    "Scale Y": 0.915924486398697,
+                    "Scale Z": 1.1774723751545
+                  },
+                  "folders": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Scene Four": {
+      "controllers": {},
+      "folders": {
+        "Model": {
+          "controllers": {
+            "Scale": 1
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": 1.5987211554602254e-14,
+                "Position Y": 0.322883654980707,
+                "Position Z": 6.77078252967445
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Background": {
+          "controllers": {
+            "Emissive intensity": 0.7
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": 0,
+                "Position Y": -0.00001858826362877153,
+                "Position Z": -13.31156063079834
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Ceiling light": {
+          "controllers": {
+            "Emissive intensity": 3.929002201330844
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": 0,
+                "Position Y": 2.522563934326172,
+                "Position Z": -10.392892837524414
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Left glass strip": {
+          "controllers": {
+            "Emissive intensity": 3.929002201330844
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": -3.805037021636963,
+                "Position Y": -1.9937138557434082,
+                "Position Z": -10.961800575256348
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Right glass strip": {
+          "controllers": {
+            "Emissive intensity": 3.929002201330844
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": 4.368300437927246,
+                "Position Y": -2.0060312747955322,
+                "Position Z": -11.339961051940918
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Glass": {
+          "controllers": {
+            "Opacity": 0.25,
+            "Roughness": 0.05,
+            "Reflectivity": 0.5,
+            "Fresnel power": 3,
+            "Env color (low)": "#000000",
+            "Env color (high)": "#fdf0ff"
+          },
+          "folders": {}
+        }
+      }
+    },
+    "Scene Three": {
+      "controllers": {},
+      "folders": {
+        "Model": {
+          "controllers": {
+            "Scale": 1
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": 0.000620613371363987,
+                "Position Y": 0.000288234379699048,
+                "Position Z": 7.8815228278332
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Background": {
+          "controllers": {
+            "Emissive intensity": 1.22
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": 0.79141367264522,
+                "Position Y": 0,
+                "Position Z": -15.641390047967434
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Sea (Cylinder.003)": {
+          "controllers": {},
+          "folders": {
+            "Ripples": {
+              "controllers": {
+                "Flow direction": 145,
+                "Flow speed": 0.015,
+                "Normal strength": 1,
+                "Tiling X": 1,
+                "Tiling Y": 1,
+                "Displacement strength": 7.91,
+                "AO strength": 1
+              },
+              "folders": {}
+            },
+            "Color": {
+              "controllers": {
+                "Depth color": "#000000",
+                "Surface color": "#de4f4f",
+                "Color offset": 0.08,
+                "Color multiplier": 7.02,
+                "Opacity": 0.72
+              },
+              "folders": {}
+            },
+            "Reflection": {
+              "controllers": {
+                "Reflectivity": 1,
+                "Distortion": 0.2,
+                "Blur (softness)": 0.0073,
+                "Specular strength": 2,
+                "Shininess": 256
+              },
+              "folders": {}
+            },
+            "Edge fade": {
+              "controllers": {
+                "Fade start Z": 0.126,
+                "Fade end Z": -0.928,
+                "Fade start X": 0.124531083101901,
+                "Fade end X": 0.9883419293801691
+              },
+              "folders": {}
+            },
+            "Position": {
+              "controllers": {
+                "Position X": -0.028071045875549316,
+                "Position Y": -1.8171429555035559,
+                "Position Z": -10.433599336406985
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Sea (Circle.002)": {
+          "controllers": {},
+          "folders": {
+            "Ripples": {
+              "controllers": {
+                "Flow direction": 141,
+                "Flow speed": 0.021,
+                "Normal strength": 1.04,
+                "Tiling X": 1,
+                "Tiling Y": 1,
+                "Displacement strength": 0,
+                "AO strength": 1
+              },
+              "folders": {}
+            },
+            "Color": {
+              "controllers": {
+                "Depth color": "#000000",
+                "Surface color": "#584646",
+                "Color offset": 0.08,
+                "Color multiplier": 5,
+                "Opacity": 1
+              },
+              "folders": {}
+            },
+            "Reflection": {
+              "controllers": {
+                "Reflectivity": 1,
+                "Distortion": 0.2,
+                "Blur (softness)": 0.0061,
+                "Specular strength": 2,
+                "Shininess": 256
+              },
+              "folders": {}
+            },
+            "Edge fade": {
+              "controllers": {
+                "Fade start Z": 1,
+                "Fade end Z": 1,
+                "Fade start X": 0.9883419293801691,
+                "Fade end X": 0.9883419293801691
+              },
+              "folders": {}
+            },
+            "Position": {
+              "controllers": {
+                "Position X": -0.10721467811126217,
+                "Position Y": -1.4272602444519862,
+                "Position Z": -7.9630641564977935
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Pillar Glass": {
+          "controllers": {
+            "Opacity": 1,
+            "Roughness": 0.72,
+            "Reflectivity": 0.26,
+            "Fresnel power": 3.1,
+            "Env color (low)": "#ecc09d",
+            "Env color (high)": "#ffd9f0"
+          },
+          "folders": {}
+        },
+        "Tree": {
+          "controllers": {
+            "Scale": 8.299999999999999
+          },
+          "folders": {
+            "Position": {
+              "controllers": {
+                "Position X": -0.269613389754355,
+                "Position Y": 0.493153423368817,
+                "Position Z": -15.4645026482336
+              },
+              "folders": {}
+            }
+          }
+        },
+        "Selective Bloom": {
+          "controllers": {
+            "Strength": 1.65,
+            "Radius": 0,
+            "Threshold": 0.75
+          },
+          "folders": {
+            "Objects": {
+              "controllers": {
+                "Model": false,
+                "Pillar Glass": true,
+                "Background": false,
+                "Sea (Cylinder.003)": false,
+                "Sea (Circle.002)": false
+              },
+              "folders": {}
+            }
+          }
+        }
+      }
+    }
+  }
+}

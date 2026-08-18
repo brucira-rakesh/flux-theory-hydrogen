@@ -1,26 +1,29 @@
-import {useLoaderData} from 'react-router';
+import {useEffect, useState} from 'react';
+import {useLoaderData, useNavigate} from 'react-router';
 import {
-  getSelectedProductOptions,
-  Analytics,
-  useOptimisticVariant,
-  getProductOptions,
   getAdjacentAndFirstAvailableVariants,
+  getProductOptions,
+  getSelectedProductOptions,
+  useOptimisticVariant,
   useSelectedOptionInUrlParam,
 } from '@shopify/hydrogen';
-import {ProductPrice} from '~/components/ProductPrice';
-import {ProductImage} from '~/components/ProductImage';
-import {ProductForm} from '~/components/ProductForm';
 import {redirectIfHandleIsLocalized} from '~/lib/redirect';
+import {
+  PRODUCT_SIMILAR_QUERY,
+  applySelectedVariant,
+  toListingCard,
+  toPdpViewModel,
+} from '~/lib/storefrontCatalog';
 
 /**
  * @type {Route.MetaFunction}
  */
 export const meta = ({data}) => {
   return [
-    {title: `Hydrogen | ${data?.product.title ?? ''}`},
+    {title: `Flux Theory | ${data?.product?.title ?? ''}`},
     {
       rel: 'canonical',
-      href: `/products/${data?.product.handle}`,
+      href: `/products/${data?.product?.handle}`,
     },
   ];
 };
@@ -29,18 +32,12 @@ export const meta = ({data}) => {
  * @param {Route.LoaderArgs} args
  */
 export async function loader(args) {
-  // Start fetching non-critical data without blocking time to first byte
   const deferredData = loadDeferredData(args);
-
-  // Await the critical data required to render initial state of the page
   const criticalData = await loadCriticalData(args);
-
   return {...deferredData, ...criticalData};
 }
 
 /**
- * Load data necessary for rendering content above the fold. This is the critical data
- * needed to render the page. If it's unavailable, the whole page should 400 or 500 error.
  * @param {Route.LoaderArgs}
  */
 async function loadCriticalData({context, params, request}) {
@@ -51,99 +48,87 @@ async function loadCriticalData({context, params, request}) {
     throw new Error('Expected product handle to be defined');
   }
 
-  const [{product}] = await Promise.all([
+  const [{product}, similarResult] = await Promise.all([
     storefront.query(PRODUCT_QUERY, {
       variables: {handle, selectedOptions: getSelectedProductOptions(request)},
     }),
-    // Add other queries here, so that they are loaded in parallel
+    storefront.query(PRODUCT_SIMILAR_QUERY, {
+      variables: {first: 8},
+    }),
   ]);
 
   if (!product?.id) {
     throw new Response(null, {status: 404});
   }
 
-  // The API handle might be localized, so redirect to the localized handle
   redirectIfHandleIsLocalized(request, {handle, data: product});
+
+  const similar = (similarResult?.products?.nodes ?? [])
+    .filter((node) => node.handle !== product.handle)
+    .map((node, index) => toListingCard(node, index));
 
   return {
     product,
+    pdp: toPdpViewModel(product),
+    similar,
   };
 }
 
 /**
- * Load data for rendering content below the fold. This data is deferred and will be
- * fetched after the initial page load. If it's unavailable, the page should still 200.
- * Make sure to not throw any errors here, as it will cause the page to 500.
  * @param {Route.LoaderArgs}
  */
-function loadDeferredData({context, params}) {
-  // Put any API calls that is not critical to be available on first page render
-  // For example: product reviews, product recommendations, social feeds.
-
+function loadDeferredData() {
   return {};
 }
 
-export default function Product() {
+export default function ProductHandle() {
   /** @type {LoaderReturnData} */
-  const {product} = useLoaderData();
-
-  // Optimistically selects a variant with given available variant information
+  const {product, pdp, similar} = useLoaderData();
+  const navigate = useNavigate();
   const selectedVariant = useOptimisticVariant(
     product.selectedOrFirstAvailableVariant,
     getAdjacentAndFirstAvailableVariants(product),
   );
-
-  // Sets the search param to the selected variant without navigation
-  // only when no search params are set in the url
-  useSelectedOptionInUrlParam(selectedVariant.selectedOptions);
-
-  // Get the product options array
+  useSelectedOptionInUrlParam(selectedVariant?.selectedOptions);
   const productOptions = getProductOptions({
     ...product,
     selectedOrFirstAvailableVariant: selectedVariant,
   });
+  const view = applySelectedVariant(pdp, selectedVariant);
 
-  const {title, descriptionHtml} = product;
+  const onSizeChange = (value) => {
+    const sizeOption = productOptions.find(
+      (option) => option.name?.toLowerCase() === 'size',
+    );
+    const next = sizeOption?.optionValues?.find((option) => option.name === value);
+    if (next?.variantUriQuery) {
+      void navigate(`?${next.variantUriQuery}`, {
+        replace: true,
+        preventScrollReset: true,
+      });
+    }
+  };
 
+  const [bundle, setBundle] = useState(null);
+
+  useEffect(() => {
+    Promise.all([
+      import('~/pages/ProductPage'),
+      import('~/components/SmoothScroll/SmoothScroll'),
+    ]).then(([pageMod, scrollMod]) => {
+      setBundle({
+        Page: pageMod.default,
+        SmoothScroll: scrollMod.default,
+      });
+    });
+  }, []);
+
+  if (!bundle) return null;
+  const {Page, SmoothScroll} = bundle;
   return (
-    <div className="product">
-      <ProductImage image={selectedVariant?.image} />
-      <div className="product-main">
-        <h1>{title}</h1>
-        <ProductPrice
-          price={selectedVariant?.price}
-          compareAtPrice={selectedVariant?.compareAtPrice}
-        />
-        <br />
-        <ProductForm
-          productOptions={productOptions}
-          selectedVariant={selectedVariant}
-        />
-        <br />
-        <br />
-        <p>
-          <strong>Description</strong>
-        </p>
-        <br />
-        <div dangerouslySetInnerHTML={{__html: descriptionHtml}} />
-        <br />
-      </div>
-      <Analytics.ProductView
-        data={{
-          products: [
-            {
-              id: product.id,
-              title: product.title,
-              price: selectedVariant?.price.amount || '0',
-              vendor: product.vendor,
-              variantId: selectedVariant?.id || '',
-              variantTitle: selectedVariant?.title || '',
-              quantity: 1,
-            },
-          ],
-        }}
-      />
-    </div>
+    <SmoothScroll>
+      <Page product={view} similar={similar} onSizeChange={onSizeChange} />
+    </SmoothScroll>
   );
 }
 
@@ -192,8 +177,60 @@ const PRODUCT_FRAGMENT = `#graphql
     handle
     descriptionHtml
     description
+    productType
+    tags
     encodedVariantExistence
     encodedVariantAvailability
+    featuredImage {
+      id
+      url
+      altText
+      width
+      height
+    }
+    images(first: 12) {
+      nodes {
+        id
+        url
+        altText
+        width
+        height
+      }
+    }
+    media(first: 10) {
+      nodes {
+        __typename
+        ... on MediaImage {
+          image {
+            url
+            altText
+            width
+            height
+          }
+        }
+        ... on Video {
+          sources {
+            url
+            mimeType
+          }
+          previewImage {
+            url
+          }
+        }
+      }
+    }
+    priceRange {
+      minVariantPrice {
+        amount
+        currencyCode
+      }
+    }
+    collections(first: 5) {
+      nodes {
+        handle
+        title
+      }
+    }
     options {
       name
       optionValues {
@@ -220,6 +257,83 @@ const PRODUCT_FRAGMENT = `#graphql
     seo {
       description
       title
+    }
+    productDetails: metafield(namespace: "custom", key: "product_details") {
+      type
+      value
+    }
+    whyYoullLoveIt: metafield(namespace: "custom", key: "why_you_ll_love_it") {
+      value
+    }
+    suitableFor: metafield(namespace: "custom", key: "suitable_for") {
+      value
+    }
+    stateOfMind: metafield(namespace: "custom", key: "state_of_mind") {
+      value
+    }
+    fragranceNotes: metafield(namespace: "custom", key: "fragrance_notes") {
+      value
+    }
+    howToUse: metafield(namespace: "custom", key: "how_to_use") {
+      reference {
+        ... on Metaobject {
+          eyebrow: field(key: "eyebrow") { value }
+          heading: field(key: "heading") { value }
+          media: field(key: "media") {
+            reference {
+              __typename
+              ... on MediaImage {
+                image { url altText width height }
+              }
+              ... on Video {
+                sources { url mimeType }
+                previewImage { url }
+              }
+            }
+          }
+          step: field(key: "step") {
+            references(first: 10) {
+              nodes {
+                ... on Metaobject {
+                  title: field(key: "title") { value }
+                  description: field(key: "description") { value }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    productTicker: metafield(namespace: "custom", key: "product_ticker") {
+      references(first: 10) {
+        nodes {
+          ... on Metaobject {
+            feature: field(key: "feature") { value }
+          }
+        }
+      }
+    }
+    lifestyleBanner: metafield(namespace: "custom", key: "product_lifestyle_banner_content") {
+      reference {
+        ... on Metaobject {
+          title: field(key: "title") { value }
+          description: field(key: "description") { value }
+          image: field(key: "image") {
+            reference {
+              ... on MediaImage {
+                image { url altText width height }
+              }
+            }
+          }
+          productShot: field(key: "product_shot") {
+            reference {
+              ... on MediaImage {
+                image { url altText width height }
+              }
+            }
+          }
+        }
+      }
     }
   }
   ${PRODUCT_VARIANT_FRAGMENT}

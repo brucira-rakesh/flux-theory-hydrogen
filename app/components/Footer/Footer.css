@@ -1,0 +1,276 @@
+/* Footer — stone relief revealed as the video scrolls up and away
+   Figma Desktop-132: artwork masked to 1440×559 over #cacaca */
+
+.ft-root {
+  --ft-ink: rgba(122, 122, 122, 0.92);
+  --ft-ink-soft: rgba(55, 57, 62, 0.72);
+  --ft-body: var(--font-body, 'Geist', sans-serif);
+  --ft-stone: #cacaca;
+
+  /* The sticky-reveal mechanics (position, overlap, stacking) live on the
+     wrapper in HomeV2Page, not here, so Footer stays reusable on pages that
+     just want a plain in-flow footer. */
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--ft-stone);
+  color: var(--ft-ink);
+}
+
+/* Fills .ft-root's full height (not aspect-ratio: 1440/720 — at most viewport
+   aspect ratios that box came out shorter than .ft-root's 100dvh, leaving a
+   flat strip of .ft-root's own background exposed below it). FooterScene
+   cover-fits the artwork into whatever box it's given (see its own fit()),
+   so a full-height box just crops more off the sides instead of leaving a gap. */
+.ft-scene {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  background: var(--ft-stone);
+}
+
+/* Three.js canvas host — replaces the static .ft-scene__img. The WebGL renderer
+   sizes its <canvas> to this box (cover-fitting the artwork inside the shader).
+   pointer-events: auto re-enables cursor input here: .ft-scene sets it to none
+   (inherited), which the old decorative <img> didn't care about but which would
+   otherwise starve the canvas of the pointermove events the raycaster needs. */
+.ft-scene__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
+}
+
+.ft-scene__canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Nav sits on top of the relief, flanking the embossed logo */
+.ft-content {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding:
+    clamp(1.25rem, 2vw, 1.8rem) clamp(1.25rem, 4vw, 3.5rem) 0;
+  pointer-events: none;
+}
+
+.ft-nav-grid {
+  width: 100%;
+  max-width: 1280px;
+  display: grid;
+  /* Left cols | logo gap | right cols — matches the reference */
+  grid-template-columns: 1fr minmax(200px, 32%) 1fr;
+  gap: clamp(1rem, 2.5vw, 2rem);
+  align-items: start;
+}
+
+.ft-nav-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1.5rem, 4vw, 3.5rem);
+}
+
+.ft-nav-col--right {
+  justify-items: end;
+  text-align: right;
+}
+
+.ft-logo-spacer {
+  min-height: 1px;
+}
+
+.ft-nav__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.9rem;
+  font-family: var(--font-title, 'Oswald', sans-serif);
+  font-size: clamp(1.2rem, 1.2vw, 1.4rem);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ft-ink);
+  cursor: default;
+  pointer-events: none;
+  text-align: inherit;
+  appearance: none;
+}
+
+.ft-nav__chevron {
+  display: none;
+}
+
+.ft-nav__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+/* Desktop: lists always visible (the base rule above). On mobile the
+   .is-collapsed class hides closed accordion panels — we can't use the HTML
+   `hidden` attribute here because Tailwind Preflight forces it to
+   `display: none !important`, which our styles can't override. */
+
+.ft-nav__link {
+  pointer-events: auto;
+  font-family: var(--ft-body);
+  font-size: clamp(0.75rem, 0.95vw, 0.88rem);
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--ft-ink-soft);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.ft-nav__link:hover {
+  color: var(--ft-ink);
+}
+
+.ft-nav__link:focus-visible {
+  outline: 2px solid #2a6db5;
+  outline-offset: 3px;
+}
+
+@media (max-width: 900px) {
+  .ft-nav-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem 2rem;
+  }
+
+  .ft-logo-spacer {
+    display: none;
+  }
+
+  .ft-nav-col--left,
+  .ft-nav-col--right {
+    grid-template-columns: 1fr;
+    justify-items: start;
+    text-align: left;
+  }
+
+  .ft-nav-col--right {
+    grid-column: 2;
+  }
+}
+
+/* Mobile accordion — all menu groups reachable */
+@media (max-width: 640px) {
+  .ft-root {
+    height: auto;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ft-scene {
+    aspect-ratio: 1440 / 900;
+    flex-shrink: 0;
+  }
+
+  .ft-content {
+    position: relative;
+    inset: auto;
+    z-index: 4;
+    margin-top: -28%;
+    padding: 0 1.15rem 1.75rem;
+    pointer-events: auto;
+  }
+
+  .ft-nav-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+    background: rgba(202, 202, 202, 0.92);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 0.5rem;
+    padding: 0.35rem 0.85rem 0.65rem;
+  }
+
+  .ft-nav-col {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .ft-nav-col--left,
+  .ft-nav-col--right {
+    justify-items: stretch;
+    text-align: left;
+  }
+
+  .ft-nav-col--right {
+    grid-column: auto;
+  }
+
+  .ft-nav {
+    border-bottom: 1px solid rgba(55, 57, 62, 0.14);
+  }
+
+  .ft-nav:last-child {
+    border-bottom: 0;
+  }
+
+  .ft-nav-col--left .ft-nav:last-child {
+    border-bottom: 1px solid rgba(55, 57, 62, 0.14);
+  }
+
+  .ft-nav__title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin: 0;
+    padding: 0.95rem 0;
+    pointer-events: auto;
+    cursor: pointer;
+    font-size: 0.78rem;
+  }
+
+  .ft-nav__title:focus-visible {
+    outline: 2px solid #2a6db5;
+    outline-offset: 3px;
+  }
+
+  .ft-nav__chevron {
+    display: block;
+    flex-shrink: 0;
+    transition: transform 0.25s ease;
+  }
+
+  .ft-nav__chevron.is-open {
+    transform: rotate(180deg);
+  }
+
+  .ft-nav__list {
+    padding: 0 0 0.85rem;
+    gap: 0.55rem;
+  }
+
+  .ft-nav__list.is-collapsed {
+    display: none;
+  }
+
+  .ft-nav__link {
+    font-size: 0.9rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ft-nav__chevron {
+    transition: none;
+  }
+}

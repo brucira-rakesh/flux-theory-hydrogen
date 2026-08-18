@@ -22,6 +22,35 @@ export default async function handleRequest(
       checkoutDomain: context.env.PUBLIC_CHECKOUT_DOMAIN,
       storeDomain: context.env.PUBLIC_STORE_DOMAIN,
     },
+    // Draco/Basis: same-origin decoder scripts + WASM compile + blob workers.
+    // Merged with Hydrogen defaults (cdn.shopify.com, nonce, localhost HMR).
+    //
+    // 'unsafe-eval' is required for Basis/KTX2: KTX2Loader inlines
+    // public/basis/basis_transcoder.js into a blob Worker, and that
+    // Worker's Emscripten embind glue (craftInvokerFunction /
+    // __embind_register_function → newFunc(Function, …)) calls
+    // Function() at init. Chromium applies this document's script-src
+    // to the Worker, so 'wasm-unsafe-eval' (WASM compile only) is not
+    // enough. CSP cannot scope eval to /basis/ or one origin — it is
+    // document-wide. Keep Hydrogen's nonce on every other script.
+    scriptSrc: [
+      "'self'",
+      "'unsafe-eval'",
+      "'wasm-unsafe-eval'",
+      'https://cdn.shopify.com',
+      'https://shopify.com',
+    ],
+    workerSrc: ["'self'", 'blob:'],
+    connectSrc: ['blob:'],
+    mediaSrc: [
+      "'self'",
+      context.env.PUBLIC_STORE_DOMAIN,
+      'https://cdn.shopify.com',
+      'https://shopify.com',
+      'http://localhost:*',
+    ],
+    styleSrc: ['https://fonts.googleapis.com'],
+    fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com', 'https://fonts.googleapis.com'],
   });
 
   const body = await renderToReadableStream(

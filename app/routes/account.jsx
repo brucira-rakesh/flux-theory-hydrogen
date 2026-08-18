@@ -6,10 +6,20 @@ import {
   useLoaderData,
 } from 'react-router';
 import {CUSTOMER_DETAILS_QUERY} from '~/graphql/customer-account/CustomerDetailsQuery';
+import SiteHeader from '~/components/ProductShelf/SiteHeader';
+import Footer from '~/components/Footer/Footer';
+import '~/styles/account.css';
 
 export function shouldRevalidate() {
   return true;
 }
+
+/**
+ * @type {Route.MetaFunction}
+ */
+export const meta = () => {
+  return [{title: 'Flux Theory | Account'}];
+};
 
 /**
  * @param {Route.LoaderArgs}
@@ -40,46 +50,45 @@ export default function AccountLayout() {
   /** @type {LoaderReturnData} */
   const {customer} = useLoaderData();
 
-  const heading = customer
-    ? customer.firstName
-      ? `Welcome, ${customer.firstName}`
-      : `Welcome to your account.`
-    : 'Account Details';
+  const heading = customer?.firstName
+    ? `Welcome, ${customer.firstName}`
+    : 'Your account';
 
   return (
-    <div className="account">
-      <h1>{heading}</h1>
-      <br />
-      <AccountMenu />
-      <br />
-      <br />
-      <Outlet context={{customer}} />
+    <div className="account-page">
+      <SiteHeader logoTo="/" />
+      <div className="account-page__inner">
+        <header className="account-page__hero">
+          <p className="account-page__eyebrow">Account</p>
+          <h1 className="account-page__title">{heading}</h1>
+        </header>
+        <AccountMenu />
+        <Outlet context={{customer}} />
+      </div>
+      <Footer />
     </div>
   );
 }
 
 function AccountMenu() {
-  function isActiveStyle({isActive, isPending}) {
-    return {
-      fontWeight: isActive ? 'bold' : undefined,
-      color: isPending ? 'grey' : 'black',
-    };
-  }
-
   return (
-    <nav role="navigation">
-      <NavLink to="/account/orders" style={isActiveStyle}>
-        Orders &nbsp;
+    <nav className="account-page__nav" aria-label="Account">
+      <NavLink
+        to="/account/orders"
+        className={({isActive}) =>
+          `account-page__nav-link${isActive ? ' is-active' : ''}`
+        }
+      >
+        Orders
       </NavLink>
-      &nbsp;|&nbsp;
-      <NavLink to="/account/profile" style={isActiveStyle}>
-        &nbsp; Profile &nbsp;
+      <NavLink
+        to="/account/profile"
+        className={({isActive}) =>
+          `account-page__nav-link${isActive ? ' is-active' : ''}`
+        }
+      >
+        Profile
       </NavLink>
-      &nbsp;|&nbsp;
-      <NavLink to="/account/addresses" style={isActiveStyle}>
-        &nbsp; Addresses &nbsp;
-      </NavLink>
-      &nbsp;|&nbsp;
       <Logout />
     </nav>
   );
@@ -87,8 +96,8 @@ function AccountMenu() {
 
 function Logout() {
   return (
-    <Form className="account-logout" method="POST" action="/account/logout">
-      &nbsp;<button type="submit">Sign out</button>
+    <Form className="account-page__nav-logout" method="POST" action="/account/logout">
+      <button type="submit">Sign out</button>
     </Form>
   );
 }

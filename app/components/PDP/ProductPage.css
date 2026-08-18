@@ -1,0 +1,1482 @@
+/* Product Detail Page — Figma 1205:1646 (The Dreamer) */
+
+.pdp-page {
+  --pdp-fluid: 1440px;
+  --pdp-ink: #000;
+  --pdp-muted: rgba(0, 0, 0, 0.6);
+  --pdp-faint: rgba(0, 0, 0, 0.4);
+  --pdp-line: #d0d1db;
+  --pdp-panel: #eff2f4;
+  --pdp-display: var(--font-title, 'Oswald', sans-serif);
+  --pdp-body: var(--font-body, 'Geist', sans-serif);
+  --pdp-hero-display: 'Mohave', sans-serif;
+
+  background: #fff;
+  color: var(--pdp-ink);
+  font-family: var(--pdp-body);
+}
+
+@media (min-width: 1440px) {
+  .pdp-page {
+    --pdp-fluid: min(100vw, 1920px);
+  }
+
+  .pdp-details {
+    gap: calc(86.4 * var(--pdp-fluid) / 1440);
+  }
+}
+
+.pdp-main {
+  width: min(100%, calc(1440 * var(--pdp-fluid) / 1440));
+  margin: 0 auto;
+  padding: calc(115 * var(--pdp-fluid) / 1440) calc(22 * var(--pdp-fluid) / 1440) 0;
+  box-sizing: border-box;
+}
+
+.pdp-main--lower {
+  padding-top: calc(160 * var(--pdp-fluid) / 1440);
+  padding-bottom: calc(80 * var(--pdp-fluid) / 1440);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Breadcrumb */
+
+.pdp-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(8 * var(--pdp-fluid) / 1440);
+  margin: 0 0 calc(26 * var(--pdp-fluid) / 1440) calc(-6 * var(--pdp-fluid) / 1440);
+  font-size: calc(12 * var(--pdp-fluid) / 1440);
+  font-weight: 400;
+  line-height: normal;
+}
+
+.pdp-breadcrumb__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pdp-breadcrumb__sep {
+  opacity: 0.3;
+}
+
+.pdp-breadcrumb__link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.pdp-breadcrumb__link:hover {
+  opacity: 0.7;
+}
+
+.pdp-breadcrumb__current {
+  opacity: 0.4;
+}
+
+/* Gallery slider — 2.8 frames; left-aligned with content, flush to viewport right */
+
+.pdp-gallery {
+  --pdp-gallery-gap: calc(15 * var(--pdp-fluid) / 1440);
+  --pdp-gallery-per-view: 2.8;
+  /* Lock to 1440px design: fixed bleed (no viewport-growth past 1440). */
+  --pdp-gallery-bleed: calc(22 * var(--pdp-fluid) / 1440);
+  display: flex;
+  gap: var(--pdp-gallery-gap);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 0;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  width: calc(100% + var(--pdp-gallery-bleed) + calc(6 * var(--pdp-fluid) / 1440));
+  max-width: none;
+  margin: 0 calc(-1 * var(--pdp-gallery-bleed)) 0 calc(-6 * var(--pdp-fluid) / 1440);
+  padding: 0;
+  scrollbar-width: none;
+  cursor: grab;
+  touch-action: pan-x;
+  user-select: none;
+}
+
+.pdp-gallery::-webkit-scrollbar {
+  display: none;
+}
+
+.pdp-gallery.is-dragging {
+  cursor: grabbing;
+  scroll-snap-type: none;
+}
+
+.pdp-gallery__item {
+  position: relative;
+  flex: 0 0 calc(512.959 * var(--pdp-fluid) / 1440);
+  width: calc(512.959 * var(--pdp-fluid) / 1440);
+  height: calc(524 * var(--pdp-fluid) / 1440);
+  max-width: calc(512.959 * var(--pdp-fluid) / 1440);
+  max-height: calc(524 * var(--pdp-fluid) / 1440);
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: auto;
+  margin: 0;
+  background: var(--pdp-panel);
+  scroll-snap-align: start;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.pdp-gallery__item img,
+.pdp-gallery__item video,
+.pdp-gallery__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Bottle cutout — first-slot IMAGE only. Video in this slot fills the locked box. */
+.pdp-gallery__item:first-child img,
+.pdp-gallery__item--front img {
+  position: relative;
+  inset: auto;
+  width: auto;
+  height: calc(524 * 0.864 * var(--pdp-fluid) / 1440);
+  max-width: calc(512.959 * 0.587 * var(--pdp-fluid) / 1440);
+  max-height: calc(524 * 0.864 * var(--pdp-fluid) / 1440);
+  object-fit: contain;
+}
+
+/* Hero info row */
+
+.pdp-hero__info {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: calc(32 * var(--pdp-fluid) / 1440);
+  margin-top: calc(26 * var(--pdp-fluid) / 1440);
+}
+
+.pdp-hero__copy {
+  max-width: calc(495 * var(--pdp-fluid) / 1440);
+  min-width: 0;
+}
+
+.pdp-hero__title {
+  margin: 0;
+  font-family: var(--pdp-display);
+  font-weight: 600;
+  font-size: calc(40 * var(--pdp-fluid) / 1440);
+  letter-spacing: calc(-2 * var(--pdp-fluid) / 1440);
+  text-transform: uppercase;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.pdp-hero__blurb {
+  margin: calc(12 * var(--pdp-fluid) / 1440) 0 0;
+  font-size: calc(14 * var(--pdp-fluid) / 1440);
+  font-weight: 500;
+  line-height: 1.5;
+  opacity: 0.6;
+}
+
+/* Shared size / qty / ATC — Figma 1205:1671 */
+
+.pdp-controls {
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: calc(29 * var(--pdp-fluid) / 1440);
+}
+
+.pdp-controls__row {
+  display: flex;
+  align-items: center;
+  gap: calc(31 * var(--pdp-fluid) / 1440);
+}
+
+.pdp-controls__row:not(:has(.pdp-controls__size-select)) {
+  justify-content: flex-end;
+}
+
+.pdp-controls__size-select {
+  width: auto;
+}
+
+.pdp-controls__size-select .custom-select__trigger {
+  font-size: calc(12 * var(--pdp-fluid) / 1440);
+  padding-left: calc(28 * var(--pdp-fluid) / 1440);
+}
+
+.pdp-controls__size-select .custom-select__menu {
+  z-index: 50;
+  min-width: 100%;
+}
+
+.pdp-controls__price {
+  margin: 0;
+  font-size: calc(24 * var(--pdp-fluid) / 1440);
+  font-weight: 400;
+  letter-spacing: calc(-0.48 * var(--pdp-fluid) / 1440);
+  line-height: normal;
+  white-space: nowrap;
+}
+
+.pdp-controls__cart-row {
+  display: flex;
+  align-items: center;
+  gap: calc(8 * var(--pdp-fluid) / 1440);
+  width: 100%;
+  min-width: 0;
+}
+
+.pdp-controls__qty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(12 * var(--pdp-fluid) / 1440);
+  height: calc(46 * var(--pdp-fluid) / 1440);
+  padding: calc(16 * var(--pdp-fluid) / 1440) calc(20 * var(--pdp-fluid) / 1440);
+  border: 1px solid #d0d1db;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.pdp-controls__qty-btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  width: 1rem;
+  height: 1rem;
+  display: grid;
+  place-items: center;
+  font-size: calc(13.6 * var(--pdp-fluid) / 1440);
+  line-height: 1;
+  cursor: pointer;
+  color: #000;
+}
+
+.pdp-controls__qty-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.pdp-controls__qty-value {
+  min-width: 0.75rem;
+  text-align: center;
+  font-size: calc(12 * var(--pdp-fluid) / 1440);
+  font-weight: 400;
+}
+
+.pdp-controls__cart-row form {
+  flex: 1 1 calc(335 * var(--pdp-fluid) / 1440);
+  width: calc(335 * var(--pdp-fluid) / 1440);
+  min-width: 0;
+  max-width: calc(335 * var(--pdp-fluid) / 1440);
+  display: flex;
+}
+
+.pdp-controls__atc {
+  flex: none;
+  width: 100%;
+  max-width: calc(335 * var(--pdp-fluid) / 1440);
+  height: calc(46 * var(--pdp-fluid) / 1440);
+  border: 0;
+  background: #000;
+  color: #fff;
+  font-family: var(--pdp-display);
+  font-size: calc(14 * var(--pdp-fluid) / 1440);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.pdp-controls__atc:hover,
+.pdp-controls__atc:focus-visible {
+  background: #222;
+}
+
+.pdp-controls__atc:disabled {
+  background: #b8b8b8;
+  cursor: not-allowed;
+}
+
+/* Description */
+
+.pdp-description {
+  margin-top: calc(40 * var(--pdp-fluid) / 1440);
+  padding-top: calc(40 * var(--pdp-fluid) / 1440);
+  border-top: 1px solid var(--pdp-line);
+}
+
+.pdp-description__label {
+  margin: 0 0 calc(16 * var(--pdp-fluid) / 1440);
+  font-size: calc(12 * var(--pdp-fluid) / 1440);
+  font-weight: 500;
+  line-height: 1.5;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.pdp-description__text {
+  margin: 0;
+  font-size: calc(40 * var(--pdp-fluid) / 1440);
+  font-weight: 500;
+  line-height: 1.2;
+  max-width: none;
+}
+
+/* Accordion + detail bottle */
+
+.pdp-details {
+  display: grid;
+  grid-template-columns: minmax(0, calc(595 * var(--pdp-fluid) / 1440)) minmax(0, 1fr);
+  gap: clamp(2rem, 6vw, 8rem);
+  align-items: start;
+  margin-top: calc(64 * var(--pdp-fluid) / 1440);
+  padding-bottom: calc(64 * var(--pdp-fluid) / 1440);
+}
+
+.pdp-details__accordion {
+  width: calc(595 * var(--pdp-fluid) / 1440);
+  max-width: 100%;
+  border-top: 1px solid var(--pdp-line);
+}
+
+.pdp-acc__item {
+  border-bottom: 1px solid var(--pdp-line);
+}
+
+.pdp-acc__trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(16 * var(--pdp-fluid) / 1440);
+  padding: calc(16 * var(--pdp-fluid) / 1440);
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: calc(12 * var(--pdp-fluid) / 1440);
+  font-weight: 500;
+  line-height: 1.5;
+  text-transform: uppercase;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  text-align: left;
+  transition: opacity 0.25s ease;
+}
+
+.pdp-acc__trigger:hover,
+.pdp-acc__trigger:focus-visible {
+  opacity: 1;
+}
+
+.pdp-acc__icon {
+  position: relative;
+  width: calc(12 * var(--pdp-fluid) / 1440);
+  height: calc(12 * var(--pdp-fluid) / 1440);
+  flex-shrink: 0;
+}
+
+.pdp-acc__icon-h,
+.pdp-acc__icon-v {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: currentColor;
+  border-radius: 1px;
+  transform: translate(-50%, -50%);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease;
+}
+
+.pdp-acc__icon-h {
+  width: 100%;
+  height: 1.5px;
+}
+
+.pdp-acc__icon-v {
+  width: 1.5px;
+  height: 100%;
+}
+
+.pdp-acc__item.is-open .pdp-acc__icon-v {
+  transform: translate(-50%, -50%) rotate(90deg);
+  opacity: 0;
+}
+
+.pdp-acc__panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pdp-acc__item.is-open .pdp-acc__panel {
+  grid-template-rows: 1fr;
+}
+
+.pdp-acc__panel-inner {
+  overflow: hidden;
+  min-height: 0;
+  padding: 0 calc(16 * var(--pdp-fluid) / 1440);
+  opacity: 0;
+  transform: translateY(-0.35rem);
+  transition:
+    opacity 0.3s ease,
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    padding-bottom 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pdp-acc__item.is-open .pdp-acc__panel-inner {
+  opacity: 1;
+  transform: translateY(0);
+  padding-bottom: calc(16 * var(--pdp-fluid) / 1440);
+}
+
+.pdp-acc__intro,
+.pdp-acc__body {
+  margin: 0 0 calc(12 * var(--pdp-fluid) / 1440);
+  font-size: calc(14 * var(--pdp-fluid) / 1440);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.pdp-acc__intro:last-child,
+.pdp-acc__body:last-child {
+  margin-bottom: 0;
+}
+
+.pdp-acc__list {
+  margin: 0;
+  padding-left: calc(21 * var(--pdp-fluid) / 1440);
+  list-style: disc;
+  font-size: calc(14 * var(--pdp-fluid) / 1440);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.pdp-acc__list:not(:first-child) {
+  margin-top: 0.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .pdp-acc__trigger,
+  .pdp-acc__icon-h,
+  .pdp-acc__icon-v,
+  .pdp-acc__panel,
+  .pdp-acc__panel-inner {
+    transition: none;
+  }
+}
+
+.pdp-details__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(16 * var(--pdp-fluid) / 1440);
+  padding: calc(12 * var(--pdp-fluid) / 1440) calc(16 * var(--pdp-fluid) / 1440) 0;
+}
+
+.pdp-details__share {
+  display: flex;
+  align-items: center;
+  gap: calc(8 * var(--pdp-fluid) / 1440);
+  font-size: calc(12 * var(--pdp-fluid) / 1440);
+  font-weight: 500;
+}
+
+.pdp-details__share > span {
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.pdp-details__social {
+  width: calc(16 * var(--pdp-fluid) / 1440);
+  height: calc(16 * var(--pdp-fluid) / 1440);
+  display: grid;
+  place-items: center;
+  color: inherit;
+  text-decoration: none;
+  opacity: 0.7;
+}
+
+.pdp-details__social img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pdp-details__social:hover {
+  opacity: 1;
+}
+
+.pdp-details__help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(33 * var(--pdp-fluid) / 1440);
+  padding: calc(12 * var(--pdp-fluid) / 1440) calc(16 * var(--pdp-fluid) / 1440);
+  border: 1px solid var(--pdp-line);
+  color: inherit;
+  text-decoration: none;
+  font-size: calc(12 * var(--pdp-fluid) / 1440);
+  font-weight: 400;
+  opacity: 0.8;
+  box-sizing: border-box;
+}
+
+.pdp-details__help:hover {
+  background: #f6f6f8;
+}
+
+.pdp-details__media {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.pdp-details__media img {
+  width: min(100%, calc(333 * var(--pdp-fluid) / 1440));
+  height: auto;
+  display: block;
+}
+
+/* Marquee — Figma 1205:1747 */
+
+.pdp-marquee {
+  /* Pills clipping at the viewport edges is the looping strip, not overflow.
+     Do not grow this to fit the track — that reintroduces page scrollWidth. */
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+  padding: calc(24 * var(--pdp-fluid) / 1440) calc(16 * var(--pdp-fluid) / 1440);
+}
+
+.pdp-marquee__track {
+  display: flex;
+  align-items: center;
+  gap: calc(40 * var(--pdp-fluid) / 1440);
+  width: max-content;
+  will-change: transform;
+}
+
+.pdp-page:not(.pdp-page--reduce-motion) .pdp-marquee__track {
+  /* Driven by GSAP in usePdpMotion — CSS loop disabled */
+  animation: none;
+}
+
+.pdp-marquee__item {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(40 * var(--pdp-fluid) / 1440);
+  flex-shrink: 0;
+}
+
+.pdp-marquee__label {
+  font-family: var(--pdp-display);
+  font-weight: 600;
+  font-size: calc(32 * var(--pdp-fluid) / 1440);
+  letter-spacing: calc(-1.6 * var(--pdp-fluid) / 1440);
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.pdp-marquee__mark {
+  width: calc(40 * var(--pdp-fluid) / 1440);
+  height: calc(40 * var(--pdp-fluid) / 1440);
+  flex-shrink: 0;
+}
+
+@keyframes pdp-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-33.333%);
+  }
+}
+
+/* Global reduced-motion fallback for CSS transitions on the PDP
+   (sticky bar, accordion). GSAP reveals/marquee are handled in usePdpMotion. */
+
+.pdp-page--reduce-motion .pdp-sticky,
+.pdp-page--reduce-motion .pdp-sticky.is-visible,
+.pdp-page--reduce-motion .pdp-acc__trigger,
+.pdp-page--reduce-motion .pdp-acc__icon-h,
+.pdp-page--reduce-motion .pdp-acc__icon-v,
+.pdp-page--reduce-motion .pdp-acc__panel,
+.pdp-page--reduce-motion .pdp-acc__panel-inner {
+  transition: none !important;
+}
+
+.pdp-page--reduce-motion .pdp-sticky {
+  transform: translateY(110%);
+}
+
+.pdp-page--reduce-motion .pdp-sticky.is-visible {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pdp-marquee__track {
+    animation: none;
+  }
+}
+
+/* Lifestyle banner — Figma 1205:1742 */
+
+.pdp-lifestyle {
+  background: #fff;
+}
+
+.pdp-lifestyle__stage {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  height: calc(863 * var(--pdp-fluid) / 1440);
+  overflow: hidden;
+  background: #1a1420;
+}
+
+.pdp-lifestyle__banner {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 40%;
+  display: block;
+}
+
+.pdp-lifestyle__bottle {
+  position: absolute;
+  left: 50%;
+  top: 14%;
+  /* Figma 1205:1743 “P3 2” is a 364×461 crop on the 1440 frame (top 121px =
+     14% of the 863px stage). Width 364 / height auto on the full PNG was
+     ~364×715 and filled the scene. */
+  width: min(calc(364 * var(--pdp-fluid) / 1440), calc(364 / 1440 * 100%));
+  height: auto;
+  aspect-ratio: 364 / 461;
+  object-fit: contain;
+  object-position: center;
+  transform: translateX(-50%);
+  z-index: 2;
+  filter: drop-shadow(0 calc(24 * var(--pdp-fluid) / 1440) calc(40 * var(--pdp-fluid) / 1440) rgba(0, 0, 0, 0.35));
+  pointer-events: none;
+}
+
+.pdp-lifestyle__copy {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: calc(59 * var(--pdp-fluid) / 1440);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: calc(32 * var(--pdp-fluid) / 1440);
+  padding: 0 calc(47 * var(--pdp-fluid) / 1440);
+  box-sizing: border-box;
+}
+
+.pdp-lifestyle__title,
+.pdp-lifestyle__title.at-title {
+  margin: 0;
+  max-width: calc(474 * var(--pdp-fluid) / 1440);
+  font-family: var(--pdp-hero-display);
+  font-weight: 700;
+  font-size: calc(96 * var(--pdp-fluid) / 1440);
+  letter-spacing: calc(-6.72 * var(--pdp-fluid) / 1440);
+  line-height: calc(94 * var(--pdp-fluid) / 1440);
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.pdp-lifestyle__title .at-char {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  /* Allow the looping blur wave (filter / --at-blur) to paint. */
+  will-change: opacity, filter;
+}
+
+.pdp-lifestyle__blurb {
+  margin: 0;
+  max-width: calc(354 * var(--pdp-fluid) / 1440);
+  font-size: calc(20 * var(--pdp-fluid) / 1440);
+  font-weight: 500;
+  line-height: normal;
+  color: #fff;
+  text-align: right;
+}
+
+.pdp-lifestyle__blurb .ad-word {
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
+/* Science stats — Figma 1205:1764 */
+
+.pdp-stats {
+  background: linear-gradient(180deg, #0e223b 0%, #000 100%);
+  color: #fff;
+  text-align: center;
+  padding: calc(133 * var(--pdp-fluid) / 1440) calc(24 * var(--pdp-fluid) / 1440) calc(80 * var(--pdp-fluid) / 1440);
+  min-height: calc(641 * var(--pdp-fluid) / 1440);
+  box-sizing: border-box;
+}
+
+.pdp-stats__eyebrow {
+  margin: 0 0 calc(36 * var(--pdp-fluid) / 1440);
+  font-size: calc(12 * var(--pdp-fluid) / 1440);
+  font-weight: 600;
+  letter-spacing: calc(0.48 * var(--pdp-fluid) / 1440);
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.pdp-stats__title {
+  margin: 0 0 calc(49 * var(--pdp-fluid) / 1440);
+  font-family: var(--pdp-display);
+  font-weight: 600;
+  font-size: calc(48 * var(--pdp-fluid) / 1440);
+  letter-spacing: calc(-2.4 * var(--pdp-fluid) / 1440);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.pdp-stats__grid {
+  list-style: none;
+  margin: 0 auto;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, calc(263 * var(--pdp-fluid) / 1440)));
+  gap: calc(8 * var(--pdp-fluid) / 1440);
+  justify-content: center;
+  width: 100%;
+  max-width: calc(1076 * var(--pdp-fluid) / 1440);
+}
+
+.pdp-stats__card {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  width: 100%;
+  max-width: calc(263 * var(--pdp-fluid) / 1440);
+  height: calc(171 * var(--pdp-fluid) / 1440);
+  min-height: calc(171 * var(--pdp-fluid) / 1440);
+  padding: calc(28 * var(--pdp-fluid) / 1440) calc(20 * var(--pdp-fluid) / 1440) calc(20 * var(--pdp-fluid) / 1440);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(13.6 * var(--pdp-fluid) / 1440);
+}
+
+.pdp-stats__value {
+  margin: 0;
+  font-family: var(--pdp-display);
+  font-weight: 600;
+  font-size: calc(48 * var(--pdp-fluid) / 1440);
+  letter-spacing: calc(-2.4 * var(--pdp-fluid) / 1440);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.pdp-stats__text {
+  margin: 0;
+  max-width: calc(169 * var(--pdp-fluid) / 1440);
+  font-size: calc(12 * var(--pdp-fluid) / 1440);
+  font-weight: 400;
+  line-height: 1.4;
+  opacity: 0.6;
+}
+
+.pdp-stats__footnote {
+  margin: calc(44 * var(--pdp-fluid) / 1440) auto 0;
+  max-width: calc(511 * var(--pdp-fluid) / 1440);
+  font-size: calc(12 * var(--pdp-fluid) / 1440);
+  font-weight: 400;
+  line-height: 1.4;
+  opacity: 0.6;
+}
+
+/* How to use — Figma 1205:1831 */
+
+.pdp-howto {
+  display: grid;
+  grid-template-columns: minmax(0, calc(622 * var(--pdp-fluid) / 1440)) minmax(0, calc(418 * var(--pdp-fluid) / 1440));
+  gap: calc(56 * var(--pdp-fluid) / 1440);
+  align-items: center;
+  width: 100%;
+  max-width: calc(1096 * var(--pdp-fluid) / 1440);
+  margin: 0 auto calc(171 * var(--pdp-fluid) / 1440);
+  justify-content: center;
+}
+
+.pdp-howto__media {
+  margin: 0;
+  width: calc(622 * var(--pdp-fluid) / 1440);
+  max-width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  aspect-ratio: 622 / 535;
+  background: #c45a3a;
+}
+
+.pdp-howto__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pdp-howto__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pdp-howto__content {
+  width: calc(418 * var(--pdp-fluid) / 1440);
+  max-width: 100%;
+}
+
+.pdp-howto__header {
+  margin-bottom: calc(40 * var(--pdp-fluid) / 1440);
+}
+
+.pdp-howto__eyebrow {
+  margin: 0 0 calc(4 * var(--pdp-fluid) / 1440);
+  font-size: calc(12 * var(--pdp-fluid) / 1440);
+  font-weight: 500;
+  line-height: 1.5;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.pdp-howto__title {
+  margin: 0;
+  font-family: var(--pdp-display);
+  font-weight: 600;
+  font-size: calc(40 * var(--pdp-fluid) / 1440);
+  letter-spacing: calc(-2 * var(--pdp-fluid) / 1440);
+  text-transform: uppercase;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.pdp-howto__steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(31 * var(--pdp-fluid) / 1440);
+}
+
+.pdp-howto__step {
+  display: flex;
+  align-items: center;
+  gap: calc(11 * var(--pdp-fluid) / 1440);
+}
+
+.pdp-howto__icon {
+  width: calc(59 * var(--pdp-fluid) / 1440);
+  height: calc(59 * var(--pdp-fluid) / 1440);
+  flex-shrink: 0;
+  background: #d9d9d9;
+}
+
+.pdp-howto__step-title {
+  margin: 0 0 calc(4 * var(--pdp-fluid) / 1440);
+  font-size: calc(12 * var(--pdp-fluid) / 1440);
+  font-weight: 500;
+  text-transform: uppercase;
+  opacity: 0.6;
+  line-height: 1.5;
+}
+
+.pdp-howto__step-body {
+  margin: 0;
+  font-size: calc(12 * var(--pdp-fluid) / 1440);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* Benefits — Figma 1205:1894 */
+
+.pdp-benefits {
+  /* Fixed bleed (matches 1440px design exactly). On ultra-wide viewports,
+     extra width stays empty margin via the centered capped `.pdp-main`. */
+  --pdp-benefits-bleed: calc(22 * var(--pdp-fluid) / 1440);
+  width: calc(100% + var(--pdp-benefits-bleed));
+  max-width: none;
+  margin: 0 calc(-1 * var(--pdp-benefits-bleed)) calc(80 * var(--pdp-fluid) / 1440) 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(56 * var(--pdp-fluid) / 1440);
+}
+
+.pdp-benefits__title {
+  margin: 0;
+  max-width: none;
+  font-family: var(--pdp-display);
+  font-weight: 600;
+  font-size: calc(40 * var(--pdp-fluid) / 1440);
+  letter-spacing: calc(-2 * var(--pdp-fluid) / 1440);
+  text-transform: uppercase;
+  line-height: 1.1;
+  opacity: 0.9;
+}
+
+.pdp-benefits__title span {
+  display: block;
+}
+
+.pdp-benefits__grid {
+  /* Keep the rail flush to the true viewport right edge even when .pdp-main is
+     capped and centered within a wider viewport. */
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--pdp-benefits-bleed) 0 0;
+  display: flex;
+  gap: calc(16 * var(--pdp-fluid) / 1440);
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pdp-benefits__grid::-webkit-scrollbar {
+  display: none;
+}
+
+.pdp-benefits__card {
+  position: relative;
+  margin: 0;
+  flex: 0 0 calc(404 * var(--pdp-fluid) / 1440);
+  width: calc(404 * var(--pdp-fluid) / 1440);
+  height: calc(405 * var(--pdp-fluid) / 1440);
+  overflow: hidden;
+  background: #111;
+  scroll-snap-align: start;
+}
+
+.pdp-benefits__card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pdp-benefits__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: calc(23 * var(--pdp-fluid) / 1440) calc(20 * var(--pdp-fluid) / 1440) calc(67 * var(--pdp-fluid) / 1440);
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.2);
+  color: #fff;
+}
+
+.pdp-benefits__index {
+  margin: 0 0 calc(8 * var(--pdp-fluid) / 1440);
+  font-size: calc(12 * var(--pdp-fluid) / 1440);
+  font-weight: 600;
+  letter-spacing: calc(0.48 * var(--pdp-fluid) / 1440);
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.pdp-benefits__name {
+  margin: 0;
+  font-family: var(--pdp-display);
+  font-weight: 600;
+  font-size: calc(32 * var(--pdp-fluid) / 1440);
+  letter-spacing: calc(-1.6 * var(--pdp-fluid) / 1440);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.pdp-benefits__body {
+  margin-top: auto;
+  max-width: calc(276 * var(--pdp-fluid) / 1440);
+  font-size: calc(16 * var(--pdp-fluid) / 1440);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* Similar products — Figma 1205:1781 */
+
+.pdp-similar {
+  margin: 0;
+}
+
+.pdp-similar__title {
+  margin: 0 0 calc(42 * var(--pdp-fluid) / 1440);
+  font-family: var(--pdp-display);
+  font-weight: 600;
+  font-size: calc(40 * var(--pdp-fluid) / 1440);
+  letter-spacing: calc(-2 * var(--pdp-fluid) / 1440);
+  text-transform: uppercase;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.pdp-similar__rail {
+  /* Partial cards at the rail edge are the scrollable peek, not page overflow.
+     Keep overflow-x: auto on this rail — do not unclip it to “fix” the cut-off. */
+  list-style: none;
+  margin: 0 calc(-22 * var(--pdp-fluid) / 1440);
+  padding: 0 calc(22 * var(--pdp-fluid) / 1440);
+  display: flex;
+  gap: calc(14 * var(--pdp-fluid) / 1440);
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-width: 0;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.pdp-similar__rail::-webkit-scrollbar {
+  display: none;
+}
+
+.pdp-similar__item {
+  flex: 0 0 calc(317.971 * var(--pdp-fluid) / 1440);
+  width: calc(317.971 * var(--pdp-fluid) / 1440);
+  scroll-snap-align: start;
+}
+
+.pdp-similar__item .product-card {
+  width: calc(317.971 * var(--pdp-fluid) / 1440);
+  min-height: calc(426.316 * var(--pdp-fluid) / 1440);
+  height: calc(426.316 * var(--pdp-fluid) / 1440);
+  border-radius: 12px;
+}
+
+/* Sticky ATC bar — fixed full-bleed; slides up when hero form leaves viewport.
+   Sits under .pdp-page .ft-root so the footer covers it on scroll. */
+
+.pdp-page .ft-root {
+  z-index: 50;
+}
+
+.pdp-sticky {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(40 * var(--pdp-fluid) / 1440);
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: calc(16 * var(--pdp-fluid) / 1440) calc(24 * var(--pdp-fluid) / 1440);
+  box-sizing: border-box;
+  background: #fff;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04);
+  transform: translateY(110%);
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.3s ease,
+    visibility 0s linear 0.45s;
+}
+
+.pdp-sticky.is-visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+  transition:
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.3s ease,
+    visibility 0s linear 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .pdp-sticky,
+  .pdp-sticky.is-visible {
+    transition: none;
+  }
+}
+
+.pdp-sticky__product {
+  display: flex;
+  align-items: center;
+  gap: calc(40 * var(--pdp-fluid) / 1440);
+  min-width: 0;
+  flex: 1;
+}
+
+.pdp-sticky__thumb {
+  width: calc(115.514 * var(--pdp-fluid) / 1440);
+  height: calc(118 * var(--pdp-fluid) / 1440);
+  flex-shrink: 0;
+  background: var(--pdp-panel);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.pdp-sticky__thumb img {
+  width: 58%;
+  height: auto;
+  display: block;
+}
+
+.pdp-sticky__copy {
+  min-width: 0;
+  max-width: calc(495 * var(--pdp-fluid) / 1440);
+}
+
+.pdp-sticky__title {
+  margin: 0;
+  font-family: var(--pdp-display);
+  font-weight: 600;
+  font-size: calc(40 * var(--pdp-fluid) / 1440);
+  letter-spacing: calc(-2 * var(--pdp-fluid) / 1440);
+  text-transform: uppercase;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.pdp-sticky__blurb {
+  margin: calc(12 * var(--pdp-fluid) / 1440) 0 0;
+  font-size: calc(14 * var(--pdp-fluid) / 1440);
+  font-weight: 500;
+  line-height: 1.5;
+  opacity: 0.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pdp-sticky__controls {
+  width: min(100%, calc(422 * var(--pdp-fluid) / 1440));
+  flex-shrink: 0;
+}
+
+@media (max-width: 960px) {
+  .pdp-hero__info {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pdp-controls {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .pdp-controls__row {
+    justify-content: space-between;
+  }
+
+  .pdp-controls__row:not(:has(.pdp-controls__size-select)) {
+    justify-content: flex-end;
+  }
+
+  .pdp-controls__cart-row form,
+  .pdp-controls__atc {
+    flex: 1;
+    width: 100%;
+  }
+
+  .pdp-details {
+    grid-template-columns: 1fr;
+  }
+
+  .pdp-details__accordion {
+    width: 100%;
+  }
+
+  .pdp-details__media {
+    order: -1;
+  }
+
+  .pdp-marquee__label {
+    font-size: 32px;
+    letter-spacing: -1.6px;
+  }
+
+  .pdp-lifestyle__stage {
+    height: auto;
+    aspect-ratio: 4 / 5;
+  }
+
+  .pdp-lifestyle__copy {
+    flex-direction: column;
+    align-items: flex-start;
+    bottom: 6%;
+    padding: 0 1.5rem;
+  }
+
+  .pdp-lifestyle__title,
+  .pdp-lifestyle__title.at-title {
+    font-size: 52px;
+    letter-spacing: -3.64px;
+    line-height: 51px;
+    max-width: min(474px, 100%);
+  }
+
+  .pdp-lifestyle__blurb {
+    text-align: left;
+    font-size: 16px;
+  }
+
+  .pdp-stats {
+    min-height: 0;
+    padding: 80px 24px 64px;
+  }
+
+  .pdp-stats__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 560px;
+  }
+
+  .pdp-stats__card {
+    width: auto;
+  }
+
+  .pdp-stats__value {
+    font-size: 42px;
+    letter-spacing: -2.1px;
+  }
+
+  .pdp-howto {
+    grid-template-columns: 1fr;
+    max-width: none;
+    margin-bottom: 80px;
+  }
+
+  .pdp-howto__media,
+  .pdp-howto__content {
+    width: 100%;
+  }
+
+  .pdp-benefits {
+    /* Keep right-only bleed with mobile padding (16px at 640, 22px at 960) */
+    width: calc(100% + 22px);
+    margin: 0 -22px 5rem 0;
+    overflow: hidden;
+  }
+
+  .pdp-benefits__grid {
+    padding-right: 22px;
+  }
+
+  .pdp-benefits__name {
+    font-size: 24px;
+    letter-spacing: -1.2px;
+  }
+
+  .pdp-gallery__item {
+    flex: 0 0 calc((100% - (var(--pdp-gallery-per-view) - 1) * var(--pdp-gallery-gap)) / var(--pdp-gallery-per-view));
+    width: auto;
+    height: auto;
+    max-width: none;
+    max-height: none;
+    aspect-ratio: 513 / 524;
+  }
+
+  .pdp-gallery__item img,
+  .pdp-gallery__item video,
+  .pdp-gallery__video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    object-fit: cover;
+  }
+
+  .pdp-gallery__item:first-child img,
+  .pdp-gallery__item--front img {
+    position: relative;
+    inset: auto;
+    width: auto;
+    height: 86.4%;
+    max-width: 58.7%;
+    max-height: 86.4%;
+    object-fit: contain;
+  }
+
+  .pdp-gallery {
+    --pdp-gallery-per-view: 1.35;
+    --pdp-gallery-gap: 0.75rem;
+  }
+
+  .pdp-sticky {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    padding: 0.85rem 1rem 1rem;
+  }
+
+  .pdp-sticky__product {
+    gap: 16px;
+  }
+
+  .pdp-sticky__thumb {
+    width: 80px;
+    height: 80px;
+  }
+
+  .pdp-sticky__blurb {
+    display: none;
+  }
+
+  .pdp-sticky__title {
+    font-size: 24px;
+    letter-spacing: -1.2px;
+  }
+
+  .pdp-sticky__controls {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .pdp-main {
+    padding-top: 5.5rem;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .pdp-gallery {
+    /* Mobile: align gallery breakout to .pdp-main's 16px side padding. */
+    --pdp-gallery-bleed: 16px;
+    --pdp-gallery-per-view: 1.15;
+  }
+
+  .pdp-hero__title {
+    font-size: 32px;
+    letter-spacing: -1.6px;
+  }
+
+  .pdp-description__text {
+    font-size: 28px;
+  }
+
+  .pdp-marquee {
+    padding: 16px 12px;
+  }
+
+  .pdp-marquee__track,
+  .pdp-marquee__item {
+    gap: 24px;
+  }
+
+  .pdp-marquee__label {
+    font-size: 24px;
+    letter-spacing: -1.2px;
+  }
+
+  .pdp-marquee__mark {
+    width: 28px;
+    height: 28px;
+  }
+
+  .pdp-lifestyle__bottle {
+    width: 42%;
+    max-width: none;
+    top: 10%;
+  }
+
+  .pdp-lifestyle__title,
+  .pdp-lifestyle__title.at-title {
+    font-size: 38px;
+    letter-spacing: -2.66px;
+    line-height: 37px;
+  }
+
+  .pdp-lifestyle__blurb {
+    font-size: 16px;
+  }
+
+  .pdp-stats__grid {
+    grid-template-columns: 1fr;
+    max-width: 360px;
+  }
+
+  .pdp-benefits {
+    width: calc(100% + 16px);
+    margin: 0 -16px 5rem 0;
+  }
+
+  .pdp-benefits__grid {
+    padding-right: 16px;
+  }
+
+  .pdp-benefits__name {
+    font-size: 28px;
+    letter-spacing: -1.4px;
+  }
+
+  .pdp-similar__rail {
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+
+  .pdp-sticky__thumb {
+    width: 64px;
+    height: 64px;
+  }
+
+  .pdp-sticky__title {
+    font-size: 18px;
+    letter-spacing: -0.9px;
+  }
+}

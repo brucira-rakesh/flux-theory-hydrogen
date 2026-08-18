@@ -1,0 +1,9 @@
+.intro-hero-v2__title {
+  background-clip: text;
+  mix-blend-mode: overlay;
+  filter: url(#intro-hero-v2-title-filter);
+}
+
+.intro-hero-v2__desc {
+  filter: url(#intro-hero-v2-desc-filter);
+}

@@ -59,7 +59,8 @@ export default function Orders() {
   const {orders} = customer;
 
   return (
-    <div className="orders">
+    <div className="account-orders-page">
+      <h2>Orders</h2>
       <OrderSearchForm currentFilters={filters} />
       <OrdersTable orders={orders} filters={filters} />
     </div>
@@ -76,7 +77,7 @@ function OrdersTable({orders, filters}) {
   const hasFilters = !!(filters.name || filters.confirmationNumber);
 
   return (
-    <div className="acccount-orders" aria-live="polite">
+    <div className="account-orders" aria-live="polite">
       {orders?.nodes.length ? (
         <PaginatedResourceSection connection={orders}>
           {({node: order}) => <OrderItem key={order.id} order={order} />}
@@ -93,21 +94,19 @@ function OrdersTable({orders, filters}) {
  */
 function EmptyOrders({hasFilters = false}) {
   return (
-    <div>
+    <div className="account-empty">
       {hasFilters ? (
         <>
           <p>No orders found matching your search.</p>
-          <br />
           <p>
-            <Link to="/account/orders">Clear filters →</Link>
+            <Link to="/account/orders">Clear filters</Link>
           </p>
         </>
       ) : (
         <>
           <p>You haven&apos;t placed any orders yet.</p>
-          <br />
           <p>
-            <Link to="/collections">Start Shopping →</Link>
+            <Link to="/shop">Start shopping</Link>
           </p>
         </>
       )}
@@ -178,11 +177,12 @@ function OrderSearchForm({currentFilters}) {
         </div>
 
         <div className="order-search-buttons">
-          <button type="submit" disabled={isSearching}>
+          <button className="account-btn" type="submit" disabled={isSearching}>
             {isSearching ? 'Searching' : 'Search'}
           </button>
           {hasFilters && (
             <button
+              className="account-btn account-btn--ghost"
               type="button"
               disabled={isSearching}
               onClick={() => {
@@ -205,11 +205,11 @@ function OrderSearchForm({currentFilters}) {
 function OrderItem({order}) {
   const fulfillmentStatus = flattenConnection(order.fulfillments)[0]?.status;
   return (
-    <>
-      <fieldset>
-        <Link to={`/account/orders/${btoa(order.id)}`}>
-          <strong>#{order.number}</strong>
-        </Link>
+    <article className="account-order-card">
+      <Link to={`/account/orders/${btoa(order.id)}`}>
+        <strong>#{order.number}</strong>
+      </Link>
+      <div className="account-order-card__meta">
         <p>{new Date(order.processedAt).toDateString()}</p>
         {order.confirmationNumber && (
           <p>Confirmation: {order.confirmationNumber}</p>
@@ -217,10 +217,14 @@ function OrderItem({order}) {
         <p>{order.financialStatus}</p>
         {fulfillmentStatus && <p>{fulfillmentStatus}</p>}
         <Money data={order.totalPrice} />
-        <Link to={`/account/orders/${btoa(order.id)}`}>View Order →</Link>
-      </fieldset>
-      <br />
-    </>
+      </div>
+      <Link
+        className="account-order-card__cta"
+        to={`/account/orders/${btoa(order.id)}`}
+      >
+        View order
+      </Link>
+    </article>
   );
 }
 

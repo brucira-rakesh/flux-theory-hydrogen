@@ -4,9 +4,10 @@ import {hydrogen} from '@shopify/hydrogen/vite';
 import {oxygen} from '@shopify/mini-oxygen/vite';
 import {reactRouter} from '@react-router/dev/vite';
 import tailwindcss from '@tailwindcss/vite';
+import glsl from 'vite-plugin-glsl';
 
 export default defineConfig({
-  plugins: [tailwindcss(), hydrogen(), oxygen(), reactRouter()],
+  plugins: [tailwindcss(), hydrogen(), oxygen(), reactRouter(), glsl()],
   resolve: {
     alias: {
       // Vite's native tsconfig path resolver does not cover JavaScript
@@ -39,7 +40,11 @@ export default defineConfig({
       ],
     },
   },
+  // Dev-only: Hydrogen `--customer-account-push` tunnels via Cloudflare
+  // (`*.trycloudflare.com`). The CLI may print a `*.tryhydrogen.dev` URL, but
+  // the Host header is the Cloudflare subdomain, which changes every restart.
+  // Vite `server` options are not used in `vite build` / Oxygen production.
   server: {
-    allowedHosts: ['.tryhydrogen.dev'],
+    allowedHosts: ['.trycloudflare.com', '.tryhydrogen.dev'],
   },
 });

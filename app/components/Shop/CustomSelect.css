@@ -1,0 +1,188 @@
+.custom-select {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.custom-select__label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.custom-select__trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 46px;
+  padding: 0 2.4rem 0 1rem;
+  border: 1px solid #d0d1db;
+  background: #fff;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #000;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+}
+
+.custom-select.is-open .custom-select__trigger,
+.custom-select__trigger:hover,
+.custom-select__trigger:focus-visible {
+  border-color: #000;
+  outline: none;
+}
+
+.custom-select__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.custom-select__chevron {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid #000;
+  border-bottom: 1.5px solid #000;
+  transform: translateY(-65%) rotate(45deg);
+  transition: transform 0.25s ease;
+  pointer-events: none;
+}
+
+.custom-select.is-open .custom-select__chevron {
+  transform: translateY(-35%) rotate(225deg);
+}
+
+.custom-select__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  list-style: none;
+  margin: 0;
+  padding: 0.45rem;
+  min-width: 100%;
+  width: max-content;
+  max-width: min(92vw, 280px);
+  border: 1px solid #d0d1db;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+  box-sizing: border-box;
+  will-change: transform, opacity;
+}
+
+.custom-select__menu--right {
+  left: auto;
+  right: 0;
+}
+
+.custom-select__option {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #000;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.custom-select__option:hover,
+.custom-select__option:focus-visible {
+  background: rgba(0, 0, 0, 0.05);
+  outline: none;
+}
+
+.custom-select__option.is-selected {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.custom-select__check {
+  display: inline-grid;
+  place-items: center;
+  width: 0.9rem;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  line-height: 1;
+  color: #000;
+}
+
+/* Compact toolbar variant (Sort by) */
+.custom-select--toolbar {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
+.custom-select--toolbar .custom-select__label {
+  margin: 0;
+  letter-spacing: 0.06em;
+  color: rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.custom-select--toolbar .custom-select__trigger {
+  width: var(--shop-toolbar-btn-width, 7rem);
+  min-width: var(--shop-toolbar-btn-width, 7rem);
+  height: 42px;
+  padding: 0 2rem 0 0.85rem;
+  box-sizing: border-box;
+}
+
+.custom-select--toolbar .custom-select__menu {
+  left: auto;
+  right: 0;
+  min-width: 13.5rem;
+  z-index: 35;
+}
+
+/* PDP inline size control — Figma 1205:1673 */
+.custom-select--pdp .custom-select__trigger {
+  height: 46px;
+  padding: 12px 2.4rem 12px 28px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+@media (max-width: 800px) {
+  .custom-select--toolbar {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .custom-select--toolbar .custom-select__trigger {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .custom-select__chevron,
+  .custom-select__option {
+    transition: none;
+  }
+}

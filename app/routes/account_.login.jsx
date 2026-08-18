@@ -1,4 +1,7 @@
 /**
+ * Starts Shopify-hosted Customer Account login / create-account.
+ * There is no local /account/register route — signup lives on that hosted screen.
+ *
  * @param {Route.LoaderArgs}
  */
 export async function loader({request, context}) {

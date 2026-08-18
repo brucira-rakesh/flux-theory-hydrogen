@@ -4,3 +4,8 @@
  */
 
 @import 'tailwindcss';
+
+:root {
+  --font-title: 'Oswald', sans-serif;
+  --font-body: 'Geist', sans-serif;
+}

@@ -1,0 +1,53 @@
+/* AnimatedTitle — character reveal shell. Visual styling comes from className. */
+
+.at-title {
+  display: block;
+  margin: 0;
+  font-family: var(--font-title, 'Oswald', sans-serif);
+}
+
+/* Forced line break from `lines` prop */
+.at-line {
+  display: block;
+}
+
+/* Keep each word intact; allow wrap only between words. */
+.at-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.at-space {
+  display: inline;
+}
+
+.at-char {
+  display: inline-block;
+  will-change: opacity, transform;
+}
+
+/* CSS fallback — chars stay hidden until reveal completes (survives GSAP revert). */
+.at-title.is-reveal-pending .at-char {
+  opacity: 0;
+  filter: blur(20px);
+}
+
+/* Letter-by-letter blur wave — driven by --at-blur so it isn't wiped by
+   leftover inline `filter` from the entrance reveal. */
+.at-title--blur-sweep .at-char {
+  filter: blur(calc(var(--at-blur, 0) * 1px));
+}
+
+/* Letter-by-letter blur wave — do NOT leave will-change/filter on idle
+   letters; that paints empty rectangular compositing layers (blur boxes). */
+.at-title--blur-sweep.is-blur-hidden .at-char {
+  filter: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .at-char {
+    will-change: auto;
+    opacity: 1;
+    filter: none;
+  }
+}

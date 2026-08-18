@@ -1,0 +1,18 @@
+/* Full-viewport cloud-wipe overlay masking the Seawave -> SceneV2 hand-off.
+   Fixed so it tracks the viewport regardless of which sticky section is
+   pinned underneath. z-index sits ABOVE both scene canvases (SceneV2 is
+   z-20, Seawave is z-auto) so it can hide the swap seam, but BELOW the site
+   header (z-40/50) so navigation stays reachable. pointer-events:none — it is
+   purely visual and must never intercept the carousel/scroll wheel handling.
+   Starts fully transparent; the render loop toggles opacity only while the
+   wipe is actually on screen. */
+.cloud-transition {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 30;
+  pointer-events: none;
+  opacity: 0;
+  will-change: opacity;
+}
