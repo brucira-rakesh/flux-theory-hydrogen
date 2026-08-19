@@ -60,28 +60,28 @@ function FooterNavColumn({ column, openId, onToggle, panelIdPrefix }) {
         <span>{column.title}</span>
         <IconChevron open={isOpen} />
       </button>
-      <ul
-        id={panelId}
-        className={`ft-nav__list${isOpen ? "" : " is-collapsed"}`}
-      >
-        {column.links.map((link, linkIndex) => (
-          <li key={`${column.id}-${linkIndex}`}>
-            <FooterLink href={link.href} className="ft-nav__link">
-              {link.label}
-            </FooterLink>
-          </li>
-        ))}
-      </ul>
+      {/* ft-nav__panel is the grid container for the height transition */}
+      <div id={panelId} className="ft-nav__panel" role="region" aria-label={column.title}>
+        <div className="ft-nav__panel-inner">
+          <ul className="ft-nav__list">
+            {column.links.map((link, linkIndex) => (
+              <li key={`${column.id}-${linkIndex}`}>
+                <FooterLink href={link.href} className="ft-nav__link">
+                  {link.label}
+                </FooterLink>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </nav>
   );
 }
 
 export default function Footer({ className = "" }) {
   const panelIdPrefix = useId();
-  const [openId, setOpenId] = useState(footerNav[0]?.id ?? null);
-
-  const leftNav = footerNav.slice(0, 2);
-  const rightNav = footerNav.slice(2);
+  // All columns start closed on mobile; desktop ignores this state entirely.
+  const [openId, setOpenId] = useState(null);
 
   const onToggle = (id) => {
     setOpenId((current) => (current === id ? null : id));
@@ -96,29 +96,21 @@ export default function Footer({ className = "" }) {
       <div className="ft-content">
         <div className="ft-nav-grid">
           <div className="ft-nav-col ft-nav-col--left">
-            {leftNav.map((column) => (
-              <nav key={column.id} className="ft-nav" aria-label={column.title}>
-                <h2 className="ft-nav__title">{column.title}</h2>
-                <ul className="ft-nav__list">
-                  {column.links.map((link, linkIndex) => (
-                    <li key={`${column.id}-${linkIndex}`}>
-                      <FooterLink
-                        href={link.href}
-                        className="ft-nav__link font-title"
-                      >
-                        {link.label}
-                      </FooterLink>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
+            {footerNav.slice(0, 2).map((column) => (
+              <FooterNavColumn
+                key={column.id}
+                column={column}
+                openId={openId}
+                onToggle={onToggle}
+                panelIdPrefix={panelIdPrefix}
+              />
             ))}
           </div>
 
           <div className="ft-logo-spacer" aria-hidden="true" />
 
           <div className="ft-nav-col ft-nav-col--right">
-            {rightNav.map((column) => (
+            {footerNav.slice(2).map((column) => (
               <FooterNavColumn
                 key={column.id}
                 column={column}

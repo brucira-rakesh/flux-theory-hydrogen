@@ -77,10 +77,9 @@
   min-width: 100%;
   width: max-content;
   max-width: min(92vw, 280px);
-  border: 1px solid #d0d1db;
-  border-radius: 12px;
+  border: 1.5px solid #000;
   background: #fff;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.10);
   box-sizing: border-box;
   will-change: transform, opacity;
 }
@@ -98,7 +97,6 @@
   margin: 0;
   padding: 0.65rem 0.75rem;
   border: 0;
-  border-radius: 8px;
   background: transparent;
   color: #000;
   font-family: inherit;
@@ -171,16 +169,26 @@
 @media (max-width: 800px) {
   .custom-select--toolbar {
     min-width: 0;
-    flex: 1;
+    flex: 0 0 100px;
   }
 
   .custom-select--toolbar .custom-select__trigger {
     min-width: 0;
     width: 100%;
+    padding-left: 0.6rem;
+    padding-right: 1.4rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .custom-select--toolbar .custom-select__chevron {
+    right: 0.45rem;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .custom-select__chevron,
   .custom-select__option {
     transition: none;

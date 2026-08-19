@@ -1,23 +1,55 @@
+import { forwardRef, useImperativeHandle, useRef } from 'react'
 import CustomSelect from '../Shop/CustomSelect'
 import { AddToCartButton } from '../AddToCartButton'
 import { useCartDrawer } from '../Cart/CartProvider'
-import { cartLinesForMerchandise } from '~/lib/storefrontCatalog'
+import {
+  cartLinesForMerchandise,
+  shouldShowSizeSelect,
+} from '~/lib/storefrontCatalog'
 
-export default function PdpControls({
-  sizes,
-  size,
-  onSizeChange,
-  quantity,
-  onQuantityChange,
-  price,
-  currency = '₹',
-  merchandiseId,
-  selectedVariant,
-  availableForSale = true,
-  showPrice = true,
-  className = '',
-}) {
+/**
+ * PDP size/qty/price/ATC controls.
+ *
+ * Normal mode (default): renders its own CartForm via AddToCartButton.
+ *
+ * Connector mode (connectorMode=true): the ATC button is a plain <button>
+ * that calls heroControlsRef.current.submit() — no CartForm of its own.
+ * Used by the sticky bar so there is exactly one CartForm on the PDP.
+ */
+const PdpControls = forwardRef(function PdpControls(
+  {
+    sizes,
+    size,
+    onSizeChange,
+    quantity,
+    onQuantityChange,
+    price,
+    currency = '₹',
+    merchandiseId,
+    selectedVariant,
+    availableForSale = true,
+    showPrice = true,
+    className = '',
+    // Connector-mode props
+    connectorMode = false,
+    heroControlsRef = null,
+  },
+  ref,
+) {
+  const containerRef = useRef(null)
   const { openCart } = useCartDrawer()
+
+  // Expose a submit() method so connector buttons can trigger this form.
+  useImperativeHandle(ref, () => ({
+    submit() {
+      const form = containerRef.current?.querySelector('form')
+      if (form) {
+        openCart()
+        form.requestSubmit()
+      }
+    },
+  }))
+
   const formatPrice = (value) =>
     Number(value).toLocaleString('en-IN', {
       minimumFractionDigits: 2,
@@ -28,16 +60,17 @@ export default function PdpControls({
     id: option,
     label: option,
   }))
-  const showSizeSelect = sizeOptions.length > 1
-  const lines = cartLinesForMerchandise(
-    merchandiseId,
-    quantity,
-    selectedVariant,
-  )
+  const showSizeSelect = shouldShowSizeSelect(sizes)
+  const lines = cartLinesForMerchandise(merchandiseId, quantity, selectedVariant)
   const canAdd = Boolean(lines.length) && availableForSale !== false
 
+  const handleConnectorClick = () => {
+    if (!canAdd) return
+    heroControlsRef?.current?.submit()
+  }
+
   return (
-    <div className={`pdp-controls${className ? ` ${className}` : ''}`}>
+    <div ref={containerRef} className={`pdp-controls${className ? ` ${className}` : ''}`}>
       <div className="pdp-controls__row">
         {showSizeSelect ? (
           <CustomSelect
@@ -81,17 +114,32 @@ export default function PdpControls({
           </button>
         </div>
 
-        <AddToCartButton
-          className="pdp-controls__atc"
-          lines={lines}
-          disabled={!canAdd}
-          onClick={() => {
-            if (canAdd) openCart()
-          }}
-        >
-          {availableForSale === false ? 'Sold out' : 'Add to Cart'}
-        </AddToCartButton>
+        {connectorMode ? (
+          // Connector: plain button — submits the hero's CartForm, no form here.
+          <button
+            type="button"
+            className="pdp-controls__atc"
+            disabled={!canAdd}
+            onClick={handleConnectorClick}
+          >
+            {availableForSale === false ? 'Sold out' : 'Add to Cart'}
+          </button>
+        ) : (
+          // Normal: own CartForm via AddToCartButton.
+          <AddToCartButton
+            className="pdp-controls__atc"
+            lines={lines}
+            disabled={!canAdd}
+            onClick={() => {
+              if (canAdd) openCart()
+            }}
+          >
+            {availableForSale === false ? 'Sold out' : 'Add to Cart'}
+          </AddToCartButton>
+        )}
       </div>
     </div>
   )
-}
+})
+
+export default PdpControls

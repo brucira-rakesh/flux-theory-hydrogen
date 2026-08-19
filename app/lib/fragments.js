@@ -228,6 +228,25 @@ export const HEADER_QUERY = `#graphql
   ${MENU_FRAGMENT}
 `;
 
+/**
+ * Lean menu-only query for branded routes. Identical shape to FOOTER_QUERY
+ * but parametrised for the header menu handle. Deliberately excludes the
+ * `shop { }` fragment present in HEADER_QUERY — branded routes don't need
+ * shop analytics/brand data, and this keeps the extra payload minimal.
+ */
+export const MENU_QUERY = `#graphql
+  query NavMenu(
+    $country: CountryCode
+    $menuHandle: String!
+    $language: LanguageCode
+  ) @inContext(language: $language, country: $country) {
+    menu(handle: $menuHandle) {
+      ...Menu
+    }
+  }
+  ${MENU_FRAGMENT}
+`;
+
 export const FOOTER_QUERY = `#graphql
   query Footer(
     $country: CountryCode

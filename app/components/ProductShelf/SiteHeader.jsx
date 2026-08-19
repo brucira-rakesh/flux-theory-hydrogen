@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useRouteLoaderData } from 'react-router-dom'
 import { LoggedInState } from '../Header/LoggedInState'
 import { HeaderSearch } from '../Header/HeaderSearch'
 import logoUrl from '../../assets/brand/header/logo-artwork.svg'
@@ -11,14 +11,57 @@ import { FACE_FILTER_ENABLED } from '../../data/shop'
 import { useCartDrawer } from '../Cart/CartProvider'
 import './ProductShelf.css'
 
-const NAV_LINKS = [
+/** Fallback links used when the Shopify menu hasn't been configured yet. */
+const FALLBACK_NAV_LINKS = [
   { id: 'shop', label: 'Shop All', to: '/shop' },
   { id: 'body', label: 'Body', to: '/shop/body' },
-  // FACE_FILTER: re-enable when Clarity/Pulse/Ember/Muse exist in Shopify admin.
   ...(FACE_FILTER_ENABLED ? [{ id: 'face', label: 'Face', to: '/shop/face' }] : []),
   { id: 'brand', label: 'The Brand', href: '#brand' },
   { id: 'about', label: 'About Us', href: '#about' },
 ]
+
+/**
+ * Convert a Shopify menu item to the internal nav link shape.
+ * Shopify URLs are absolute (https://store.myshopify.com/...) — strip the
+ * origin so React Router's <Link to> receives a relative path.
+ * Items that resolve to an external domain keep their full URL and use <a>.
+ */
+function menuItemToNavLink(item) {
+  let to = null
+  let href = null
+
+  try {
+    const parsed = new URL(item.url)
+    const isInternal =
+      parsed.hostname.endsWith('.myshopify.com') ||
+      parsed.hostname === window?.location?.hostname
+    if (isInternal) {
+      to = parsed.pathname + parsed.search + parsed.hash
+    } else {
+      href = item.url
+    }
+  } catch {
+    // Relative or hash-only URLs (e.g. "#brand") — use as-is
+    if (item.url.startsWith('#') || item.url.startsWith('/')) {
+      to = item.url.startsWith('#') ? undefined : item.url
+      href = item.url.startsWith('#') ? item.url : undefined
+    }
+  }
+
+  return {
+    id: item.id,
+    label: item.title,
+    ...(to ? { to } : {}),
+    ...(href ? { href } : {}),
+  }
+}
+
+/** Derive nav links from the Shopify menu, falling back to hardcoded list. */
+function useNavLinks(rootData) {
+  const menuItems = rootData?.header?.menu?.items
+  if (menuItems?.length) return menuItems.map(menuItemToNavLink)
+  return FALLBACK_NAV_LINKS
+}
 
 function IconMenu() {
   return (
@@ -62,12 +105,12 @@ function HeaderIcon({ src, label, width, height, onClick, to, loggedIn }) {
   )
 }
 
-function resolveActiveId(pathname, hash) {
+function resolveActiveId(pathname, hash, links) {
   if (pathname.startsWith('/shop/body')) return 'body'
   if (pathname.startsWith('/shop/face')) return 'face'
   if (pathname === '/shop') return 'shop'
   const id = (hash || '').replace(/^#/, '')
-  if (id && NAV_LINKS.some((link) => link.id === id)) return id
+  if (id && links.some((link) => link.id === id)) return id
   return null
 }
 
@@ -80,6 +123,8 @@ function isLightSurfacePath(pathname) {
 }
 
 export default function SiteHeader({ logoTo = '/' }) {
+  const rootData = useRouteLoaderData('root')
+  const navLinks = useNavLinks(rootData)
   const location = useLocation()
   const [open, setOpen] = useState(false)
   const [searching, setSearching] = useState(false)
@@ -90,8 +135,9 @@ export default function SiteHeader({ logoTo = '/' }) {
   const closeBtnRef = useRef(null)
   const menuBtnRef = useRef(null)
   const lastScrollY = useRef(0)
-  const activeId = resolveActiveId(location.pathname, location.hash)
+  const activeId = resolveActiveId(location.pathname, location.hash, navLinks)
   const onLight = isLightSurfacePath(location.pathname)
+  const onPdp = location.pathname.startsWith('/products')
   const { openCart } = useCartDrawer()
 
   useSmoothScrollLock('site-header-menu', open)
@@ -222,7 +268,7 @@ export default function SiteHeader({ logoTo = '/' }) {
   return (
     <>
       <header
-        className={`ps-header${pinned ? ' is-pinned' : ''}${onLight ? ' is-on-light' : ''}${hidden && !open && !searching ? ' is-hidden' : ''}${searching ? ' is-searching' : ''}`}
+        className={`ps-header${pinned ? ' is-pinned' : ''}${onLight ? ' is-on-light' : ''}${onPdp ? ' is-on-pdp' : ''}${hidden && !open && !searching ? ' is-hidden' : ''}${searching ? ' is-searching' : ''}${open ? ' is-drawer-open' : ''}`}
       >
         <div className="ps-header__bar">
           <Link to={logoTo} className="ps-logo" aria-label="Flux Theory home">
@@ -231,7 +277,7 @@ export default function SiteHeader({ logoTo = '/' }) {
 
           <div className="ps-header__cluster">
             <nav className="ps-header__nav" aria-label="Primary">
-              {NAV_LINKS.map((link) => {
+              {navLinks.map((link) => {
                 const isActive = link.id === activeId
                 const className = `ps-header__nav-link${isActive ? ' is-active' : ''}`
                 const inner = (
@@ -261,8 +307,8 @@ export default function SiteHeader({ logoTo = '/' }) {
               <HeaderSearch
                 toggleClassName="ps-header__icon-btn"
                 toggle={
-                  <span className="ps-header__icon" style={{ width: 13, height: 12 }}>
-                    <img src={iconSearchUrl} alt="" width={13} height={12} />
+                  <span className="ps-header__icon" style={{ width: 20, height: 20 }}>
+                    <img src={iconSearchUrl} alt="" width={20} height={20} />
                   </span>
                 }
                 onOpenChange={(next) => {
@@ -275,8 +321,8 @@ export default function SiteHeader({ logoTo = '/' }) {
                   <HeaderIcon
                     src={iconUserUrl}
                     label={isLoggedIn ? 'Account' : 'Sign in'}
-                    width={13}
-                    height={12}
+                    width={20}
+                    height={20}
                     to="/account"
                     loggedIn={isLoggedIn}
                   />
@@ -285,8 +331,8 @@ export default function SiteHeader({ logoTo = '/' }) {
               <HeaderIcon
                 src={iconBagUrl}
                 label="Shopping bag"
-                width={14}
-                height={12}
+                width={20}
+                height={20}
                 onClick={openCart}
               />
 
@@ -309,9 +355,7 @@ export default function SiteHeader({ logoTo = '/' }) {
       {/*
         Drawer MUST stay outside `.ps-header`. The header uses `transform` for
         hide-on-scroll, which makes `position:fixed` descendants resolve against
-        the header box (inset 24px) instead of the viewport. Closed
-        `translateX(-105%)` then still left a ~6px olive (#2c2e1c) strip on the
-        left edge of the whole Home page after the preloader.
+        the header box instead of the viewport.
       */}
       <div className={`ps-drawer-layer${open ? ' is-open' : ''}`}>
         <div
@@ -328,6 +372,9 @@ export default function SiteHeader({ logoTo = '/' }) {
           aria-hidden={!open}
         >
           <div className="ps-drawer__top">
+            <Link to={logoTo} className="ps-drawer__logo" aria-label="Flux Theory home" tabIndex={open ? 0 : -1} onClick={closeDrawer}>
+              <img src={logoUrl} alt="" width={45} height={44} className="ps-logo__img" />
+            </Link>
             <button
               ref={closeBtnRef}
               type="button"
@@ -341,7 +388,7 @@ export default function SiteHeader({ logoTo = '/' }) {
           </div>
 
           <ul className="ps-drawer__links">
-            {NAV_LINKS.map((link) => (
+            {navLinks.map((link) => (
               <li key={link.id}>
                 {link.to ? (
                   <Link to={link.to} tabIndex={open ? 0 : -1} onClick={closeDrawer}>

@@ -2,6 +2,7 @@ import {getPdpBySlug} from '~/data/pdp';
 import {FILTER_TAGS} from '~/data/shop';
 
 const MOOD_TAG_IDS = new Set(FILTER_TAGS.map((tag) => tag.id));
+const DREAMER_BENEFITS_TITLE = getPdpBySlug('the-dreamer')?.benefits?.title;
 
 export function moneySymbol(currencyCode) {
   if (currencyCode === 'INR') return '₹';
@@ -42,6 +43,11 @@ export function sizesFromProduct(product) {
   return [];
 }
 
+/** Show size UI only when sizesFromProduct returned 2+ real Size values. */
+export function shouldShowSizeSelect(sizes) {
+  return (sizes ?? []).length > 1;
+}
+
 export function categoryFromShopifyProduct(product) {
   const type = String(product?.productType || '').toLowerCase();
   const tags = (product?.tags || []).map((tag) => String(tag).toLowerCase());
@@ -65,22 +71,58 @@ export function moodTagsFromProduct(product) {
 export function toListingCard(product, featuredOrder = 0) {
   const money = product?.priceRange?.minVariantPrice;
   const sizes = sizesFromProduct(product);
+
+  const sizeValueFromSelectedOptions = (selectedOptions) =>
+    (selectedOptions ?? []).find((o) => o?.name?.toLowerCase() === 'size')?.value;
+
+  const variantNodes = product?.variants?.nodes ?? [];
+  const variants = variantNodes
+    .map((v) => {
+      const sizeValue = sizeValueFromSelectedOptions(v?.selectedOptions);
+      return {
+        id: v?.id,
+        availableForSale: v?.availableForSale !== false,
+        sizeValue: sizeValue ? String(sizeValue) : undefined,
+        priceAmount: moneyAmount(v?.price),
+        priceCurrency: moneySymbol(v?.price?.currencyCode),
+      };
+    })
+    .filter((v) => Boolean(v?.id));
+
+  const variantBySize = variants
+    .filter((v) => v.sizeValue)
+    .reduce((acc, v) => {
+      acc[v.sizeValue] = v;
+      return acc;
+    }, {});
+
+  const defaultVariant =
+    variants.find((v) => v.availableForSale) ?? variants[0] ?? null;
+  const defaultSize = defaultVariant?.sizeValue ?? sizes[0];
+
+  // Fallback: when variants aren't present (legacy queries), use the current
+  // static default variant id + min price.
+  const variantGid = defaultVariant?.id ?? product.selectedOrFirstAvailableVariant?.id;
+  const currency = defaultVariant?.priceCurrency ?? moneySymbol(money?.currencyCode);
+  const price = defaultVariant?.priceAmount ?? moneyAmount(money);
   return {
     id: product.id,
     handle: product.handle,
     listId: product.id,
     name: product.title,
-    price: moneyAmount(money),
-    currency: moneySymbol(money?.currencyCode),
+    price,
+    currency,
     money,
     image: product.featuredImage?.url,
     href: `/products/${product.handle}`,
     sizes,
-    defaultSize: sizes[0],
+    defaultSize,
     category: categoryFromShopifyProduct(product),
     tags: moodTagsFromProduct(product),
     featuredOrder,
-    variantGid: product.selectedOrFirstAvailableVariant?.id,
+    variantGid,
+    variants,
+    variantBySize,
   };
 }
 
@@ -231,6 +273,35 @@ function marqueeItemsFromMetafield(product) {
 }
 
 /**
+ * custom.daily_routine (list.metaobject_reference) → PDP benefits cards.
+ * Returns undefined when the metafield is absent.
+ */
+function benefitsFromMetafield(product) {
+  const nodes = product?.dailyRoutine?.references?.nodes ?? [];
+  if (!nodes?.length) return undefined;
+
+  const cards = nodes
+    .map((n) => {
+      const position = Number(n?.position?.value ?? 0);
+      if (!Number.isFinite(position) || position <= 0) return null;
+
+      const id = String(position).padStart(2, '0');
+      const title = n?.title?.value?.trim() ?? '';
+      const body = n?.description?.value?.trim() ?? '';
+      const image = n?.image?.reference?.image?.url ?? '';
+
+      if (!title || !body || !image) return null;
+      return {position, id, title, body, image};
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.position - b.position)
+    .map(({position: _position, ...rest}) => rest);
+
+  if (!cards.length) return undefined;
+  return {cards};
+}
+
+/**
  * custom.product_lifestyle_banner_content → PdpLifestyle shape.
  * Returns undefined (section omitted) when the metafield or any required
  * field is absent, so other handles cleanly skip the section.
@@ -297,6 +368,24 @@ export function toPdpViewModel(product) {
   const money = variant?.price ?? product.priceRange?.minVariantPrice;
   const shopifySizes = sizesFromProduct(product);
   const sizes = shopifySizes;
+
+  // Build variantBySize for ProductFormPopup (same logic as toListingCard)
+  const sizeValueFromOptions = (opts) =>
+    (opts ?? []).find((o) => o?.name?.toLowerCase() === 'size')?.value;
+  const variantNodes = product?.variants?.nodes ?? [];
+  const variantBySize = variantNodes.reduce((acc, v) => {
+    const sv = sizeValueFromOptions(v?.selectedOptions);
+    if (sv && v?.id) {
+      acc[String(sv)] = {
+        id: v.id,
+        availableForSale: v.availableForSale !== false,
+        sizeValue: String(sv),
+        priceAmount: moneyAmount(v.price),
+        priceCurrency: moneySymbol(v.price?.currencyCode),
+      };
+    }
+    return acc;
+  }, {});
   const mediaNodes = product?.media?.nodes ?? [];
   const firstMedia = mediaNodes[0];
   // Accordion bottle: last item only when there is a leftover after the gallery.
@@ -337,8 +426,22 @@ export function toPdpViewModel(product) {
     lifestyle: lifestyleFromMetafield(product) ?? overlay?.lifestyle,
     stats: overlay?.stats,
     howTo: howToFromMetafield(product) ?? overlay?.howTo,
-    benefits: overlay?.benefits,
+    benefits: (() => {
+      const shopifyBenefits = benefitsFromMetafield(product);
+
+      // Dreamer's benefits heading is intentionally hardcoded from the overlay.
+      const title =
+        DREAMER_BENEFITS_TITLE ?? overlay?.benefits?.title ?? undefined;
+      if (shopifyBenefits?.cards?.length) {
+        if (!title) return undefined;
+        return {title, cards: shopifyBenefits.cards};
+      }
+
+      return overlay?.benefits;
+    })(),
     variantGid: variant?.id,
+    variantBySize,
+    listId: product.id,
   };
 }
 
@@ -370,21 +473,34 @@ export function applySelectedVariant(pdp, variant) {
   };
 }
 
-export async function fetchAllShopProducts(storefront, {pageBy = 50} = {}) {
+/**
+ * Fetch all products from the "shop-all" Shopify collection, paginating
+ * cursor-by-cursor until exhausted. Returns the same flat catalog array
+ * that ShopPage expects — identical shape to the previous flat-products fetch.
+ *
+ * Using collection(handle:"shop-all") instead of products{} means:
+ *  - Products are scoped to the admin-curated collection (easy to manage in admin)
+ *  - Collection's manual sort order is respected as the "featured" baseline
+ *  - Client-side filter/sort/pagination in ShopPage is completely unchanged
+ *
+ * Category filters (/shop/body, /shop/face) remain client-side for now —
+ * no separate "body"/"face" collections have been created in admin yet.
+ */
+export async function fetchAllShopProducts(storefront, {pageBy = 50, collectionHandle = 'shop-all'} = {}) {
   const items = [];
   let after = null;
   let hasNextPage = true;
 
   while (hasNextPage) {
-    const {products} = await storefront.query(SHOP_CATALOG_QUERY, {
-      variables: {first: pageBy, after},
+    const {collection} = await storefront.query(SHOP_CATALOG_QUERY, {
+      variables: {handle: collectionHandle, first: pageBy, after},
     });
-    const nodes = products?.nodes ?? [];
+    const nodes = collection?.products?.nodes ?? [];
     for (const node of nodes) {
       items.push(toListingCard(node, items.length));
     }
-    hasNextPage = Boolean(products?.pageInfo?.hasNextPage);
-    after = products?.pageInfo?.endCursor ?? null;
+    hasNextPage = Boolean(collection?.products?.pageInfo?.hasNextPage);
+    after = collection?.products?.pageInfo?.endCursor ?? null;
     if (!after) hasNextPage = false;
     if (items.length > 500) break;
   }
@@ -392,52 +508,76 @@ export async function fetchAllShopProducts(storefront, {pageBy = 50} = {}) {
   return items;
 }
 
+/**
+ * Queries a Shopify Collection's products. Uses the same product fields
+ * as the previous flat products{} query — toListingCard shape is unchanged.
+ */
 export const SHOP_CATALOG_QUERY = `#graphql
   query ShopCatalog(
     $country: CountryCode
     $language: LanguageCode
+    $handle: String!
     $first: Int
     $after: String
   ) @inContext(country: $country, language: $language) {
-    products(first: $first, after: $after) {
-      nodes {
-        id
-        handle
-        title
-        productType
-        tags
-        featuredImage {
+    collection(handle: $handle) {
+      id
+      handle
+      title
+      products(first: $first, after: $after) {
+        nodes {
           id
-          url
-          altText
-          width
-          height
-        }
-        priceRange {
-          minVariantPrice {
-            amount
-            currencyCode
+          handle
+          title
+          productType
+          tags
+          featuredImage {
+            id
+            url
+            altText
+            width
+            height
           }
-        }
-        options {
-          name
-          optionValues {
+          priceRange {
+            minVariantPrice {
+              amount
+              currencyCode
+            }
+          }
+          options {
             name
+            optionValues {
+              name
+            }
+          }
+          variants(first: 20) {
+            nodes {
+              id
+              availableForSale
+              price {
+                amount
+                currencyCode
+              }
+              selectedOptions {
+                name
+                value
+              }
+            }
+          }
+          collections(first: 5) {
+            nodes {
+              handle
+              title
+            }
+          }
+          selectedOrFirstAvailableVariant {
+            id
           }
         }
-        collections(first: 5) {
-          nodes {
-            handle
-            title
-          }
+        pageInfo {
+          hasNextPage
+          endCursor
         }
-        selectedOrFirstAvailableVariant {
-          id
-        }
-      }
-      pageInfo {
-        hasNextPage
-        endCursor
       }
     }
   }
@@ -473,6 +613,20 @@ export const PRODUCT_SIMILAR_QUERY = `#graphql
           name
           optionValues {
             name
+          }
+        }
+        variants(first: 20) {
+          nodes {
+            id
+            availableForSale
+            price {
+              amount
+              currencyCode
+            }
+            selectedOptions {
+              name
+              value
+            }
           }
         }
         collections(first: 5) {

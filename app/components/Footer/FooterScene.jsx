@@ -563,7 +563,7 @@ export default function FooterScene({ showGui = false }) {
 
     let animationFrameId = null
     let elapsed = 0
-    const clock = new THREE.Clock()
+    const clock = new THREE.Timer()
 
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate)
@@ -572,6 +572,7 @@ export default function FooterScene({ showGui = false }) {
 
       // Clamp dt so a resumed loop (see the visibility gate below) or a
       // backgrounded tab doesn't jump the easing / wipe the trail on refocus.
+      clock.update()
       const dt = Math.min(clock.getDelta(), 0.05)
       elapsed += dt
       update(dt, elapsed)
@@ -581,7 +582,7 @@ export default function FooterScene({ showGui = false }) {
 
     const startLoop = () => {
       if (animationFrameId !== null) return
-      clock.getDelta() // drop the idle gap so the resumed frame's dt stays small
+      clock.update() // drop the idle gap so the resumed frame's dt stays small
       animationFrameId = requestAnimationFrame(animate)
     }
 

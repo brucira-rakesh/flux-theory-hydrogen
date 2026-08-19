@@ -5,7 +5,10 @@ import { prefersReducedMotion } from '../../hooks/useSpotlight'
 import CustomSelect from './CustomSelect'
 import { AddToCartButton } from '../AddToCartButton'
 import { useCartDrawer } from '../Cart/CartProvider'
-import { cartLinesForMerchandise } from '~/lib/storefrontCatalog'
+import {
+  cartLinesForMerchandise,
+  shouldShowSizeSelect,
+} from '~/lib/storefrontCatalog'
 
 function formatPrice(value) {
   return Number(value).toLocaleString('en-IN', {
@@ -18,17 +21,56 @@ function formatPrice(value) {
  * Size + quantity + ATC popup — portaled to body so GSAP transforms on
  * ancestors (e.g. PDP reveal wrappers) can't break position:fixed.
  */
-export default function ProductFormPopup({ product, onClose, onAdd }) {
+export default function ProductFormPopup({
+  product,
+  onClose,
+  onAdd,
+  initialSize,
+  initialQuantity,
+  onSizeChange: onSizeChangeProp,
+  onQuantityChange: onQuantityChangeProp,
+  // When provided, ATC acts as a connector — submits the hero form instead of
+  // rendering its own CartForm. Used only on PDP. PLP/similar pass nothing here.
+  heroControlsRef,
+}) {
   const titleId = useId()
   const panelRef = useRef(null)
   const backdropRef = useRef(null)
   const closeRef = useRef(null)
-  const [size, setSize] = useState(product.defaultSize ?? product.sizes?.[0] ?? '300ml')
-  const [quantity, setQuantity] = useState(1)
+  const sizes = product.sizes ?? []
+  const [size, setSize] = useState(initialSize ?? product.defaultSize ?? sizes[0] ?? '')
+  const [quantity, setQuantity] = useState(initialQuantity ?? 1)
   const { openCart } = useCartDrawer()
-  const sizes = product.sizes?.length ? product.sizes : ['300ml', '500ml']
+  const showSizeSelect = shouldShowSizeSelect(sizes)
   const sizeOptions = sizes.map((option) => ({ id: option, label: option }))
-  const lines = cartLinesForMerchandise(product.variantGid, quantity)
+
+  const handleSizeChange = (value) => {
+    setSize(value)
+    onSizeChangeProp?.(value)
+  }
+
+  const handleQuantityChange = (next) => {
+    setQuantity(next)
+    onQuantityChangeProp?.(next)
+  }
+
+  const selectedVariant = showSizeSelect
+    ? product.variantBySize?.[size] ?? null
+    : null
+
+  const selectedMerchandiseId = selectedVariant?.id ?? product.variantGid
+  const canAdd = showSizeSelect
+    ? Boolean(selectedVariant?.id) && selectedVariant.availableForSale !== false
+    : Boolean(selectedMerchandiseId)
+  const lines = canAdd
+    ? cartLinesForMerchandise(selectedMerchandiseId, quantity)
+    : []
+
+  useEffect(() => {
+    setSize(initialSize ?? product.defaultSize ?? product.sizes?.[0] ?? '')
+    setQuantity(initialQuantity ?? 1)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.listId])
 
   useEffect(() => {
     closeRef.current?.focus()
@@ -72,9 +114,17 @@ export default function ProductFormPopup({ product, onClose, onAdd }) {
   const handleAdded = () => {
     openCart()
     onAdd?.(product, { size, quantity })
-    // Defer unmount so CartForm's submit can fire; removing the form in the
-    // same click handler would cancel Hydrogen's POST to /cart.
-    window.setTimeout(() => onClose?.(), 0)
+  }
+
+  const handleSuccess = () => {
+    onClose?.()
+  }
+
+  const handleConnectorClick = () => {
+    if (!canAdd) return
+    heroControlsRef.current?.submit()
+    onAdd?.(product, { size, quantity })
+    onClose?.()
   }
 
   const ui = (
@@ -105,62 +155,80 @@ export default function ProductFormPopup({ product, onClose, onAdd }) {
 
         <div className="product-form-popup__product">
           <div className="product-form-popup__thumb">
-            <img src={product.image} alt="" draggable={false} />
+            <img src={product.image ?? product.stickyThumb} alt="" draggable={false} />
           </div>
           <div>
             <h3 id={titleId} className="product-form-popup__name">
               {product.name}
             </h3>
             <p className="product-form-popup__price">
-              {product.currency}
-              {formatPrice(product.price)}
+              {selectedVariant?.priceCurrency ?? product.currency}
+              {formatPrice(selectedVariant?.priceAmount ?? product.price)}
             </p>
           </div>
         </div>
 
-        <CustomSelect
-          className="product-form-popup__size-select"
-          label="Size"
-          ariaLabel={`Select size for ${product.name}`}
-          options={sizeOptions}
-          value={size}
-          onChange={setSize}
-        />
-
-        <div className="product-form-popup__qty" role="group" aria-label="Quantity">
-          <span className="product-form-popup__label">Quantity</span>
-          <div className="product-form-popup__qty-control">
-            <button
-              type="button"
-              className="product-form-popup__qty-btn"
-              aria-label="Decrease quantity"
-              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              disabled={quantity <= 1}
-            >
-              −
-            </button>
-            <span className="product-form-popup__qty-value" aria-live="polite">
-              {quantity}
-            </span>
-            <button
-              type="button"
-              className="product-form-popup__qty-btn"
-              aria-label="Increase quantity"
-              onClick={() => setQuantity((q) => q + 1)}
-            >
-              +
-            </button>
+        <div className="product-form-popup__controls">
+          <div className="product-form-popup__qty" role="group" aria-label="Quantity">
+            <span className="product-form-popup__label">Quantity</span>
+            <div className="product-form-popup__qty-control">
+              <button
+                type="button"
+                className="product-form-popup__qty-btn"
+                aria-label="Decrease quantity"
+                onClick={() => handleQuantityChange(Math.max(1, quantity - 1))}
+                disabled={quantity <= 1}
+              >
+                −
+              </button>
+              <span className="product-form-popup__qty-value" aria-live="polite">
+                {quantity}
+              </span>
+              <button
+                type="button"
+                className="product-form-popup__qty-btn"
+                aria-label="Increase quantity"
+                onClick={() => handleQuantityChange(quantity + 1)}
+              >
+                +
+              </button>
+            </div>
           </div>
+
+          {showSizeSelect ? (
+            <CustomSelect
+              className="product-form-popup__size-select"
+              label="Size"
+              ariaLabel={`Select size for ${product.name}`}
+              options={sizeOptions}
+              value={size}
+              onChange={handleSizeChange}
+            />
+          ) : null}
         </div>
 
-        <AddToCartButton
-          className="product-form-popup__atc"
-          lines={lines}
-          disabled={!lines.length}
-          onClick={handleAdded}
-        >
-          Add to Cart
-        </AddToCartButton>
+        {heroControlsRef ? (
+          // Connector mode (PDP): submits the hero's CartForm, no form here.
+          <button
+            type="button"
+            className="product-form-popup__atc"
+            disabled={!canAdd}
+            onClick={handleConnectorClick}
+          >
+            Add to Cart
+          </button>
+        ) : (
+          // Standalone mode (PLP / similar): own CartForm.
+          <AddToCartButton
+            className="product-form-popup__atc"
+            lines={lines}
+            disabled={!lines.length}
+            onClick={handleAdded}
+            onSuccess={handleSuccess}
+          >
+            Add to Cart
+          </AddToCartButton>
+        )}
       </div>
     </div>
   )

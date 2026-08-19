@@ -117,6 +117,22 @@ export function HeaderSearch({toggle, toggleClassName = '', onOpenChange}) {
           </>
         )}
       </SearchFormPredictive>
+
+      {/* Mobile-only close button — rendered AFTER the form so it sits on the
+          right of the input. Hidden on desktop via CSS; hidden when closed via
+          the HTML hidden attribute. */}
+      <button
+        type="button"
+        className={`header-search__close ${toggleClassName}`}
+        aria-label="Close search"
+        hidden={!open}
+        onClick={() => setOpened(false)}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M6 6L18 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          <path d="M18 6L6 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      </button>
     </div>
   );
 }

@@ -1,29 +1,56 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useRouteLoaderData } from 'react-router-dom'
 import { IconBag, IconClose, IconMenu, IconSearch, IconUser, Logo } from './icons'
 import { FACE_FILTER_ENABLED } from '../../data/shop'
 import { LoggedInState } from './LoggedInState'
 import { HeaderSearch } from './HeaderSearch'
 
-const NAV_LINKS = [
+const FALLBACK_NAV_LINKS = [
   { id: 'shop', label: 'Shop All', to: '/shop' },
   { id: 'body', label: 'Body', to: '/shop/body' },
-  // FACE_FILTER: re-enable when Clarity/Pulse/Ember/Muse exist in Shopify admin.
   ...(FACE_FILTER_ENABLED ? [{ id: 'face', label: 'Face', to: '/shop/face' }] : []),
   { id: 'brand', label: 'The Brand', href: '#brand' },
   { id: 'about', label: 'About Us', href: '#about' },
 ]
 
+function menuItemToNavLink(item) {
+  let to = null
+  let href = null
+  try {
+    const parsed = new URL(item.url)
+    const isInternal =
+      parsed.hostname.endsWith('.myshopify.com') ||
+      parsed.hostname === window?.location?.hostname
+    if (isInternal) {
+      to = parsed.pathname + parsed.search + parsed.hash
+    } else {
+      href = item.url
+    }
+  } catch {
+    if (item.url.startsWith('#') || item.url.startsWith('/')) {
+      to = item.url.startsWith('#') ? undefined : item.url
+      href = item.url.startsWith('#') ? item.url : undefined
+    }
+  }
+  return { id: item.id, label: item.title, ...(to ? { to } : {}), ...(href ? { href } : {}) }
+}
+
+function useNavLinks(rootData) {
+  const menuItems = rootData?.header?.menu?.items
+  if (menuItems?.length) return menuItems.map(menuItemToNavLink)
+  return FALLBACK_NAV_LINKS
+}
+
 const ICON_BTN =
   'grid size-6 place-items-center appearance-none border-0 bg-transparent p-0 text-inherit ' +
   'cursor-pointer transition-opacity duration-200 hover:opacity-75 focus-visible:opacity-75'
 
-function resolveActiveId(pathname, hash) {
+function resolveActiveId(pathname, hash, links) {
   if (pathname.startsWith('/shop/body')) return 'body'
   if (pathname.startsWith('/shop/face')) return 'face'
   if (pathname === '/shop') return 'shop'
   const id = (hash || '').replace(/^#/, '')
-  if (id && NAV_LINKS.some((link) => link.id === id)) return id
+  if (id && links.some((link) => link.id === id)) return id
   return null
 }
 
@@ -44,15 +71,18 @@ function resolveActiveId(pathname, hash) {
  * instead of sitting on screen before the intro has played.
  */
 export default function HeaderV2({ logoTo = '/', mode = 'light', visible = true }) {
+  const rootData = useRouteLoaderData('root')
+  const navLinks = useNavLinks(rootData)
   const location = useLocation()
   const [open, setOpen] = useState(false)
   const [searching, setSearching] = useState(false)
   const [hidden, setHidden] = useState(false)
+  const [pinned, setPinned] = useState(false)
   const drawerId = useId()
   const closeBtnRef = useRef(null)
   const menuBtnRef = useRef(null)
   const lastScrollY = useRef(0)
-  const activeId = resolveActiveId(location.pathname, location.hash)
+  const activeId = resolveActiveId(location.pathname, location.hash, navLinks)
   const isGlass = mode === 'light'
 
   useEffect(() => {
@@ -93,6 +123,8 @@ export default function HeaderV2({ logoTo = '/', mode = 'light', visible = true 
       const delta = y - lastScrollY.current
       const nearTop = y < 72
 
+      setPinned(!nearTop)
+
       if (nearTop) setHidden(false)
       else if (delta > 6) setHidden(true)
       else if (delta < -6) setHidden(false)
@@ -120,28 +152,38 @@ export default function HeaderV2({ logoTo = '/', mode = 'light', visible = true 
   return (
     <>
       <header
-        className={`fixed inset-x-3 top-3 z-50 transition-[translate,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform sm:inset-x-6 sm:top-6 ${
+        className={`fixed z-50 transition-[translate,opacity,inset] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${
+          pinned
+            ? 'inset-x-0 top-0'
+            : 'inset-x-3 top-3 sm:inset-x-6 sm:top-6'
+        } ${
           tucked
             ? '-translate-y-[calc(100%+24px)] opacity-0 pointer-events-none'
             : 'translate-y-0 opacity-100'
         }`}
       >
-        <div className="flex items-center justify-between gap-4">
+        <div className={`flex items-center justify-between gap-4 transition-[padding,background,border-color,backdrop-filter] duration-300 ${
+          pinned
+            ? 'border-b border-black/[0.06] bg-white px-4 py-3 text-black sm:px-6'
+            : ''
+        }`}>
           <Link
             to={logoTo}
             aria-label="Flux Theory home"
             className={`grid shrink-0 place-items-center leading-none no-underline transition-colors duration-300 ${
-              isGlass ? 'text-white' : 'text-black'
+              pinned ? 'text-black' : isGlass ? 'text-white' : 'text-black'
             }`}
           >
             <Logo className="h-[35px] w-9 sm:h-11 sm:w-[45px]" />
           </Link>
 
           <div
-            className={`flex items-center justify-end gap-6 px-4 py-2.5 transition-colors duration-300 sm:gap-10 sm:px-6 sm:py-4 ${
-              isGlass
-                ? 'bg-white/[0.13] text-white backdrop-blur-[12.85px]'
-                : 'border-b border-black/[0.06] bg-white text-black'
+            className={`flex items-center justify-end gap-6 transition-[padding,background,backdrop-filter,color] duration-300 sm:gap-10 ${
+              pinned
+                ? 'bg-transparent px-0 py-0 text-black backdrop-blur-none'
+                : isGlass
+                  ? 'bg-white/[0.13] px-4 py-2.5 text-white backdrop-blur-[12.85px] sm:px-6 sm:py-4'
+                  : 'border-b border-black/[0.06] bg-white px-4 py-2.5 text-black sm:px-6 sm:py-4'
             }`}
           >
             <nav
@@ -152,7 +194,7 @@ export default function HeaderV2({ logoTo = '/', mode = 'light', visible = true 
                   : 'max-w-[40rem] gap-8 opacity-100'
               }`}
             >
-              {NAV_LINKS.map((link) => {
+              {navLinks.map((link) => {
                 const isActive = link.id === activeId
                 const linkClassName = `inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-normal uppercase text-inherit no-underline transition-opacity duration-200 [font-family:var(--font-body)] ${
                   isActive ? 'opacity-100' : 'opacity-60 hover:opacity-100 focus-visible:opacity-100'
@@ -257,7 +299,7 @@ export default function HeaderV2({ logoTo = '/', mode = 'light', visible = true 
           </div>
 
           <ul className="m-0 flex list-none flex-col gap-1 p-0">
-            {NAV_LINKS.map((link) => {
+            {navLinks.map((link) => {
               const linkClassName =
                 'flex items-center justify-between border-b border-white/10 py-3.5 text-2xl font-semibold uppercase ' +
                 'tracking-wide text-white no-underline transition-opacity duration-200 [font-family:var(--font-title)] hover:opacity-70 sm:text-3xl'

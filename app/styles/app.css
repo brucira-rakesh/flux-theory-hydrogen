@@ -6,6 +6,9 @@
   --header-height: 64px;
   --color-dark: #000;
   --color-light: #fff;
+
+  /* Shared horizontal page inset — uniform at every breakpoint. */
+  --page-inset: 16px;
 }
 
 img {
@@ -643,3 +646,4 @@ button.reset:hover:not(:has(> *)) {
   gap: 0.75rem;
   flex-wrap: wrap;
 }
+

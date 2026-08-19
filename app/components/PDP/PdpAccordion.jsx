@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import iconFacebook from '../../assets/pdp/icon-facebook.svg'
 import iconInstagram from '../../assets/pdp/icon-instagram.svg'
 import iconTwitter from '../../assets/pdp/icon-twitter.svg'
@@ -49,13 +49,67 @@ function AccordionItem({ item, open, onToggle }) {
   )
 }
 
-export default function PdpAccordion({ items, bottleSrc, bottleAlt }) {
+/** Brief "Link copied!" toast anchored near the Instagram icon. */
+function CopyToast({ visible }) {
+  return (
+    <span
+      className={`pdp-details__copy-toast${visible ? ' is-visible' : ''}`}
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      Link copied!
+    </span>
+  )
+}
+
+export default function PdpAccordion({ items, bottleSrc, bottleAlt, productName = '' }) {
   const [openId, setOpenId] = useState(
     () => items.find((item) => item.defaultOpen)?.id ?? null,
   )
+  const [toastVisible, setToastVisible] = useState(false)
+  const toastTimer = useRef(null)
+
+  useEffect(() => () => clearTimeout(toastTimer.current), [])
 
   const onToggle = (id) => {
     setOpenId((current) => (current === id ? null : id))
+  }
+
+  const shareUrl = useCallback(() => {
+    if (typeof window !== 'undefined') return window.location.href
+    return ''
+  }, [])
+
+  const openPopup = (url) => {
+    window.open(url, '_blank', 'noopener,noreferrer,width=600,height=480')
+  }
+
+  const handleFacebook = (e) => {
+    e.preventDefault()
+    openPopup(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl())}`)
+  }
+
+  const handleX = (e) => {
+    e.preventDefault()
+    const text = productName ? `Check out ${productName}` : ''
+    openPopup(
+      `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl())}${text ? `&text=${encodeURIComponent(text)}` : ''}`
+    )
+  }
+
+  const handleInstagram = (e) => {
+    e.preventDefault()
+    if (typeof navigator === 'undefined') return
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(shareUrl()).then(() => {
+        setToastVisible(true)
+        clearTimeout(toastTimer.current)
+        toastTimer.current = setTimeout(() => setToastVisible(false), 2200)
+      }).catch(() => {
+        // Clipboard write failed (permissions denied etc.) — fail silently
+      })
+    }
+    // navigator.clipboard unavailable: no-op, no error thrown
   }
 
   return (
@@ -73,13 +127,33 @@ export default function PdpAccordion({ items, bottleSrc, bottleAlt }) {
         <div className="pdp-details__footer">
           <div className="pdp-details__share">
             <span>Share:</span>
-            <a href="#" aria-label="Share on Facebook" className="pdp-details__social">
+            <a
+              href="https://facebook.com"
+              aria-label="Share on Facebook"
+              className="pdp-details__social"
+              onClick={handleFacebook}
+              rel="noopener noreferrer"
+            >
               <img src={iconFacebook} alt="" width={16} height={16} />
             </a>
-            <a href="#" aria-label="Share on Instagram" className="pdp-details__social">
-              <img src={iconInstagram} alt="" width={16} height={16} />
-            </a>
-            <a href="#" aria-label="Share on X" className="pdp-details__social">
+            <span className="pdp-details__social-wrap">
+              <a
+                href="#"
+                aria-label="Copy link to share on Instagram"
+                className="pdp-details__social"
+                onClick={handleInstagram}
+              >
+                <img src={iconInstagram} alt="" width={16} height={16} />
+              </a>
+              <CopyToast visible={toastVisible} />
+            </span>
+            <a
+              href="https://x.com"
+              aria-label="Share on X"
+              className="pdp-details__social"
+              onClick={handleX}
+              rel="noopener noreferrer"
+            >
               <img src={iconTwitter} alt="" width={14} height={14} />
             </a>
           </div>

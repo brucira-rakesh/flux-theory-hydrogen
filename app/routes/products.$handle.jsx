@@ -254,6 +254,20 @@ const PRODUCT_FRAGMENT = `#graphql
     adjacentVariants (selectedOptions: $selectedOptions) {
       ...ProductVariant
     }
+    variants(first: 10) {
+      nodes {
+        id
+        availableForSale
+        price {
+          amount
+          currencyCode
+        }
+        selectedOptions {
+          name
+          value
+        }
+      }
+    }
     seo {
       description
       title
@@ -309,6 +323,25 @@ const PRODUCT_FRAGMENT = `#graphql
         nodes {
           ... on Metaobject {
             feature: field(key: "feature") { value }
+          }
+        }
+      }
+    }
+    dailyRoutine: metafield(namespace: "custom", key: "daily_routine") {
+      type
+      references(first: 10) {
+        nodes {
+          ... on Metaobject {
+            position: field(key: "position") { value }
+            title: field(key: "title") { value }
+            description: field(key: "description") { value }
+            image: field(key: "image") {
+              reference {
+                ... on MediaImage {
+                  image { url }
+                }
+              }
+            }
           }
         }
       }

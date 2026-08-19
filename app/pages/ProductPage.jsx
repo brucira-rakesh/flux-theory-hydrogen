@@ -29,7 +29,32 @@ export default function ProductPage({
   const [quantity, setQuantity] = useState(1)
   const [stickyVisible, setStickyVisible] = useState(false)
   const formRef = useRef(null)
+  const heroControlsRef = useRef(null)
   const pageRef = useRef(null)
+
+  // Measure the floating header's bottom edge and expose it as --pdp-header-h
+  // so the mobile first-fold min-height calc stays accurate if the header changes.
+  useEffect(() => {
+    const page = pageRef.current
+    if (!page) return
+
+    const updateHeaderH = () => {
+      const header = document.querySelector('.ps-header')
+      if (!header) return
+      const rect = header.getBoundingClientRect()
+      // bottom edge of the header pill relative to the viewport top
+      const bottom = Math.round(rect.top + rect.height)
+      page.style.setProperty('--pdp-header-h', `${bottom}px`)
+    }
+
+    updateHeaderH()
+
+    const header = document.querySelector('.ps-header')
+    if (!header || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(updateHeaderH)
+    ro.observe(header)
+    return () => ro.disconnect()
+  }, [])
 
   usePdpMotion(pageRef, { enabled: Boolean(product), replayKey: product?.slug })
 
@@ -83,6 +108,7 @@ export default function ProductPage({
             onSizeChange={onSizeChange}
             onQuantityChange={setQuantity}
             formRef={formRef}
+            heroControlsRef={heroControlsRef}
           />
         </div>
         <div data-pdp-reveal>
@@ -97,6 +123,7 @@ export default function ProductPage({
               items={product.accordion}
               bottleSrc={product.detailBottle}
               bottleAlt={`${product.name} bottle`}
+              productName={product.name}
             />
           </div>
         ) : null}
@@ -137,6 +164,7 @@ export default function ProductPage({
         onSizeChange={onSizeChange}
         onQuantityChange={setQuantity}
         visible={stickyVisible}
+        heroControlsRef={heroControlsRef}
       />
 
       <Footer />

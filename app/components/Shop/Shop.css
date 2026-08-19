@@ -16,9 +16,9 @@
 }
 
 .shop-main {
-  width: min(100%, 1440px);
+  width: min(100%, 1920px);
   margin: 0 auto;
-  padding: 7rem 1.25rem 4rem;
+  padding: 120px 22px 4rem;
   box-sizing: border-box;
 }
 
@@ -208,7 +208,6 @@ html[data-header-hidden='true'] .shop-toolbar {
   text-decoration: none;
   color: inherit;
   background: var(--shop-panel, var(--pdp-panel, #eff2f4));
-  border-radius: 12px;
   overflow: hidden;
   min-height: 426px;
   will-change: transform, opacity;
@@ -601,7 +600,6 @@ a.product-card__name:focus-visible {
   padding: 1.35rem 1.25rem 1.25rem;
   background: #fff;
   color: var(--shop-ink, #000);
-  border-radius: 12px;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.18);
   box-sizing: border-box;
   will-change: transform, opacity;
@@ -639,7 +637,6 @@ a.product-card__name:focus-visible {
   display: grid;
   place-items: center;
   background: var(--shop-panel, #eff2f4);
-  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -667,14 +664,33 @@ a.product-card__name:focus-visible {
   font-weight: 500;
 }
 
+/* Quantity (left) + size selector (right) side by side */
+.product-form-popup__controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.product-form-popup__qty {
+  flex-shrink: 0;
+}
+
 .product-form-popup__size-select {
-  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.product-form-popup__size-select .custom-select__trigger {
+  width: 100%;
 }
 
 .product-form-popup__size-select .custom-select__menu {
   z-index: 90;
   width: 100%;
   max-width: none;
+  /* Open upward — popup is vertically centered so downward clips viewport bottom */
+  top: auto;
+  bottom: calc(100% + 6px);
 }
 
 .product-form-popup__label {
@@ -685,10 +701,6 @@ a.product-card__name:focus-visible {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(0, 0, 0, 0.55);
-}
-
-.product-form-popup__qty {
-  display: block;
 }
 
 .product-form-popup__qty-control {
@@ -762,26 +774,39 @@ a.product-card__name:focus-visible {
   }
 
   .shop-toolbar__count {
-    width: 100%;
-    margin-right: 0;
+    flex-shrink: 0;
   }
 
   .shop-toolbar__actions {
-    width: 100%;
-    margin-left: 0;
     flex-wrap: nowrap;
+    margin-left: auto;
   }
 
   .shop-toolbar__filter {
+    flex: 0 0 100px;
+    width: 100px;
+    min-width: 0;
+  }
+
+  /* Hide "Sort by" label — value in the dropdown makes it self-evident. */
+  .custom-select--toolbar .custom-select__label {
+    display: none;
+  }
+
+  /* Let the sort trigger grow to fill remaining space. */
+  .custom-select--toolbar {
     flex: 1;
-    width: auto;
+  }
+
+  .custom-select--toolbar .custom-select__trigger {
+    width: 100%;
     min-width: 0;
   }
 }
 
 @media (max-width: 600px) {
   .shop-main {
-    padding: 6.5rem 1rem 3rem;
+    padding: 100px 16px 3rem;
   }
 
   .shop-toolbar {
@@ -792,8 +817,8 @@ a.product-card__name:focus-visible {
   }
 
   .shop-grid {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.25rem;
   }
 
   .product-card {
@@ -807,7 +832,6 @@ a.product-card__name:focus-visible {
 
   .product-form-popup__panel {
     width: 100%;
-    border-radius: 16px 16px 0 0;
     padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
   }
 }

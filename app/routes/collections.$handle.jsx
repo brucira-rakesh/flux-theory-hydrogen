@@ -12,9 +12,36 @@ export const meta = ({data}) => {
 };
 
 /**
+ * Maps Shopify collection handles to their branded /shop equivalents.
+ * "shop-all" and "all" both go to /shop (the root branded shop page).
+ * Future category collections (e.g. "body", "face") map to /shop/:handle,
+ * which the branded ShopPage already supports via URL params.
+ *
+ * Uses 301 (permanent) because the canonical URL is definitively /shop —
+ * search engines should index /shop, not /collections/shop-all.
+ */
+function brandedShopRedirect(handle) {
+  if (!handle) return null;
+  if (handle === 'shop-all' || handle === 'all') return '/shop';
+  // Generic: /collections/body → /shop/body, /collections/face → /shop/face, etc.
+  // Only redirect to known branded shop sub-routes to avoid swallowing unrelated
+  // collections (e.g. "frontpage", "summer-sale") that should render normally.
+  const SHOP_SUB_ROUTES = new Set(['body', 'face']);
+  if (SHOP_SUB_ROUTES.has(handle)) return `/shop/${handle}`;
+  return null;
+}
+
+/**
  * @param {Route.LoaderArgs} args
  */
 export async function loader(args) {
+  const {handle} = args.params;
+
+  // Redirect branded collection handles to their /shop equivalents before
+  // making any Storefront API calls — zero overhead for the common case.
+  const shopUrl = brandedShopRedirect(handle);
+  if (shopUrl) throw redirect(shopUrl, 301);
+
   // Start fetching non-critical data without blocking time to first byte
   const deferredData = loadDeferredData(args);
 

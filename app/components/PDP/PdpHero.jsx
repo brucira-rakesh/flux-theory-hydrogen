@@ -10,6 +10,7 @@ export default function PdpHero({
   onSizeChange,
   onQuantityChange,
   formRef,
+  heroControlsRef,
 }) {
   const galleryRef = useRef(null)
   const dragRef = useRef({
@@ -121,6 +122,11 @@ export default function PdpHero({
         ))}
       </div>
 
+      {/* Flexible spacer: absorbs any surplus height from the 90vh min-height
+          constraint, keeping the gallery at its natural aspect-ratio size and
+          pinning the info block flush to the bottom of the fold. */}
+      <div className="pdp-hero__spacer" aria-hidden="true" />
+
       <div ref={formRef} className="pdp-hero__info">
         <div className="pdp-hero__copy">
           <h1 className="pdp-hero__title">{product.name}</h1>
@@ -128,6 +134,7 @@ export default function PdpHero({
         </div>
 
         <PdpControls
+          ref={heroControlsRef}
           sizes={product.sizes}
           size={size}
           onSizeChange={onSizeChange}

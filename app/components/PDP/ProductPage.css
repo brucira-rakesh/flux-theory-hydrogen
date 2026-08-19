@@ -29,7 +29,7 @@
 .pdp-main {
   width: min(100%, calc(1440 * var(--pdp-fluid) / 1440));
   margin: 0 auto;
-  padding: calc(115 * var(--pdp-fluid) / 1440) calc(22 * var(--pdp-fluid) / 1440) 0;
+  padding: 120px 22px 0;
   box-sizing: border-box;
 }
 
@@ -513,9 +513,39 @@
   font-weight: 500;
 }
 
-.pdp-details__share > span {
+.pdp-details__share>span {
   text-transform: uppercase;
   opacity: 0.6;
+}
+
+.pdp-details__social-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+/* "Link copied!" toast anchored above the Instagram icon */
+.pdp-details__copy-toast {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  white-space: nowrap;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: #000;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.pdp-details__copy-toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 .pdp-details__social {
@@ -853,7 +883,6 @@
   margin: 0;
   width: calc(622 * var(--pdp-fluid) / 1440);
   max-width: 100%;
-  border-radius: 16px;
   overflow: hidden;
   aspect-ratio: 622 / 535;
   background: #c45a3a;
@@ -966,6 +995,8 @@
   text-transform: uppercase;
   line-height: 1.1;
   opacity: 0.9;
+  align-self: center;
+  text-align: center;
 }
 
 .pdp-benefits__title span {
@@ -1094,7 +1125,6 @@
   width: calc(317.971 * var(--pdp-fluid) / 1440);
   min-height: calc(426.316 * var(--pdp-fluid) / 1440);
   height: calc(426.316 * var(--pdp-fluid) / 1440);
-  border-radius: 12px;
 }
 
 /* Sticky ATC bar — fixed full-bleed; slides up when hero form leaves viewport.
@@ -1208,6 +1238,18 @@
   flex-shrink: 0;
 }
 
+.pdp-sticky__controls .pdp-controls__cart-row form,
+.pdp-sticky__controls .pdp-controls__atc {
+  flex: 1 1 0;
+  width: 100%;
+  max-width: none;
+}
+
+/* Mobile-only ATC button — hidden on desktop, shown at ≤640px */
+.pdp-sticky__mobile-atc {
+  display: none;
+}
+
 @media (max-width: 960px) {
   .pdp-hero__info {
     flex-direction: column;
@@ -1277,7 +1319,7 @@
 
   .pdp-stats {
     min-height: 0;
-    padding: 80px 24px 64px;
+    padding: 80px 16px 64px;
   }
 
   .pdp-stats__grid {
@@ -1314,6 +1356,15 @@
 
   .pdp-benefits__grid {
     padding-right: 22px;
+    --pdp-benefits-per-view: 1.2;
+    --pdp-benefits-gap: 16px;
+  }
+
+  .pdp-benefits__card {
+    flex: 0 0 calc((100% - (var(--pdp-benefits-per-view) - 1) * var(--pdp-benefits-gap)) / var(--pdp-benefits-per-view));
+    width: auto;
+    height: auto;
+    aspect-ratio: 1 / 1;
   }
 
   .pdp-benefits__name {
@@ -1327,7 +1378,7 @@
     height: auto;
     max-width: none;
     max-height: none;
-    aspect-ratio: 513 / 524;
+    aspect-ratio: 3 / 4;
   }
 
   .pdp-gallery__item img,
@@ -1347,9 +1398,7 @@
     position: relative;
     inset: auto;
     width: auto;
-    height: 86.4%;
-    max-width: 58.7%;
-    max-height: 86.4%;
+    height: auto;
     object-fit: contain;
   }
 
@@ -1389,16 +1438,93 @@
 }
 
 @media (max-width: 640px) {
+
+  /* Sticky bar: swap full controls for a single ATC button */
+  .pdp-sticky {
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .pdp-sticky__controls {
+    display: none;
+  }
+
+  .pdp-acc__trigger {
+    padding: calc(16 * var(--pdp-fluid) / 1440) 0;
+  }
+
+  .pdp-acc__panel-inner {
+    padding: 0;
+  }
+
+  .pdp-sticky__mobile-atc {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    height: 44px;
+    padding: 0 1.25rem;
+    border: 0;
+    background: #000;
+    color: #fff;
+    font-family: var(--pdp-display, 'Oswald', sans-serif);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .pdp-sticky__mobile-atc:hover,
+  .pdp-sticky__mobile-atc:focus-visible {
+    background: #222;
+  }
+
+  /* On mobile, thumb is smaller; blurb already hidden at 960px */
+  .pdp-sticky__product {
+    flex: 1;
+    min-width: 0;
+  }
+
   .pdp-main {
-    padding-top: 5.5rem;
+    padding-top: 100px;
     padding-left: 16px;
     padding-right: 16px;
   }
 
+  /* First-fold: hero fills 90vh minus the floating header's bottom edge.
+     90vh (not 100vh) intentionally accounts for browser chrome (address bar).
+     Natural content flow — no justify-content — gallery stays at its
+     aspect-ratio height, info follows directly below. */
+  .pdp-hero {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(90vh - var(--pdp-header-h, 100px));
+  }
+
+  /* Gallery must NOT flex-grow — it keeps its aspect-ratio-driven height.
+     Growing the gallery causes its items to reflow on scroll (zoom glitch). */
   .pdp-gallery {
+    flex-shrink: 0;
     /* Mobile: align gallery breakout to .pdp-main's 16px side padding. */
     --pdp-gallery-bleed: 16px;
     --pdp-gallery-per-view: 1.15;
+  }
+
+  /* Spacer grows to fill any vertical surplus from the 90vh min-height,
+     placing extra whitespace between gallery and info rather than trailing
+     at the bottom. Gallery keeps its natural aspect-ratio size. */
+  .pdp-hero__spacer {
+    flex: 1 0 0;
+    min-height: 0;
+  }
+
+  /* Info block stays at natural height, never compressed. */
+  .pdp-hero__info {
+    flex-shrink: 0;
   }
 
   .pdp-hero__title {
@@ -1447,8 +1573,19 @@
   }
 
   .pdp-stats__grid {
-    grid-template-columns: 1fr;
-    max-width: 360px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 100%;
+    gap: 8px;
+  }
+
+  .pdp-stats__value {
+    font-size: 32px;
+    letter-spacing: -1.6px;
+  }
+
+  .pdp-stats__text {
+    max-width: 100%;
+    font-size: 11px;
   }
 
   .pdp-benefits {
@@ -1458,6 +1595,18 @@
 
   .pdp-benefits__grid {
     padding-right: 16px;
+    /* 1.2 cards visible: same per-view approach as .pdp-gallery-per-view */
+    --pdp-benefits-per-view: 1.2;
+    --pdp-benefits-gap: 16px;
+  }
+
+  .pdp-benefits__card {
+    /* Card width mirrors gallery formula: fill per-view slots with gap between them */
+    flex: 0 0 calc((100% - (var(--pdp-benefits-per-view) - 1) * var(--pdp-benefits-gap)) / var(--pdp-benefits-per-view));
+    width: auto;
+    height: auto;
+    /* Keep square-ish aspect ratio (original is ~1:1) */
+    aspect-ratio: 1 / 1;
   }
 
   .pdp-benefits__name {
@@ -1466,8 +1615,8 @@
   }
 
   .pdp-similar__rail {
-    margin: 0 -16px;
-    padding: 0 16px;
+    margin: 0 -16px 0 0;
+    padding: 0 16px 0 0;
   }
 
   .pdp-sticky__thumb {

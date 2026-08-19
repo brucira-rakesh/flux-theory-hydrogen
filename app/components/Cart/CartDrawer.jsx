@@ -108,7 +108,7 @@ function CartDrawerPanel({cart: originalCart, open, onClose}) {
   const subtotal = cart?.cost?.subtotalAmount;
 
   return (
-    <div className={`cart-drawer${open ? ' is-open' : ''}`} aria-hidden={!open}>
+    <div className={`cart-drawer${open ? ' is-open' : ''}`} inert={!open ? true : undefined}>
       <button
         ref={backdropRef}
         type="button"

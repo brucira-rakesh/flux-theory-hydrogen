@@ -9,7 +9,7 @@ import {
   useRouteLoaderData,
 } from 'react-router';
 import favicon from '~/assets/favicon.svg';
-import {FOOTER_QUERY, HEADER_QUERY} from '~/lib/fragments';
+import {FOOTER_QUERY, HEADER_QUERY, MENU_QUERY} from '~/lib/fragments';
 import resetStyles from '~/styles/reset.css?url';
 import appStyles from '~/styles/app.css?url';
 import tailwindCss from './styles/tailwind.css?url';
@@ -104,9 +104,21 @@ export async function loader(args) {
   const pathname = new URL(args.request.url).pathname;
 
   if (isBrandedPath(pathname)) {
+    const {storefront} = args.context;
+    // Fetch only the nav menu — deliberately excludes the Shop fragment,
+    // footer, cart-line details, and customer data that the full loader
+    // fetches. Adds exactly +1 Storefront API call vs the previous
+    // header:null short-circuit, with CacheLong so it's free on repeat loads.
+    const navMenu = await storefront
+      .query(MENU_QUERY, {
+        cache: storefront.CacheLong(),
+        variables: {menuHandle: 'main-menu'},
+      })
+      .catch(() => null);
+
     return {
       branded: true,
-      header: null,
+      header: navMenu?.menu ? {menu: navMenu.menu} : null,
       footer: null,
       // Shop + PDP cart drawer needs the Hydrogen cart even without PageLayout.
       cart: args.context.cart.get(),

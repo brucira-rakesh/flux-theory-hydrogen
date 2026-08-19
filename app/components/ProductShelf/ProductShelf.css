@@ -201,6 +201,7 @@ main[data-focus-active] .ps-header.is-pinned {
   text-decoration: none;
   flex-shrink: 0;
   pointer-events: auto;
+  transition: opacity 0.2s ease;
 }
 
 .ps-logo__img {
@@ -246,6 +247,41 @@ main[data-focus-active] .ps-header.is-pinned {
   color: var(--ps-nav-fg);
 }
 
+/* PDP only — tighter 14px side inset when floating (unpinned). */
+.ps-header.is-on-pdp:not(.is-pinned) {
+  left: 14px;
+  right: 14px;
+}
+
+.ps-header.is-on-light .ps-header__bar {
+  padding-left: var(--page-inset, 22px);
+  padding-right: var(--page-inset, 22px);
+  background: var(--pdp-ink, #000);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  pointer-events: auto;
+}
+
+/* Both pinned and unpinned: black bar carries the background — cluster clears
+   its own glass so there's no double-layer pill sitting on the black bar. */
+.ps-header.is-on-light .ps-header__cluster {
+  --ps-nav-fg: #fff;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: var(--ps-nav-fg);
+}
+
+/* Logo and icon SVGs both have white artwork — keep as-is on the black bar.
+   The triple-class selectors beat the generic is-pinned invert(1) rules. */
+.ps-header.is-on-light .ps-logo__img,
+.ps-header.is-on-light.is-pinned .ps-logo__img,
+.ps-header.is-on-light .ps-header__icon img,
+.ps-header.is-on-light.is-pinned .ps-header__icon img {
+  filter: none;
+}
+
 .ps-header__nav {
   display: flex;
   align-items: center;
@@ -265,6 +301,56 @@ main[data-focus-active] .ps-header.is-pinned {
   gap: 0;
   opacity: 0;
   pointer-events: none;
+}
+
+/* Mobile search takeover: hide logo + all action icon-btns except the
+   HeaderSearch widget itself. Scoped to ≤640px so desktop is unchanged.
+   Root fix: the cluster and actions are flex:0 1 auto by default — they
+   only size to content width. When searching, promote cluster+actions to
+   flex:1 so they fill the full bar (minus logo), giving header-search the
+   complete available width to expand into. */
+@media (max-width: 640px) {
+  /* display:none removes the logo from flex flow entirely so it stops
+     reserving its width + the bar gap. opacity:0 alone keeps it in flow. */
+  .ps-header.is-searching .ps-logo {
+    display: none;
+  }
+
+  /* Remove the bar's gap too — with logo gone the gap slot also disappears,
+     letting the cluster fill the full bar inner width. */
+  .ps-header.is-searching .ps-header__bar {
+    gap: 0;
+  }
+
+  /* Promote cluster and actions to fill the full bar.
+     Zero out the gap so the 3 collapsed zero-width icon buttons don't each
+     claim a 16px gap slot (3 × 16px = 48px of dead space). */
+  .ps-header.is-searching .ps-header__cluster,
+  .ps-header.is-searching .ps-header__actions {
+    flex: 1;
+    min-width: 0;
+    gap: 0;
+  }
+
+  /* Collapse sibling icon buttons so they don't consume layout space.
+     min-width must also be zeroed — ps-header__icon-btn sets min-width:24px
+     which otherwise prevents collapse to zero. */
+  .ps-header.is-searching .ps-header__actions > .ps-header__icon-btn {
+    flex: 0 0 0;
+    width: 0;
+    min-width: 0;
+    padding: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, flex-basis 0.28s cubic-bezier(0.22, 1, 0.36, 1), width 0.28s cubic-bezier(0.22, 1, 0.36, 1), min-width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* header-search fills the remaining actions width */
+  .ps-header.is-searching .ps-header__actions > .header-search {
+    flex: 1;
+    min-width: 0;
+  }
 }
 
 .ps-header__nav-link {
@@ -362,17 +448,6 @@ main[data-focus-active] .ps-header.is-pinned {
   filter: invert(1);
 }
 
-/* Shop / PDP — floating cluster needs dark ink on denser glass (white pages). */
-.ps-header.is-on-light:not(.is-pinned) .ps-header__cluster {
-  --ps-nav-fg: #000;
-  background: var(--ps-chrome-bg);
-  color: var(--ps-nav-fg);
-}
-
-.ps-header.is-on-light:not(.is-pinned) .ps-logo__img,
-.ps-header.is-on-light:not(.is-pinned) .ps-header__icon img {
-  filter: invert(1);
-}
 
 .ps-header__icon-btn:hover,
 .ps-header__icon-btn:focus-visible {
@@ -443,7 +518,7 @@ main[data-focus-active] .ps-header.is-pinned {
 
   .ps-header__cluster {
     gap: 16px;
-    padding: 10px 14px;
+    padding: 10px 0;
   }
 
   .ps-header.is-pinned .ps-header__cluster {
@@ -458,6 +533,28 @@ main[data-focus-active] .ps-header.is-pinned {
     width: 36px;
     height: 35px;
   }
+}
+
+/* Hide the header bar while the drawer is open.
+   Uses the same 0.35s easing as the drawer slide-in so they feel synchronised.
+   `is-drawer-open` is added by SiteHeader when `open === true`.
+   pointer-events: none on the header alone is insufficient — some descendants
+   (interactive elements like buttons) have UA-stylesheet pointer-events: auto
+   that overrides the inherited value. The `* { pointer-events: none }` descendant
+   rule ensures the z-index-100 header cannot intercept clicks intended for the
+   z-index-50 drawer below it. */
+.ps-header.is-drawer-open {
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.2s ease,
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 0s;
+}
+
+.ps-header.is-drawer-open,
+.ps-header.is-drawer-open * {
+  pointer-events: none !important;
 }
 
 /* Drawer menu — sibling of `.ps-header`, not a child. Fixed positioning must
@@ -492,15 +589,15 @@ main[data-focus-active] .ps-header.is-pinned {
 .ps-drawer {
   position: fixed;
   top: 0;
-  left: 0;
+  right: 0;
   z-index: 50;
   width: min(100%, 360px);
   height: 100svh;
   padding: 1.25rem 1.5rem 2rem;
   box-sizing: border-box;
-  background: #2c2e1c;
+  background: var(--pdp-ink, #000);
   color: #fff;
-  transform: translateX(-100%);
+  transform: translateX(100%);
   visibility: hidden;
   transition:
     transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
@@ -523,7 +620,23 @@ main[data-focus-active] .ps-header.is-pinned {
 .ps-drawer__top {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   min-height: 44px;
+  flex-shrink: 0;
+}
+
+/* Logo inside drawer sits at the same visual weight as the header logo */
+.ps-drawer__logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.ps-drawer__logo img {
+  /* Logo artwork is white on transparent — no filter needed on black bg */
+  filter: none;
+  display: block;
 }
 
 .ps-drawer__close {
@@ -539,7 +652,7 @@ main[data-focus-active] .ps-header.is-pinned {
   gap: 0.25rem;
 }
 
-.ps-drawer__links > li > a,
+.ps-drawer__links>li>a,
 .ps-drawer__dropdown-trigger {
   display: flex;
   align-items: center;
@@ -562,8 +675,8 @@ main[data-focus-active] .ps-header.is-pinned {
   transition: opacity 0.2s ease, padding-left 0.2s ease;
 }
 
-.ps-drawer__links > li > a:hover,
-.ps-drawer__links > li > a:focus-visible,
+.ps-drawer__links>li>a:hover,
+.ps-drawer__links>li>a:focus-visible,
 .ps-drawer__dropdown-trigger:hover,
 .ps-drawer__dropdown-trigger:focus-visible {
   opacity: 0.75;
@@ -615,9 +728,10 @@ main[data-focus-active] .ps-header.is-pinned {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .ps-drawer,
   .ps-drawer-backdrop,
-  .ps-drawer__links > li > a,
+  .ps-drawer__links>li>a,
   .ps-drawer__dropdown-trigger,
   .ps-drawer__sublink,
   .ps-drawer__chevron {
@@ -732,15 +846,13 @@ main[data-focus-active] .ps-header.is-pinned {
   z-index: 1;
   width: 100%;
   transform-origin: 50% 100%;
-  transform: translate(var(--visual-x, 0px), var(--visual-y, 0px))
-    scale(var(--visual-scale, 1));
+  transform: translate(var(--visual-x, 0px), var(--visual-y, 0px)) scale(var(--visual-scale, 1));
   transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .ps-bottle:hover:not(:disabled) .ps-bottle__visual,
 .ps-bottle:focus-within:not(:disabled) .ps-bottle__visual {
-  transform: translate(var(--visual-x, 0px), calc(var(--visual-y, 0px) - 6px))
-    scale(calc(var(--visual-scale, 1) * 1.03));
+  transform: translate(var(--visual-x, 0px), calc(var(--visual-y, 0px) - 6px)) scale(calc(var(--visual-scale, 1) * 1.03));
 }
 
 .ps-root.is-animating .ps-bottle__visual,
@@ -748,8 +860,7 @@ main[data-focus-active] .ps-header.is-pinned {
 .ps-root.is-animating .ps-bottle:hover .ps-bottle__visual,
 .ps-root.is-focused .ps-bottle:hover .ps-bottle__visual {
   transition: none !important;
-  transform: translate(var(--visual-x, 0px), var(--visual-y, 0px))
-    scale(var(--visual-scale, 1)) !important;
+  transform: translate(var(--visual-x, 0px), var(--visual-y, 0px)) scale(var(--visual-scale, 1)) !important;
 }
 
 .ps-bottle__img {
@@ -880,7 +991,7 @@ main[data-focus-active] .ps-header.is-pinned {
   pointer-events: none;
 }
 
-.ps-focus__content > * {
+.ps-focus__content>* {
   pointer-events: auto;
 }
 
@@ -1254,6 +1365,7 @@ main[data-focus-active] .ps-header.is-pinned {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .ps-bottle,
   .ps-hotspot,
   .ps-details__buy,
