@@ -93,13 +93,19 @@ export function filterAndSortCatalog(opts = {}) {
   }
 
   if (tags.length) {
-    list = list.filter((item) => tags.every((tag) => item.tags.includes(tag)));
+    // Faceted behavior: multiple selected values within the same filter type
+    // use OR logic (e.g. mood=warm OR mood=calm).
+    list = list.filter((item) => tags.some((tag) => item.tags.includes(tag)));
   }
 
   if (priceRange) {
     list = list.filter((item) => {
-      const price = productMinPrice(item);
-      return price >= priceRange.min && price <= priceRange.max;
+      // Price match uses "any variant in range" convention:
+      // a product passes if at least one variant price falls within [min, max].
+      const matches = productVariantPrices(item).some(
+        (price) => price >= priceRange.min && price <= priceRange.max,
+      );
+      return matches;
     });
   }
 

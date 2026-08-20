@@ -41,6 +41,22 @@ export default function ShopPage({ catalog = [] }) {
   const [loadingMore, setLoadingMore] = useState(false)
   const [activeProduct, setActiveProduct] = useState(null)
 
+  const moodOptions = useMemo(() => {
+    const seen = new Set()
+    const opts = []
+    const toLabel = (id) =>
+      id ? id.charAt(0).toUpperCase() + id.slice(1) : String(id)
+
+    for (const product of catalog) {
+      for (const mood of product?.tags ?? []) {
+        if (!mood || seen.has(mood)) continue
+        seen.add(mood)
+        opts.push({id: mood, label: toLabel(mood)})
+      }
+    }
+    return opts
+  }, [catalog])
+
   const gridRef = useRef(null)
   const sentinelRef = useRef(null)
   const revealedIdsRef = useRef(new Set())
@@ -343,6 +359,7 @@ export default function ShopPage({ catalog = [] }) {
         onCategoryChange={onCategoryChange}
         tags={tags}
         onTagsChange={setTags}
+        moodOptions={moodOptions}
         priceBounds={priceBounds}
         priceRange={priceRange ?? priceBounds}
         priceActive={priceActive}

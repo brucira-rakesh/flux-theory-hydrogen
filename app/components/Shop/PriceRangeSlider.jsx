@@ -70,7 +70,7 @@ export default function PriceRangeSlider({
             tabIndex={tabIndex}
             aria-labelledby={labelId}
             aria-label="Minimum price"
-            onChange={(event) => setMin(Number(event.target.value))}
+            onInput={(event) => setMin(Number(event.target.value))}
           />
           <input
             type="range"
@@ -83,7 +83,7 @@ export default function PriceRangeSlider({
             tabIndex={tabIndex}
             aria-labelledby={labelId}
             aria-label="Maximum price"
-            onChange={(event) => setMax(Number(event.target.value))}
+            onInput={(event) => setMax(Number(event.target.value))}
           />
         </div>
         <div className="shop-price-range__bounds" aria-hidden="true">

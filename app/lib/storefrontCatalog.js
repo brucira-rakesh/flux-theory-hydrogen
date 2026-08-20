@@ -1,7 +1,7 @@
 import {getPdpBySlug} from '~/data/pdp';
-import {FILTER_TAGS} from '~/data/shop';
 
-const MOOD_TAG_IDS = new Set(FILTER_TAGS.map((tag) => tag.id));
+const MOOD_TAG_PREFIX = 'filter:mood:';
+const MOOD_TAG_VALUE_RE = /^filter:mood:(.+)$/i;
 const DREAMER_BENEFITS_TITLE = getPdpBySlug('the-dreamer')?.benefits?.title;
 
 export function moneySymbol(currencyCode) {
@@ -63,9 +63,15 @@ export function categoryFromShopifyProduct(product) {
 }
 
 export function moodTagsFromProduct(product) {
+  // Admin tags follow the convention: filter:mood:{value}
+  // Example: filter:mood:warm → value "warm"
   return (product?.tags || [])
-    .map((tag) => String(tag).toLowerCase())
-    .filter((tag) => MOOD_TAG_IDS.has(tag));
+    .map((tag) => String(tag).trim().toLowerCase())
+    .map((tag) => {
+      const m = tag.match(MOOD_TAG_VALUE_RE);
+      return m ? m[1] : null;
+    })
+    .filter(Boolean);
 }
 
 export function toListingCard(product, featuredOrder = 0) {

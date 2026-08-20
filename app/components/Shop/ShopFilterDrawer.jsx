@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef } from 'react'
 import gsap from 'gsap'
-import { FACE_FILTER_ENABLED, FILTER_TAGS } from '../../data/shop'
+import { FACE_FILTER_ENABLED } from '../../data/shop'
 import { prefersReducedMotion } from '../../hooks/useSpotlight'
 import { useSmoothScrollLock } from '../SmoothScroll/SmoothScroll'
 import PriceRangeSlider from './PriceRangeSlider'
@@ -15,6 +15,7 @@ export default function ShopFilterDrawer({
   onCategoryChange,
   tags,
   onTagsChange,
+  moodOptions,
   priceBounds,
   priceRange,
   priceActive,
@@ -158,18 +159,18 @@ export default function ShopFilterDrawer({
           <fieldset className="shop-filter__group">
             <legend className="shop-filter__legend">Mood</legend>
             <div className="shop-filter__chips">
-              {FILTER_TAGS.map((tag) => {
-                const active = tags.includes(tag.id)
+              {(moodOptions ?? []).map((opt) => {
+                const active = tags.includes(opt.id)
                 return (
                   <button
-                    key={tag.id}
+                    key={opt.id}
                     type="button"
                     className={`shop-filter__chip${active ? ' is-active' : ''}`}
                     aria-pressed={active}
                     tabIndex={open ? 0 : -1}
-                    onClick={() => toggleTag(tag.id)}
+                    onClick={() => toggleTag(opt.id)}
                   >
-                    {tag.label}
+                    {opt.label}
                   </button>
                 )
               })}
