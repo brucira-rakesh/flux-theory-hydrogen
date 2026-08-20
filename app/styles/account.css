@@ -327,11 +327,11 @@
   gap: 2.5rem;
 }
 
-/* Desktop: Profile (left) + Addresses (right). Stack below 900px (tablet/mobile).
-   Account forms already stack fields at 640px; columns need more room than that. */
+/* Desktop: Profile (left) + Addresses (right), equal columns.
+   Stack below 900px (tablet/mobile). Forms already stack fields at 640px. */
 @media (min-width: 900px) {
   .account-details--split {
-    grid-template-columns: minmax(0, 36rem) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 2.5rem 3rem;
     align-items: start;
   }
@@ -340,10 +340,19 @@
   .account-details--split .account-addresses {
     max-width: none;
     width: 100%;
+    min-width: 0;
   }
 
-  .account-details--split .account-profile .account-form {
-    max-width: 36rem;
+  /* Fill the column — do not keep the standalone 36rem form cap here */
+  .account-details--split .account-profile .account-form,
+  .account-details--split .account-profile .account-form fieldset {
+    max-width: none;
+    width: 100%;
+  }
+
+  /* auto-fit (not auto-fill): empty tracks collapse so one card fills the column */
+  .account-details--split .account-address-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16.5rem), 1fr));
   }
 }
 
@@ -460,8 +469,12 @@
   display: grid;
   justify-items: stretch;
   gap: 1.25rem;
-  max-width: 56rem;
+  /* Standalone/stacked: same 36rem form-column convention as profile.
+     Split layout overrides this to fill the equal grid column. */
+  max-width: 36rem;
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .account-addresses__head {
@@ -470,6 +483,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem 1rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .account-addresses__head h2 {
@@ -478,19 +494,25 @@
 
 .account-address-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(16.5rem, 1fr));
+  /* auto-fit collapses empty tracks so a single card fills available width */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16.5rem), 1fr));
   gap: 0.75rem;
   width: 100%;
+  min-width: 0;
   margin: 0;
   padding: 0;
   list-style: none;
+  box-sizing: border-box;
 }
 
 .account-address-card {
   display: grid;
   gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
   padding: 1.15rem 1.25rem;
   background: var(--account-panel);
+  box-sizing: border-box;
 }
 
 .account-address-card address p {
