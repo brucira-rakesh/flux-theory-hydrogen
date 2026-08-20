@@ -336,6 +336,16 @@ const PRODUCT_FRAGMENT = `#graphql
         }
       }
     }
+    formulation: metafield(namespace: "custom", key: "formulation") {
+      references(first: 10) {
+        nodes {
+          ... on Metaobject {
+            title: field(key: "title") { value }
+            description: field(key: "description") { value }
+          }
+        }
+      }
+    }
     dailyRoutine: metafield(namespace: "custom", key: "daily_routine") {
       type
       references(first: 10) {

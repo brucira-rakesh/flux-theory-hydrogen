@@ -2,6 +2,16 @@ import {getPdpBySlug} from '~/data/pdp';
 
 const FILTER_TAG_RE = /^filter:([^:]+):(.+)$/i;
 const DREAMER_BENEFITS_TITLE = getPdpBySlug('the-dreamer')?.benefits?.title;
+/** Hardcoded stats chrome (eyebrow/title/footnote) — shared across all products. */
+const DREAMER_STATS_CHROME = (() => {
+  const stats = getPdpBySlug('the-dreamer')?.stats;
+  if (!stats) return null;
+  return {
+    eyebrow: stats.eyebrow,
+    title: stats.title,
+    footnote: stats.footnote,
+  };
+})();
 
 /** Parse filter:{type}:{value} tags into grouped filter facets. */
 export function parseFilterTags(product) {
@@ -328,6 +338,28 @@ function benefitsFromMetafield(product) {
 }
 
 /**
+ * custom.formulation (list.metaobject_reference) → PdpStats cards.
+ * Eyebrow/title/footnote stay hardcoded (DREAMER_STATS_CHROME); only cards
+ * come from Shopify. Returns undefined when the metafield is absent.
+ */
+function statsFromMetafield(product) {
+  const nodes = product?.formulation?.references?.nodes ?? [];
+  if (!nodes.length || !DREAMER_STATS_CHROME) return undefined;
+
+  const cards = nodes
+    .map((n) => {
+      const value = n?.title?.value?.trim() ?? '';
+      const text = n?.description?.value?.trim() ?? '';
+      if (!value || !text) return null;
+      return {value, text};
+    })
+    .filter(Boolean);
+
+  if (!cards.length) return undefined;
+  return {...DREAMER_STATS_CHROME, cards};
+}
+
+/**
  * custom.product_lifestyle_banner_content → PdpLifestyle shape.
  * Prefer background_media; fall back to legacy image. Video → sources + poster
  * (bottle overlay skipped at render). MediaImage → banner + product_shot bottle.
@@ -489,7 +521,7 @@ export function toPdpViewModel(product) {
         : undefined;
     })(),
     lifestyle: lifestyleFromMetafield(product) ?? overlay?.lifestyle,
-    stats: overlay?.stats,
+    stats: statsFromMetafield(product) ?? overlay?.stats,
     howTo: howToFromMetafield(product) ?? overlay?.howTo,
     benefits: (() => {
       const shopifyBenefits = benefitsFromMetafield(product);

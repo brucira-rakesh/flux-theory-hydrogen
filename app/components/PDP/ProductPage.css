@@ -35,7 +35,9 @@
 
 .pdp-main--lower {
   padding-top: calc(160 * var(--pdp-fluid) / 1440);
-  padding-bottom: calc(80 * var(--pdp-fluid) / 1440);
+  /* `--pdp-sticky-bar-h` is the live sticky bar height (0 when hidden) so
+     Similar Products can scroll clear of the fixed bar before the footer. */
+  padding-bottom: calc(80 * var(--pdp-fluid) / 1440 + var(--pdp-sticky-bar-h, 0px));
 }
 
 .visually-hidden {
@@ -1116,7 +1118,22 @@
 /* Similar products — Figma 1205:1781 */
 
 .pdp-similar {
+  --pdp-similar-card-w: calc(317.971 * var(--pdp-fluid) / 1440);
+  --pdp-similar-gap: calc(14 * var(--pdp-fluid) / 1440);
+  position: relative;
   margin: 0;
+}
+
+/* Hidden probe: resolves fixed card width for fit-vs-scroll measurement. */
+.pdp-similar__card-measure {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--pdp-similar-card-w);
+  height: 0;
+  visibility: hidden;
+  pointer-events: none;
+  overflow: hidden;
 }
 
 .pdp-similar__title {
@@ -1137,7 +1154,7 @@
   margin: 0 -22px;
   padding: 0 22px;
   display: flex;
-  gap: calc(14 * var(--pdp-fluid) / 1440);
+  gap: var(--pdp-similar-gap);
   overflow-x: auto;
   overflow-y: hidden;
   min-width: 0;
@@ -1152,15 +1169,44 @@
 }
 
 .pdp-similar__item {
-  flex: 0 0 calc(317.971 * var(--pdp-fluid) / 1440);
-  width: calc(317.971 * var(--pdp-fluid) / 1440);
+  flex: 0 0 var(--pdp-similar-card-w);
+  width: var(--pdp-similar-card-w);
+  min-width: 0;
   scroll-snap-align: start;
 }
 
 .pdp-similar__item .product-card {
-  width: calc(317.971 * var(--pdp-fluid) / 1440);
+  width: var(--pdp-similar-card-w);
   min-height: calc(426.316 * var(--pdp-fluid) / 1440);
   height: calc(426.316 * var(--pdp-fluid) / 1440);
+}
+
+/* Fits without scroll: grow cards evenly across the section — no peek / rail bleed. */
+.pdp-similar__rail.is-fill {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: visible;
+  scroll-snap-type: none;
+  overscroll-behavior-x: auto;
+}
+
+.pdp-similar__rail.is-fill .pdp-similar__item {
+  flex: 1 1 0;
+  width: auto;
+  scroll-snap-align: unset;
+}
+
+/* Fill mode: width flexes — drop the Figma-locked height so meta + cart
+   icon aren't clipped. Scroll-mode cards keep the fixed 317.97×426.32 box. */
+.pdp-similar__rail.is-fill .pdp-similar__item .product-card {
+  width: 100%;
+  height: auto;
+  min-height: calc(426.316 * var(--pdp-fluid) / 1440);
+}
+
+.pdp-similar__rail.is-fill .pdp-similar__item .product-card__meta {
+  flex-shrink: 0;
 }
 
 /* Zero-height marker at the footer's top edge — IntersectionObserver target
@@ -1177,7 +1223,9 @@
 /* Sticky ATC bar — fixed full-bleed; slides up when hero form leaves viewport.
    `--pdp-sticky-dock` (set in JS) raises `bottom` as the footer enters, so
    the bar docks on the footer and scrolls away with the page. Not transitioned
-   — Lenis already smooths scroll, and a CSS ease here would lag behind. */
+   — Lenis already smooths scroll, and a CSS ease here would lag behind.
+   `--pdp-sticky-bar-h` (live measured height) pads `.pdp-main--lower` so
+   Similar Products aren't covered while the bar is fixed at the bottom. */
 
 .pdp-sticky {
   position: fixed;
@@ -1188,11 +1236,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: calc(40 * var(--pdp-fluid) / 1440);
+  gap: 1.5rem;
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: calc(16 * var(--pdp-fluid) / 1440) calc(24 * var(--pdp-fluid) / 1440);
+  padding: 0.75rem 1.5rem;
   box-sizing: border-box;
   background: #fff;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
@@ -1229,14 +1277,15 @@
 .pdp-sticky__product {
   display: flex;
   align-items: center;
-  gap: calc(40 * var(--pdp-fluid) / 1440);
+  gap: 1rem;
   min-width: 0;
   flex: 1;
 }
 
+/* Compact desktop thumb — was ~116×118; 64 keeps the bar short with 28px title. */
 .pdp-sticky__thumb {
-  width: calc(115.514 * var(--pdp-fluid) / 1440);
-  height: calc(118 * var(--pdp-fluid) / 1440);
+  width: 64px;
+  height: 64px;
   flex-shrink: 0;
   background: var(--pdp-panel);
   display: grid;
@@ -1259,28 +1308,26 @@
   margin: 0;
   font-family: var(--pdp-display);
   font-weight: 600;
-  font-size: calc(40 * var(--pdp-fluid) / 1440);
-  letter-spacing: calc(-2 * var(--pdp-fluid) / 1440);
+  font-size: 28px;
+  letter-spacing: -0.02em;
   text-transform: uppercase;
-  line-height: 1;
+  line-height: 1.1;
   opacity: 0.9;
 }
 
-.pdp-sticky__blurb {
-  margin: calc(12 * var(--pdp-fluid) / 1440) 0 0;
-  font-size: calc(14 * var(--pdp-fluid) / 1440);
+.pdp-sticky__price {
+  margin: 0.35rem 0 0;
+  font-size: 0.875rem;
   font-weight: 500;
-  line-height: 1.5;
-  opacity: 0.6;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  line-height: 1.3;
+  opacity: 0.7;
 }
 
 .pdp-sticky__controls {
   width: min(100%, calc(422 * var(--pdp-fluid) / 1440));
   flex-shrink: 0;
+  /* Price moved under title — drop the controls column gap when only qty/ATC remain. */
+  gap: 0;
 }
 
 .pdp-sticky__controls .pdp-controls__cart-row form,
@@ -1463,15 +1510,6 @@
     gap: 16px;
   }
 
-  .pdp-sticky__thumb {
-    width: 80px;
-    height: 80px;
-  }
-
-  .pdp-sticky__blurb {
-    display: none;
-  }
-
   .pdp-sticky__title {
     font-size: 24px;
     letter-spacing: -1.2px;
@@ -1489,7 +1527,7 @@
     flex-direction: row;
     align-items: center;
     gap: 1rem;
-    padding: 0.75rem 1rem;
+    padding: 0.75rem;
   }
 
   .pdp-sticky__controls {
@@ -1528,7 +1566,7 @@
     background: #222;
   }
 
-  /* On mobile, thumb is smaller; blurb already hidden at 960px */
+  /* On mobile, product block flexes; title sized below */
   .pdp-sticky__product {
     flex: 1;
     min-width: 0;
@@ -1670,7 +1708,7 @@
   }
 
   .pdp-sticky__title {
-    font-size: 18px;
-    letter-spacing: -0.9px;
+    font-size: 14px;
+    letter-spacing: 0;
   }
 }

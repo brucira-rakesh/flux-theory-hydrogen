@@ -71,24 +71,26 @@ const PdpControls = forwardRef(function PdpControls(
 
   return (
     <div ref={containerRef} className={`pdp-controls${className ? ` ${className}` : ''}`}>
-      <div className="pdp-controls__row">
-        {showSizeSelect ? (
-          <CustomSelect
-            className="custom-select--pdp pdp-controls__size-select"
-            ariaLabel="Select size"
-            options={sizeOptions}
-            value={size}
-            onChange={onSizeChange}
-          />
-        ) : null}
+      {showSizeSelect || showPrice ? (
+        <div className="pdp-controls__row">
+          {showSizeSelect ? (
+            <CustomSelect
+              className="custom-select--pdp pdp-controls__size-select"
+              ariaLabel="Select size"
+              options={sizeOptions}
+              value={size}
+              onChange={onSizeChange}
+            />
+          ) : null}
 
-        {showPrice && (
-          <p className="pdp-controls__price">
-            {currency}
-            {formatPrice(price)}
-          </p>
-        )}
-      </div>
+          {showPrice && (
+            <p className="pdp-controls__price">
+              {currency}
+              {formatPrice(price)}
+            </p>
+          )}
+        </div>
+      ) : null}
 
       <div className="pdp-controls__cart-row">
         <div className="pdp-controls__qty" role="group" aria-label="Quantity">

@@ -11,17 +11,34 @@ import { getLenis } from '../SmoothScroll/smoothScrollApi'
  * event (falls back to window scroll) so it stays in sync with smooth wheel
  * lerp — getBoundingClientRect reflects the visual position either way.
  *
+ * Also publishes the bar's LIVE height as `--pdp-sticky-bar-h` on `.pdp-page`
+ * so lower-page content (Similar Products) reserves scroll room and isn't
+ * covered by the fixed bar. Height is re-measured every dock tick and via
+ * ResizeObserver — never cached from a prior bar size.
+ *
  * IntersectionObserver on the footer-top sentinel is the gate: we only attach
  * the scroll listener while the sentinel is in or above the viewport.
  */
-function useStickyFooterDock(barRef, sentinelRef) {
+function useStickyFooterDock(barRef, sentinelRef, visible) {
   useEffect(() => {
     const bar = barRef.current
     const sentinel = sentinelRef?.current
     if (!bar || !sentinel) return undefined
 
+    const page = bar.closest('.pdp-page')
+
+    const syncBarHeight = () => {
+      if (!page) return
+      // Only reserve space while the bar is actually shown.
+      const h = visible ? bar.getBoundingClientRect().height : 0
+      page.style.setProperty('--pdp-sticky-bar-h', `${Math.ceil(h)}px`)
+    }
+
     const updateDock = () => {
       const top = sentinel.getBoundingClientRect().top
+      // Live height every tick — dock position itself is footer intrusion,
+      // but clearance padding must track the current (post-resize) bar.
+      syncBarHeight()
       const dock = Math.max(0, window.innerHeight - top)
       bar.style.setProperty('--pdp-sticky-dock', `${dock}px`)
     }
@@ -34,7 +51,7 @@ function useStickyFooterDock(barRef, sentinelRef) {
       listening = true
       lenis = getLenis()
       if (lenis) lenis.on('scroll', updateDock)
-      window.addEventListener('scroll', updateDock, { passive: true })
+      window.addEventListener('scroll', updateDock, {passive: true})
     }
 
     const stop = () => {
@@ -56,7 +73,7 @@ function useStickyFooterDock(barRef, sentinelRef) {
           if (entry.isIntersecting || entry.boundingClientRect.top < 0) start()
           else stop()
         },
-        { threshold: 0, rootMargin: '0px' },
+        {threshold: 0, rootMargin: '0px'},
       )
       io.observe(sentinel)
     } else {
@@ -65,6 +82,15 @@ function useStickyFooterDock(barRef, sentinelRef) {
 
     window.addEventListener('resize', updateDock)
     updateDock()
+
+    const ro =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => {
+            syncBarHeight()
+            updateDock()
+          })
+        : null
+    ro?.observe(bar)
 
     // Ancestor SmoothScroll registers Lenis in its own effect (runs after
     // this one). Re-attach on the next frame so we subscribe to Lenis.scroll
@@ -82,11 +108,13 @@ function useStickyFooterDock(barRef, sentinelRef) {
     return () => {
       window.cancelAnimationFrame(raf)
       io?.disconnect()
+      ro?.disconnect()
       stop()
       window.removeEventListener('resize', updateDock)
       bar.style.removeProperty('--pdp-sticky-dock')
+      page?.style.removeProperty('--pdp-sticky-bar-h')
     }
-  }, [sentinelRef])
+  }, [sentinelRef, visible])
 }
 
 export default function PdpStickyBar({
@@ -104,7 +132,7 @@ export default function PdpStickyBar({
   const barRef = useRef(null)
 
   useSmoothScrollLock('pdp-sticky-popup', popupOpen)
-  useStickyFooterDock(barRef, footerSentinelRef)
+  useStickyFooterDock(barRef, footerSentinelRef, visible)
 
   return (
     <>
@@ -123,11 +151,18 @@ export default function PdpStickyBar({
           ) : null}
           <div className="pdp-sticky__copy">
             <p className="pdp-sticky__title">{product.name}</p>
-            <p className="pdp-sticky__blurb">{product.shortDescription}</p>
+            <p className="pdp-sticky__price">
+              {product.currency}
+              {Number(product.price).toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
           </div>
         </div>
 
-        {/* Desktop/tablet: connector controls — no CartForm, submits hero's form */}
+        {/* Desktop/tablet: connector controls — no CartForm, submits hero's form.
+            Price lives under the title (not in this control cluster). */}
         <PdpControls
           className="pdp-sticky__controls"
           sizes={product.sizes}
@@ -140,6 +175,7 @@ export default function PdpStickyBar({
           merchandiseId={product.variantGid}
           selectedVariant={product.selectedVariant}
           availableForSale={product.availableForSale}
+          showPrice={false}
           connectorMode
           heroControlsRef={heroControlsRef}
         />
