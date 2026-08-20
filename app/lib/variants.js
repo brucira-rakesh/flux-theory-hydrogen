@@ -1,5 +1,6 @@
 import {useLocation} from 'react-router';
 import {useMemo} from 'react';
+import {withoutShopifyDefaultTitleOptions} from '~/lib/storefrontCatalog';
 
 /**
  * @param {string} handle
@@ -39,8 +40,12 @@ export function getVariantUrl({
     ? `${match[0]}products/${handle}`
     : `/products/${handle}`;
 
-  selectedOptions?.forEach((option) => {
-    searchParams.set(option.name, option.value);
+  // Omit Shopify's ghost Title/Default Title so single-variant PDPs stay clean;
+  // real options (e.g. Size) still become query params.
+  withoutShopifyDefaultTitleOptions(selectedOptions).forEach((option) => {
+    if (option?.name != null && option?.value != null) {
+      searchParams.set(option.name, option.value);
+    }
   });
 
   const searchString = searchParams.toString();

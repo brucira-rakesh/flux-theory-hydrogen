@@ -13,6 +13,7 @@ import {
   applySelectedVariant,
   toListingCard,
   toPdpViewModel,
+  withoutShopifyDefaultTitleOptions,
 } from '~/lib/storefrontCatalog';
 
 /**
@@ -89,7 +90,9 @@ export default function ProductHandle() {
     product.selectedOrFirstAvailableVariant,
     getAdjacentAndFirstAvailableVariants(product),
   );
-  useSelectedOptionInUrlParam(selectedVariant?.selectedOptions);
+  useSelectedOptionInUrlParam(
+    withoutShopifyDefaultTitleOptions(selectedVariant?.selectedOptions),
+  );
   const productOptions = getProductOptions({
     ...product,
     selectedOrFirstAvailableVariant: selectedVariant,
@@ -277,6 +280,9 @@ const PRODUCT_FRAGMENT = `#graphql
       value
     }
     shortDescription: metafield(namespace: "custom", key: "short_description") {
+      value
+    }
+    allIngredients: metafield(namespace: "custom", key: "all_ingredients") {
       value
     }
     whyYoullLoveIt: metafield(namespace: "custom", key: "why_you_ll_love_it") {

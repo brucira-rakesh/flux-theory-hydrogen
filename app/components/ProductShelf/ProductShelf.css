@@ -348,9 +348,12 @@ main[data-focus-active] .ps-header.is-pinned {
 
   /* Promote cluster and actions to fill the full bar.
      Zero out the gap so the 3 collapsed zero-width icon buttons don't each
-     claim a 16px gap slot (3 × 16px = 48px of dead space). */
+     claim a gap slot (on-light uses 24–40px; 3 × 24px ≈ 72px dead space).
+     Include .is-on-light so we beat later equal-specificity on-light gap rules. */
   .ps-header.is-searching .ps-header__cluster,
-  .ps-header.is-searching .ps-header__actions {
+  .ps-header.is-searching .ps-header__actions,
+  .ps-header.is-on-light.is-searching .ps-header__cluster,
+  .ps-header.is-on-light.is-searching .ps-header__actions {
     flex: 1;
     min-width: 0;
     gap: 0;
@@ -553,9 +556,12 @@ main[data-focus-active] .ps-header.is-pinned {
     padding: 10px 12px;
   }
 
-  .ps-header.is-on-light .ps-header__bar,
-  .ps-header.is-on-light.is-pinned .ps-header__bar {
+  .ps-header.is-on-light .ps-header__bar {
     padding: 16px 0;
+  }
+
+  .ps-header.is-on-light.is-pinned .ps-header__bar {
+    padding: 16px 8px;
   }
 
   .ps-header__cluster {
@@ -579,6 +585,15 @@ main[data-focus-active] .ps-header.is-pinned {
 
   .ps-header.is-on-light .ps-header__actions {
     gap: 24px;
+  }
+
+  /* Searching takeover must win over on-light gaps above (and @960 cluster gap).
+     Without this, collapsed account/bag/menu buttons still leave 3×24px empty. */
+  .ps-header.is-searching .ps-header__cluster,
+  .ps-header.is-searching .ps-header__actions,
+  .ps-header.is-on-light.is-searching .ps-header__cluster,
+  .ps-header.is-on-light.is-searching .ps-header__actions {
+    gap: 0;
   }
 
   .ps-logo__img {

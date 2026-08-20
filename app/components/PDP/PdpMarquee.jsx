@@ -1,4 +1,10 @@
-export default function PdpMarquee({ items, mark }) {
+import marqueeMark from '../../assets/pdp/marquee-ft.svg'
+
+/**
+ * Infinite benefit pills. The FT divider mark is always the local SVG —
+ * never from Shopify or the dreamer-only overlay.
+ */
+export default function PdpMarquee({ items }) {
   const loop = [...items, ...items, ...items]
 
   return (
@@ -8,7 +14,7 @@ export default function PdpMarquee({ items, mark }) {
           <div key={`${label}-${index}`} className="pdp-marquee__item">
             <span className="pdp-marquee__label">{label}</span>
             <img
-              src={mark}
+              src={marqueeMark}
               alt=""
               className="pdp-marquee__mark"
               width={40}

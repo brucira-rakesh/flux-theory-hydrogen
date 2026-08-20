@@ -4,7 +4,7 @@ import {CartForm, useOptimisticCart} from '@shopify/hydrogen';
 import gsap from 'gsap';
 import {useSmoothScrollLock} from '../SmoothScroll/SmoothScroll';
 import {prefersReducedMotion} from '../../hooks/useSpotlight';
-import {formatMoneyDisplay} from '~/lib/storefrontCatalog';
+import {formatMoneyDisplay, withoutShopifyDefaultTitleOptions} from '~/lib/storefrontCatalog';
 import './CartDrawer.css';
 
 export function CartDrawer({cart, open, onClose}) {
@@ -204,23 +204,25 @@ function CartDrawerLine({line, onNavigate}) {
         {optionLabel ? <p className="cart-drawer__option">{optionLabel}</p> : null}
         <p className="cart-drawer__price">{money ? formatMoneyDisplay(money) : ''}</p>
         <div className="cart-drawer__qty" role="group" aria-label={`Quantity for ${title}`}>
-          <CartQtyButton
-            lineId={line.id}
-            quantity={Math.max(1, line.quantity - 1)}
-            disabled={line.quantity <= 1 || isOptimistic}
-            label="Decrease quantity"
-          >
-            −
-          </CartQtyButton>
-          <span className="cart-drawer__qty-value">{line.quantity}</span>
-          <CartQtyButton
-            lineId={line.id}
-            quantity={line.quantity + 1}
-            disabled={isOptimistic}
-            label="Increase quantity"
-          >
-            +
-          </CartQtyButton>
+          <div className="cart-drawer__qty-control">
+            <CartQtyButton
+              lineId={line.id}
+              quantity={Math.max(1, line.quantity - 1)}
+              disabled={line.quantity <= 1 || isOptimistic}
+              label="Decrease quantity"
+            >
+              −
+            </CartQtyButton>
+            <span className="cart-drawer__qty-value">{line.quantity}</span>
+            <CartQtyButton
+              lineId={line.id}
+              quantity={line.quantity + 1}
+              disabled={isOptimistic}
+              label="Increase quantity"
+            >
+              +
+            </CartQtyButton>
+          </div>
           <CartRemoveButton lineId={line.id} disabled={isOptimistic} />
         </div>
       </div>
@@ -229,10 +231,7 @@ function CartDrawerLine({line, onNavigate}) {
 }
 
 function visibleOptions(selectedOptions = []) {
-  const meaningful = selectedOptions.filter(
-    (option) =>
-      !(option.name === 'Title' && option.value === 'Default Title'),
-  );
+  const meaningful = withoutShopifyDefaultTitleOptions(selectedOptions);
   if (!meaningful.length) return '';
   return meaningful.map((option) => option.value).join(' · ');
 }

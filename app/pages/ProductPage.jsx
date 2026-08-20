@@ -132,7 +132,7 @@ export default function ProductPage({
 
       {product.marquee ? (
         <div data-pdp-reveal data-pdp-reveal-y="0">
-          <PdpMarquee items={product.marquee.items} mark={product.marquee.mark} />
+          <PdpMarquee items={product.marquee.items} />
         </div>
       ) : null}
       {product.lifestyle ? <PdpLifestyle lifestyle={product.lifestyle} /> : null}

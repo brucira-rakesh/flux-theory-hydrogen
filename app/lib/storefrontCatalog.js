@@ -57,6 +57,27 @@ export function cartLinesForMerchandise(merchandiseId, quantity = 1, selectedVar
 }
 
 /**
+ * Shopify's auto "Title / Default Title" option on single-variant products.
+ * Ignored for shopper-facing size UI, cart labels, and product URL sync.
+ * @param {{name?: string | null, value?: string | null} | null | undefined} option
+ */
+export function isShopifyDefaultTitleOption(option) {
+  return option?.name === 'Title' && option?.value === 'Default Title';
+}
+
+/**
+ * Drop the ghost Title/Default Title option; keep real options (e.g. Size).
+ * @template {{name?: string | null, value?: string | null}} T
+ * @param {T[] | null | undefined} selectedOptions
+ * @returns {T[]}
+ */
+export function withoutShopifyDefaultTitleOptions(selectedOptions) {
+  return (selectedOptions ?? []).filter(
+    (option) => !isShopifyDefaultTitleOption(option),
+  );
+}
+
+/**
  * Real shopper-facing Size values. Shopify's auto "Title / Default Title"
  * option (products without configured variants) is ignored.
  */
@@ -265,8 +286,8 @@ function howToFromMetafield(product) {
 
 /**
  * custom.product_ticker (list.metaobject_reference) → PdpMarquee items array.
- * The FT mark SVG is a local asset supplied by the overlay; this function only
- * returns the items string array. Returns undefined when the metafield is absent.
+ * Pill copy only — the FT divider mark is a static asset in PdpMarquee.
+ * Returns undefined when the metafield is absent.
  */
 function marqueeItemsFromMetafield(product) {
   const nodes = product?.productTicker?.references?.nodes;
@@ -357,6 +378,7 @@ function lifestyleFromMetafield(product) {
  */
 export function accordionFromMetafields(product) {
   const details = parseProductDetailsRichText(product?.productDetails);
+  const allIngredients = metafieldText(product?.allIngredients);
   const whyLove = metafieldText(product?.whyYoullLoveIt);
   const suitableFor = metafieldText(product?.suitableFor);
   const stateOfMind = metafieldText(product?.stateOfMind);
@@ -370,6 +392,13 @@ export function accordionFromMetafields(product) {
       defaultOpen: true,
       intro: details.intro || undefined,
       bullets: details.bullets.length ? details.bullets : undefined,
+    });
+  }
+  if (allIngredients) {
+    items.push({
+      id: 'all-ingredients',
+      title: 'All Ingredients',
+      body: allIngredients,
     });
   }
   if (whyLove) {
@@ -450,10 +479,14 @@ export function toPdpViewModel(product) {
     marquee: (() => {
       const shopifyItems = marqueeItemsFromMetafield(product);
       if (shopifyItems) {
-        // mark (FT SVG divider) is a local asset — always sourced from overlay
-        return {items: shopifyItems, mark: overlay?.marquee?.mark};
+        // Mark SVG is imported in PdpMarquee — only pass pill text here.
+        return {items: shopifyItems};
       }
-      return overlay?.marquee;
+      // Overlay fallback (dreamer) may still include items; mark unused by component.
+      const overlayMarquee = overlay?.marquee;
+      return overlayMarquee?.items?.length
+        ? {items: overlayMarquee.items}
+        : undefined;
     })(),
     lifestyle: lifestyleFromMetafield(product) ?? overlay?.lifestyle,
     stats: overlay?.stats,

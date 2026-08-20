@@ -257,27 +257,33 @@
 
 .pdp-controls__qty {
   display: inline-flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  gap: calc(12 * var(--pdp-fluid) / 1440);
+  gap: 0;
   height: calc(46 * var(--pdp-fluid) / 1440);
-  padding: calc(16 * var(--pdp-fluid) / 1440) calc(20 * var(--pdp-fluid) / 1440);
-  border: 1px solid #d0d1db;
+  padding: 0;
+  border: .1px solid #d0d1db;
+  border-radius: 0;
   flex-shrink: 0;
   box-sizing: border-box;
+  overflow: hidden;
+  background: #fff;
   transition: border-color 0.15s ease;
 }
 
-.pdp-controls__qty:focus-within {
+/* .pdp-controls__qty:focus-within {
   border-color: var(--pdp-ink, #000);
-}
+} */
 
 .pdp-controls__qty-btn {
   border: 0;
-  background: transparent;
-  padding: 0;
-  width: 1rem;
-  height: 1rem;
+  border-radius: 0;
+  background: #f4f4f4;
+  margin: 0;
+  padding: 0 calc(14 * var(--pdp-fluid) / 1440);
+  min-width: calc(36 * var(--pdp-fluid) / 1440);
+  height: auto;
+  align-self: stretch;
   display: grid;
   place-items: center;
   font-size: calc(13.6 * var(--pdp-fluid) / 1440);
@@ -285,11 +291,20 @@
   cursor: pointer;
   color: #000;
   outline: none;
+  transition: background-color 0.15s ease;
+}
+
+.pdp-controls__qty-btn:hover:not(:disabled) {
+  background: #eeeeee;
+}
+
+.pdp-controls__qty-btn:active:not(:disabled) {
+  background: #e4e4e4;
 }
 
 .pdp-controls__qty-btn:focus-visible {
   outline: 2px solid var(--pdp-ink, #000);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
 .pdp-controls__qty-btn:disabled {
@@ -298,10 +313,15 @@
 }
 
 .pdp-controls__qty-value {
-  min-width: 0.75rem;
+  display: grid;
+  place-items: center;
+  min-width: calc(28 * var(--pdp-fluid) / 1440);
+  padding: 0 calc(8 * var(--pdp-fluid) / 1440);
   text-align: center;
   font-size: calc(12 * var(--pdp-fluid) / 1440);
   font-weight: 400;
+  background: #fff;
+  align-self: stretch;
 }
 
 .pdp-controls__cart-row form {
@@ -359,7 +379,7 @@
 
 .pdp-description__text {
   margin: 0;
-  font-size: calc(40 * var(--pdp-fluid) / 1440);
+  font-size: calc(28 * var(--pdp-fluid) / 1440);
   font-weight: 500;
   line-height: 1.2;
   max-width: none;
@@ -1558,7 +1578,7 @@
   }
 
   .pdp-description__text {
-    font-size: 28px;
+    font-size: 20px;
   }
 
   .pdp-marquee {

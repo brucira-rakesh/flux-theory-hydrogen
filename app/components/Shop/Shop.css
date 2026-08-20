@@ -122,8 +122,8 @@ html[data-header-hidden='true'] .shop-toolbar {
   justify-content: center;
   gap: 0.5rem;
   width: var(--shop-toolbar-btn-width, 7rem);
-  height: 42px;
-  padding: 0 1rem;
+  height: var(--shop-toolbar-btn-height, 42px);
+  padding: 0 var(--shop-toolbar-btn-pad-x, 1rem);
   border: 1px solid var(--shop-line);
   background: #fff;
   box-sizing: border-box;
@@ -131,6 +131,7 @@ html[data-header-hidden='true'] .shop-toolbar {
   font-family: inherit;
   font-size: 0.8125rem;
   font-weight: 500;
+  line-height: 1;
   cursor: pointer;
   transition:
     background 0.25s ease,
@@ -172,11 +173,13 @@ html[data-header-hidden='true'] .shop-toolbar {
 
 .shop-toolbar__actions {
   --shop-toolbar-btn-width: 7rem;
+  --shop-toolbar-btn-height: 42px;
+  --shop-toolbar-btn-pad-x: 1rem;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.85rem 1.25rem;
+  gap: 0.75rem;
   margin-left: auto;
 }
 
@@ -871,12 +874,16 @@ a.product-card__name:focus-visible {
 
 .product-form-popup__qty-control {
   display: inline-flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  gap: 0.85rem;
+  gap: 0;
   height: 46px;
-  padding: 0 1.15rem;
+  padding: 0;
   border: 1px solid #d0d1db;
+  border-radius: 0;
+  overflow: hidden;
+  background: #fff;
+  box-sizing: border-box;
   transition: border-color 0.15s ease;
 }
 
@@ -886,10 +893,13 @@ a.product-card__name:focus-visible {
 
 .product-form-popup__qty-btn {
   border: 0;
-  background: transparent;
-  padding: 0;
-  width: 1rem;
-  height: 1rem;
+  border-radius: 0;
+  background: #f8f8f8;
+  margin: 0;
+  padding: 0 0.9rem;
+  min-width: 2.25rem;
+  height: auto;
+  align-self: stretch;
   display: grid;
   place-items: center;
   font-size: 0.85rem;
@@ -897,11 +907,20 @@ a.product-card__name:focus-visible {
   cursor: pointer;
   color: #000;
   outline: none;
+  transition: background-color 0.15s ease;
+}
+
+.product-form-popup__qty-btn:hover:not(:disabled) {
+  background: #eeeeee;
+}
+
+.product-form-popup__qty-btn:active:not(:disabled) {
+  background: #e4e4e4;
 }
 
 .product-form-popup__qty-btn:focus-visible {
   outline: 2px solid #000;
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
 .product-form-popup__qty-btn:disabled {
@@ -910,9 +929,14 @@ a.product-card__name:focus-visible {
 }
 
 .product-form-popup__qty-value {
-  min-width: 0.85rem;
+  display: grid;
+  place-items: center;
+  min-width: 1.75rem;
+  padding: 0 0.5rem;
   text-align: center;
   font-size: 0.8125rem;
+  background: #fff;
+  align-self: stretch;
 }
 
 .product-form-popup form {

@@ -151,9 +151,15 @@
 .custom-select--toolbar .custom-select__trigger {
   width: var(--shop-toolbar-btn-width, 7rem);
   min-width: var(--shop-toolbar-btn-width, 7rem);
-  height: 42px;
-  padding: 0 2rem 0 0.85rem;
+  height: var(--shop-toolbar-btn-height, 42px);
+  /* Match .shop-toolbar__filter: 0 1rem. Chevron sits in the right pad. */
+  padding: 0 var(--shop-toolbar-btn-pad-x, 1rem);
   box-sizing: border-box;
+  line-height: 1;
+}
+
+.custom-select--toolbar .custom-select__chevron {
+  right: 0.85rem;
 }
 
 .custom-select--toolbar .custom-select__menu {
@@ -180,15 +186,15 @@
   .custom-select--toolbar .custom-select__trigger {
     min-width: 0;
     width: 100%;
-    padding-left: 0.6rem;
-    padding-right: 1.4rem;
+    /* Keep the same 0 1rem pad as Filters — do not shrink asymmetrically */
+    padding: 0 var(--shop-toolbar-btn-pad-x, 1rem);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .custom-select--toolbar .custom-select__chevron {
-    right: 0.45rem;
+    right: 0.85rem;
   }
 }
 
