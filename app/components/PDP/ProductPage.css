@@ -91,8 +91,10 @@
 .pdp-gallery {
   --pdp-gallery-gap: calc(15 * var(--pdp-fluid) / 1440);
   --pdp-gallery-per-view: 2.8;
-  /* Lock to 1440px design: fixed bleed (no viewport-growth past 1440). */
-  --pdp-gallery-bleed: calc(22 * var(--pdp-fluid) / 1440);
+  /* Must match .pdp-main's unscaled 22px side padding. Fluid-scaling this
+     (22 * --pdp-fluid / 1440) overshoots the viewport above 1440px — 7.33px
+     at 1920, which is the document horizontal scrollbar. */
+  --pdp-gallery-bleed: 22px;
   display: flex;
   gap: var(--pdp-gallery-gap);
   overflow-x: auto;
@@ -606,6 +608,7 @@
   /* Pills clipping at the viewport edges is the looping strip, not overflow.
      Do not grow this to fit the track — that reintroduces page scrollWidth. */
   overflow: hidden;
+  overscroll-behavior-x: contain;
   background: #000;
   color: #fff;
   padding: calc(24 * var(--pdp-fluid) / 1440) calc(16 * var(--pdp-fluid) / 1440);
@@ -824,7 +827,6 @@
 
 .pdp-stats__card {
   background: rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
   width: 100%;
   max-width: calc(263 * var(--pdp-fluid) / 1440);
   height: calc(171 * var(--pdp-fluid) / 1440);
@@ -972,9 +974,8 @@
 /* Benefits — Figma 1205:1894 */
 
 .pdp-benefits {
-  /* Fixed bleed (matches 1440px design exactly). On ultra-wide viewports,
-     extra width stays empty margin via the centered capped `.pdp-main`. */
-  --pdp-benefits-bleed: calc(22 * var(--pdp-fluid) / 1440);
+  /* Must match .pdp-main's unscaled 22px side padding (same trap as gallery). */
+  --pdp-benefits-bleed: 22px;
   width: calc(100% + var(--pdp-benefits-bleed));
   max-width: none;
   margin: 0 calc(-1 * var(--pdp-benefits-bleed)) calc(80 * var(--pdp-fluid) / 1440) 0;
@@ -1017,6 +1018,7 @@
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 
 .pdp-benefits__grid::-webkit-scrollbar {
@@ -1100,8 +1102,8 @@
   /* Partial cards at the rail edge are the scrollable peek, not page overflow.
      Keep overflow-x: auto on this rail — do not unclip it to “fix” the cut-off. */
   list-style: none;
-  margin: 0 calc(-22 * var(--pdp-fluid) / 1440);
-  padding: 0 calc(22 * var(--pdp-fluid) / 1440);
+  margin: 0 -22px;
+  padding: 0 22px;
   display: flex;
   gap: calc(14 * var(--pdp-fluid) / 1440);
   overflow-x: auto;
@@ -1109,6 +1111,8 @@
   min-width: 0;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 
 .pdp-similar__rail::-webkit-scrollbar {
@@ -1127,18 +1131,27 @@
   height: calc(426.316 * var(--pdp-fluid) / 1440);
 }
 
-/* Sticky ATC bar — fixed full-bleed; slides up when hero form leaves viewport.
-   Sits under .pdp-page .ft-root so the footer covers it on scroll. */
-
-.pdp-page .ft-root {
-  z-index: 50;
+/* Zero-height marker at the footer's top edge — IntersectionObserver target
+   for docking the sticky ATC bar so it doesn't slide under the footer. */
+.pdp-footer-sentinel {
+  display: block;
+  height: 1px;
+  margin-bottom: -1px;
+  width: 100%;
+  pointer-events: none;
+  visibility: hidden;
 }
+
+/* Sticky ATC bar — fixed full-bleed; slides up when hero form leaves viewport.
+   `--pdp-sticky-dock` (set in JS) raises `bottom` as the footer enters, so
+   the bar docks on the footer and scrolls away with the page. Not transitioned
+   — Lenis already smooths scroll, and a CSS ease here would lag behind. */
 
 .pdp-sticky {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: var(--pdp-sticky-dock, 0px);
   z-index: 40;
   display: flex;
   align-items: center;

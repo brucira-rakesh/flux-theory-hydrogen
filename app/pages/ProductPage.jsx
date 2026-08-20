@@ -31,6 +31,7 @@ export default function ProductPage({
   const formRef = useRef(null)
   const heroControlsRef = useRef(null)
   const pageRef = useRef(null)
+  const footerSentinelRef = useRef(null)
 
   // Measure the floating header's bottom edge and expose it as --pdp-header-h
   // so the mobile first-fold min-height calc stays accurate if the header changes.
@@ -165,8 +166,14 @@ export default function ProductPage({
         onQuantityChange={setQuantity}
         visible={stickyVisible}
         heroControlsRef={heroControlsRef}
+        footerSentinelRef={footerSentinelRef}
       />
 
+      <div
+        ref={footerSentinelRef}
+        className="pdp-footer-sentinel"
+        aria-hidden="true"
+      />
       <Footer />
       <p className="visually-hidden">
         <Link to="/">Back to home</Link>

@@ -105,12 +105,59 @@ function HeaderIcon({ src, label, width, height, onClick, to, loggedIn }) {
   )
 }
 
+function navPath(to) {
+  const raw = String(to || '').split('#')[0].split('?')[0]
+  if (raw === '/collections/shop-all' || raw === '/collections/all') return '/shop'
+  const collection = raw.match(/^\/collections\/([^/]+)\/?$/)
+  if (collection) return `/shop/${collection[1]}`
+  return raw.replace(/\/$/, '') || '/'
+}
+
+/** Shopify menu items often share a collection URL — prefer branded paths by label. */
+const LABEL_PATHS = [
+  [/^shop\s*all$/i, '/shop'],
+  [/^body$/i, '/shop/body'],
+  [/^face$/i, '/shop/face'],
+]
+
+function linkPath(link) {
+  const label = String(link.label || '').trim()
+  const branded = LABEL_PATHS.find(([re]) => re.test(label))
+  if (branded) return branded[1]
+  if (typeof link.to === 'string' && link.to.length) return navPath(link.to)
+  return ''
+}
+
 function resolveActiveId(pathname, hash, links) {
-  if (pathname.startsWith('/shop/body')) return 'body'
-  if (pathname.startsWith('/shop/face')) return 'face'
-  if (pathname === '/shop') return 'shop'
-  const id = (hash || '').replace(/^#/, '')
-  if (id && links.some((link) => link.id === id)) return id
+  const current = navPath(pathname)
+
+  // Match by URL path (longest prefix wins) so Shopify menu GIDs still highlight.
+  const pathLinks = links
+    .map((link) => ({ link, path: linkPath(link) }))
+    .filter(({ path }) => path && path !== '/')
+    .sort((a, b) => b.path.length - a.path.length)
+
+  for (const { link, path } of pathLinks) {
+    if (current === path || current.startsWith(`${path}/`)) return link.id
+  }
+
+  // PDP lives under shop — highlight Shop All.
+  if (current.startsWith('/products')) {
+    const shopAll = pathLinks.find(({ path }) => path === '/shop')
+    if (shopAll) return shopAll.link.id
+  }
+
+  const hashName = (hash || '').replace(/^#/, '')
+  if (hashName) {
+    const byHash = links.find(
+      (link) =>
+        link.id === hashName ||
+        link.href === `#${hashName}` ||
+        (typeof link.href === 'string' && link.href.endsWith(`#${hashName}`)),
+    )
+    if (byHash) return byHash.id
+  }
+
   return null
 }
 
@@ -307,8 +354,8 @@ export default function SiteHeader({ logoTo = '/' }) {
               <HeaderSearch
                 toggleClassName="ps-header__icon-btn"
                 toggle={
-                  <span className="ps-header__icon" style={{ width: 20, height: 20 }}>
-                    <img src={iconSearchUrl} alt="" width={20} height={20} />
+                  <span className="ps-header__icon" style={{ width: 13, height: 12 }}>
+                    <img src={iconSearchUrl} alt="" width={13} height={12} />
                   </span>
                 }
                 onOpenChange={(next) => {
@@ -321,8 +368,8 @@ export default function SiteHeader({ logoTo = '/' }) {
                   <HeaderIcon
                     src={iconUserUrl}
                     label={isLoggedIn ? 'Account' : 'Sign in'}
-                    width={20}
-                    height={20}
+                    width={13}
+                    height={12}
                     to="/account"
                     loggedIn={isLoggedIn}
                   />
@@ -331,8 +378,8 @@ export default function SiteHeader({ logoTo = '/' }) {
               <HeaderIcon
                 src={iconBagUrl}
                 label="Shopping bag"
-                width={20}
-                height={20}
+                width={14}
+                height={12}
                 onClick={openCart}
               />
 

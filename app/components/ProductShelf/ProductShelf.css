@@ -177,7 +177,8 @@ main[data-focus-active] .ps-header.is-pinned {
     background 0.28s ease,
     border-color 0.28s ease,
     box-shadow 0.28s ease,
-    padding 0.28s ease;
+    padding 0.28s ease,
+    backdrop-filter 0.28s ease;
 }
 
 .ps-header.is-pinned .ps-header__bar {
@@ -253,33 +254,49 @@ main[data-focus-active] .ps-header.is-pinned {
   right: 14px;
 }
 
+/* Shop / PDP / Account — HeaderV2 glass on the bar (both floating + pinned).
+   Source (HeaderV2.jsx, unpinned light mode cluster):
+     bg-white/[0.13]  → rgba(255, 255, 255, 0.13)  (--ps-nav-bg)
+     backdrop-blur-[12.85px] → blur(12.85px)       (--ps-chrome-blur)
+     no border
+   Positioning (inset vs full-bleed) stays on .ps-header / .is-pinned. */
 .ps-header.is-on-light .ps-header__bar {
-  padding-left: var(--page-inset, 22px);
-  padding-right: var(--page-inset, 22px);
-  background: var(--pdp-ink, #000);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 16px 0;
+  background: var(--ps-nav-bg);
+  backdrop-filter: blur(var(--ps-chrome-blur));
+  -webkit-backdrop-filter: blur(var(--ps-chrome-blur));
+  border-bottom: 0;
   pointer-events: auto;
 }
 
-/* Both pinned and unpinned: black bar carries the background — cluster clears
-   its own glass so there's no double-layer pill sitting on the black bar. */
+/* Glass lives on the bar — cluster stays clear so there's no double-layer pill.
+   Figma 2007:24 padding lives on the bar; cluster is gap-only. */
 .ps-header.is-on-light .ps-header__cluster {
-  --ps-nav-fg: #fff;
+  --ps-nav-fg: #000;
+  padding: 0;
+  gap: 40px;
   background: transparent;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   color: var(--ps-nav-fg);
 }
 
-/* Logo and icon SVGs both have white artwork — keep as-is on the black bar.
-   The triple-class selectors beat the generic is-pinned invert(1) rules. */
+.ps-header.is-on-light.is-pinned .ps-header__bar {
+  padding: 16px 24px;
+}
+
+.ps-header.is-on-light.is-pinned .ps-header__cluster {
+  padding: 0;
+  gap: 40px;
+}
+
+/* White SVG artwork — invert to black so it reads on 13% white glass over
+   light shop/PDP pages. Triple-class selectors beat the generic is-pinned rule. */
 .ps-header.is-on-light .ps-logo__img,
 .ps-header.is-on-light.is-pinned .ps-logo__img,
 .ps-header.is-on-light .ps-header__icon img,
 .ps-header.is-on-light.is-pinned .ps-header__icon img {
-  filter: none;
+  filter: invert(1);
 }
 
 .ps-header__nav {
@@ -310,6 +327,7 @@ main[data-focus-active] .ps-header.is-pinned {
    flex:1 so they fill the full bar (minus logo), giving header-search the
    complete available width to expand into. */
 @media (max-width: 640px) {
+
   /* display:none removes the logo from flex flow entirely so it stops
      reserving its width + the bar gap. opacity:0 alone keeps it in flow. */
   .ps-header.is-searching .ps-logo {
@@ -335,7 +353,7 @@ main[data-focus-active] .ps-header.is-pinned {
   /* Collapse sibling icon buttons so they don't consume layout space.
      min-width must also be zeroed — ps-header__icon-btn sets min-width:24px
      which otherwise prevents collapse to zero. */
-  .ps-header.is-searching .ps-header__actions > .ps-header__icon-btn {
+  .ps-header.is-searching .ps-header__actions>.ps-header__icon-btn {
     flex: 0 0 0;
     width: 0;
     min-width: 0;
@@ -347,7 +365,7 @@ main[data-focus-active] .ps-header.is-pinned {
   }
 
   /* header-search fills the remaining actions width */
-  .ps-header.is-searching .ps-header__actions > .header-search {
+  .ps-header.is-searching .ps-header__actions>.header-search {
     flex: 1;
     min-width: 0;
   }
@@ -405,8 +423,8 @@ main[data-focus-active] .ps-header.is-pinned {
   place-items: center;
   width: auto;
   height: auto;
-  min-width: 24px;
-  min-height: 24px;
+  min-width: 0;
+  min-height: 0;
   padding: 0;
   border: 0;
   background: transparent;
@@ -458,6 +476,8 @@ main[data-focus-active] .ps-header.is-pinned {
   display: none;
   width: 24px;
   height: 24px;
+  min-width: 24px;
+  min-height: 24px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -484,6 +504,17 @@ main[data-focus-active] .ps-header.is-pinned {
 
   .ps-header.is-pinned .ps-header__cluster {
     padding: 4px 0;
+  }
+
+  .ps-header.is-on-light .ps-header__bar,
+  .ps-header.is-on-light.is-pinned .ps-header__bar {
+    padding: 16px 0;
+  }
+
+  .ps-header.is-on-light .ps-header__cluster,
+  .ps-header.is-on-light.is-pinned .ps-header__cluster {
+    padding: 0;
+    gap: 40px;
   }
 
   .ps-header__menu-btn {
@@ -516,6 +547,11 @@ main[data-focus-active] .ps-header.is-pinned {
     padding: 10px 12px;
   }
 
+  .ps-header.is-on-light .ps-header__bar,
+  .ps-header.is-on-light.is-pinned .ps-header__bar {
+    padding: 16px 0;
+  }
+
   .ps-header__cluster {
     gap: 16px;
     padding: 10px 0;
@@ -525,8 +561,18 @@ main[data-focus-active] .ps-header.is-pinned {
     padding: 4px 0;
   }
 
+  .ps-header.is-on-light .ps-header__cluster,
+  .ps-header.is-on-light.is-pinned .ps-header__cluster {
+    padding: 0;
+    gap: 40px;
+  }
+
   .ps-header__actions {
     gap: 16px;
+  }
+
+  .ps-header.is-on-light .ps-header__actions {
+    gap: 24px;
   }
 
   .ps-logo__img {

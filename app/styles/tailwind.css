@@ -9,3 +9,10 @@
   --font-title: 'Oswald', sans-serif;
   --font-body: 'Geist', sans-serif;
 }
+
+/* Branded routes (PDP/shop/home) only load this sheet — not app.css.
+   Kill macOS/Chrome trackpad rubber-band on the page X axis. */
+html,
+body {
+  overscroll-behavior-x: none;
+}

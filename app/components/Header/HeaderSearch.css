@@ -84,26 +84,6 @@
   color: rgba(0, 0, 0, 0.45);
 }
 
-/* SiteHeader (ps-header) contrast — HeaderSearch.css is shared with HeaderV2. */
-.ps-header.is-on-light .header-search {
-  --header-search-line: rgba(0, 0, 0, 0.25);
-}
-
-.ps-header.is-on-light .header-search__input {
-  border-color: #fff;
-  background: #000;
-  color: #fff;
-}
-
-.ps-header.is-on-light .header-search__input:focus,
-.ps-header.is-on-light .header-search__input:focus-visible {
-  border-color: #fff;
-}
-
-.ps-header.is-on-light .header-search__input::placeholder {
-  color: rgba(255, 255, 255, 0.45);
-}
-
 .header-search__input::-webkit-search-decoration,
 .header-search__input::-webkit-search-cancel-button {
   appearance: none;
