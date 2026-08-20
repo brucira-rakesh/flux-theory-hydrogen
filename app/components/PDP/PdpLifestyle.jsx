@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react'
 import AnimatedTitle from '../AnimatedTitle/AnimatedTitle'
 import AnimatedDescription from '../AnimatedDescription/AnimatedDescription'
+import PdpAutoplayVideo from './PdpAutoplayVideo'
 
 const TITLE_DURATION = 0.8
 const TITLE_STAGGER = 0.02
@@ -33,10 +34,37 @@ function blurbTextFrom(blurb) {
   return String(blurb ?? '').trim()
 }
 
+function LifestyleBackground({ lifestyle, label }) {
+  if (lifestyle.video?.length) {
+    return (
+      <PdpAutoplayVideo
+        sources={lifestyle.video}
+        poster={lifestyle.banner || undefined}
+        className="pdp-lifestyle__banner pdp-lifestyle__video"
+        ariaLabel={label}
+        preferProgressiveMax
+      />
+    )
+  }
+
+  return (
+    <img
+      src={lifestyle.banner}
+      alt=""
+      className="pdp-lifestyle__banner"
+      draggable={false}
+    />
+  )
+}
+
 export default function PdpLifestyle({ lifestyle }) {
   const sectionRef = useRef(null)
   const titleLines = useMemo(() => titleLinesFrom(lifestyle.title), [lifestyle.title])
   const blurbText = useMemo(() => blurbTextFrom(lifestyle.blurb), [lifestyle.blurb])
+  const hasVideo = Boolean(lifestyle.video?.length)
+  const sectionLabel = Array.isArray(lifestyle.title)
+    ? lifestyle.title.join(' ')
+    : lifestyle.title
 
   const scrollTrigger = useMemo(
     () => ({
@@ -65,23 +93,19 @@ export default function PdpLifestyle({ lifestyle }) {
     <section
       ref={sectionRef}
       className="pdp-lifestyle"
-      aria-label={
-        Array.isArray(lifestyle.title) ? lifestyle.title.join(' ') : lifestyle.title
-      }
+      aria-label={sectionLabel}
     >
       <div className="pdp-lifestyle__stage">
-        <img
-          src={lifestyle.banner}
-          alt=""
-          className="pdp-lifestyle__banner"
-          draggable={false}
-        />
-        <img
-          src={lifestyle.bottle}
-          alt=""
-          className="pdp-lifestyle__bottle"
-          draggable={false}
-        />
+        <LifestyleBackground lifestyle={lifestyle} label={sectionLabel} />
+        {/* Bottle overlay only for static image backgrounds — skip when video */}
+        {!hasVideo && lifestyle.bottle ? (
+          <img
+            src={lifestyle.bottle}
+            alt=""
+            className="pdp-lifestyle__bottle"
+            draggable={false}
+          />
+        ) : null}
         <div className="pdp-lifestyle__copy">
           <AnimatedTitle
             as="h2"

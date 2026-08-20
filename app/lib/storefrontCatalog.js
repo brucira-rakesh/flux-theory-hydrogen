@@ -308,8 +308,9 @@ function benefitsFromMetafield(product) {
 
 /**
  * custom.product_lifestyle_banner_content → PdpLifestyle shape.
- * Returns undefined (section omitted) when the metafield or any required
- * field is absent, so other handles cleanly skip the section.
+ * Prefer background_media; fall back to legacy image. Video → sources + poster
+ * (bottle overlay skipped at render). MediaImage → banner + product_shot bottle.
+ * Returns undefined when the metafield or background media is absent.
  */
 function lifestyleFromMetafield(product) {
   const mo = product?.lifestyleBanner?.reference;
@@ -317,10 +318,28 @@ function lifestyleFromMetafield(product) {
 
   const title = mo.title?.value?.trim() ?? '';
   const blurb = mo.description?.value?.trim() ?? '';
-  const bannerImg = mo.image?.reference?.image;
+  const mediaRef =
+    mo.backgroundMedia?.reference ?? mo.image?.reference ?? null;
   const bottleImg = mo.productShot?.reference?.image;
 
-  // Require at minimum the background banner to show the section
+  if (!mediaRef) return undefined;
+
+  if (mediaRef.__typename === 'Video') {
+    const sources = mediaRef.sources ?? [];
+    if (!sources.length) return undefined;
+    return {
+      title: title || undefined,
+      blurb: blurb || undefined,
+      // Poster / legacy banner slot — used by <video poster>, not as an <img>
+      banner: mediaRef.previewImage?.url ?? '',
+      // Mapped for completeness; PdpLifestyle skips bottle when video is set
+      bottle: bottleImg?.url ?? undefined,
+      video: sources,
+    };
+  }
+
+  // MediaImage (and any other image-like reference with .image)
+  const bannerImg = mediaRef.image;
   if (!bannerImg?.url) return undefined;
 
   return {
@@ -328,6 +347,7 @@ function lifestyleFromMetafield(product) {
     blurb: blurb || undefined,
     banner: bannerImg.url,
     bottle: bottleImg?.url ?? undefined,
+    video: null,
   };
 }
 

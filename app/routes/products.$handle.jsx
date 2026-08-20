@@ -354,10 +354,29 @@ const PRODUCT_FRAGMENT = `#graphql
         ... on Metaobject {
           title: field(key: "title") { value }
           description: field(key: "description") { value }
-          image: field(key: "image") {
+          # Canonical media field (Video | MediaImage) — same union as how_to_use.media
+          backgroundMedia: field(key: "background_media") {
             reference {
+              __typename
               ... on MediaImage {
                 image { url altText width height }
+              }
+              ... on Video {
+                sources { url mimeType }
+                previewImage { url }
+              }
+            }
+          }
+          # Legacy keys — null on entries that only have background_media
+          image: field(key: "image") {
+            reference {
+              __typename
+              ... on MediaImage {
+                image { url altText width height }
+              }
+              ... on Video {
+                sources { url mimeType }
+                previewImage { url }
               }
             }
           }

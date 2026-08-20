@@ -714,7 +714,8 @@
   background: #1a1420;
 }
 
-.pdp-lifestyle__banner {
+.pdp-lifestyle__banner,
+.pdp-lifestyle__video {
   position: absolute;
   inset: 0;
   width: 100%;
