@@ -10,9 +10,9 @@ import CustomSelect from '../components/Shop/CustomSelect'
 import {
   SORT_OPTIONS,
   SHOP_PAGE_SIZE,
-  FACE_FILTER_ENABLED,
   categoryFromParam,
   shopTitle,
+  buildFilterOptions,
   filterAndSortCatalog,
   computePriceBounds,
   isFullPriceRange,
@@ -25,11 +25,16 @@ import '../components/Shop/Shop.css'
 export default function ShopPage({ catalog = [] }) {
   const { category: categoryParam } = useParams()
   const navigate = useNavigate()
-  const routeValid =
-    !categoryParam ||
-    categoryParam === 'body' ||
-    (FACE_FILTER_ENABLED && categoryParam === 'face')
   const routeCategory = categoryFromParam(categoryParam)
+  const categoryOptions = useMemo(
+    () => buildFilterOptions(catalog, 'categories'),
+    [catalog],
+  )
+  const validCategoryIds = useMemo(
+    () => new Set(categoryOptions.map((opt) => opt.id)),
+    [categoryOptions],
+  )
+  const routeValid = !categoryParam || validCategoryIds.has(categoryParam)
 
   const [filterOpen, setFilterOpen] = useState(false)
   const [sort, setSort] = useState('featured')
@@ -41,21 +46,10 @@ export default function ShopPage({ catalog = [] }) {
   const [loadingMore, setLoadingMore] = useState(false)
   const [activeProduct, setActiveProduct] = useState(null)
 
-  const moodOptions = useMemo(() => {
-    const seen = new Set()
-    const opts = []
-    const toLabel = (id) =>
-      id ? id.charAt(0).toUpperCase() + id.slice(1) : String(id)
-
-    for (const product of catalog) {
-      for (const mood of product?.tags ?? []) {
-        if (!mood || seen.has(mood)) continue
-        seen.add(mood)
-        opts.push({id: mood, label: toLabel(mood)})
-      }
-    }
-    return opts
-  }, [catalog])
+  const moodOptions = useMemo(
+    () => buildFilterOptions(catalog, 'tags'),
+    [catalog],
+  )
 
   const gridRef = useRef(null)
   const sentinelRef = useRef(null)
@@ -201,8 +195,8 @@ export default function ShopPage({ catalog = [] }) {
   const onCategoryChange = (next) => {
     setCategory(next)
     if (next === 'all') navigate('/shop', { replace: true })
-    else if (next === 'face' && !FACE_FILTER_ENABLED) navigate('/shop', { replace: true })
-    else navigate(`/shop/${next}`, { replace: true })
+    else if (validCategoryIds.has(next)) navigate(`/shop/${next}`, { replace: true })
+    else navigate('/shop', { replace: true })
   }
 
   const onClearFilters = () => {
@@ -359,6 +353,7 @@ export default function ShopPage({ catalog = [] }) {
         onCategoryChange={onCategoryChange}
         tags={tags}
         onTagsChange={setTags}
+        categoryOptions={categoryOptions}
         moodOptions={moodOptions}
         priceBounds={priceBounds}
         priceRange={priceRange ?? priceBounds}

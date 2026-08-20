@@ -1,8 +1,33 @@
 import {getPdpBySlug} from '~/data/pdp';
 
-const MOOD_TAG_PREFIX = 'filter:mood:';
-const MOOD_TAG_VALUE_RE = /^filter:mood:(.+)$/i;
+const FILTER_TAG_RE = /^filter:([^:]+):(.+)$/i;
 const DREAMER_BENEFITS_TITLE = getPdpBySlug('the-dreamer')?.benefits?.title;
+
+/** Parse filter:{type}:{value} tags into grouped filter facets. */
+export function parseFilterTags(product) {
+  /** @type {{ category: string[], mood: string[] }} */
+  const facets = {category: [], mood: []};
+
+  for (const raw of product?.tags ?? []) {
+    const match = String(raw).trim().toLowerCase().match(FILTER_TAG_RE);
+    if (!match) continue;
+
+    const type = match[1];
+    const value = match[2];
+    if (!value || !(type in facets)) continue;
+    facets[type].push(value);
+  }
+
+  return facets;
+}
+
+export function categoryTagsFromProduct(product) {
+  return parseFilterTags(product).category;
+}
+
+export function moodTagsFromProduct(product) {
+  return parseFilterTags(product).mood;
+}
 
 export function moneySymbol(currencyCode) {
   if (currencyCode === 'INR') return '₹';
@@ -46,32 +71,6 @@ export function sizesFromProduct(product) {
 /** Show size UI only when sizesFromProduct returned 2+ real Size values. */
 export function shouldShowSizeSelect(sizes) {
   return (sizes ?? []).length > 1;
-}
-
-export function categoryFromShopifyProduct(product) {
-  const type = String(product?.productType || '').toLowerCase();
-  const tags = (product?.tags || []).map((tag) => String(tag).toLowerCase());
-  const collections = product?.collections?.nodes?.map((node) => node.handle) ?? [];
-  if (
-    type.includes('face') ||
-    tags.includes('face') ||
-    collections.includes('face')
-  ) {
-    return 'face';
-  }
-  return 'body';
-}
-
-export function moodTagsFromProduct(product) {
-  // Admin tags follow the convention: filter:mood:{value}
-  // Example: filter:mood:warm → value "warm"
-  return (product?.tags || [])
-    .map((tag) => String(tag).trim().toLowerCase())
-    .map((tag) => {
-      const m = tag.match(MOOD_TAG_VALUE_RE);
-      return m ? m[1] : null;
-    })
-    .filter(Boolean);
 }
 
 export function toListingCard(product, featuredOrder = 0) {
@@ -123,7 +122,7 @@ export function toListingCard(product, featuredOrder = 0) {
     href: `/products/${product.handle}`,
     sizes,
     defaultSize,
-    category: categoryFromShopifyProduct(product),
+    categories: categoryTagsFromProduct(product),
     tags: moodTagsFromProduct(product),
     featuredOrder,
     variantGid,

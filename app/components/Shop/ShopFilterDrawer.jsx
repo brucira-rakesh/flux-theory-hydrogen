@@ -1,6 +1,5 @@
 import { useEffect, useId, useRef } from 'react'
 import gsap from 'gsap'
-import { FACE_FILTER_ENABLED } from '../../data/shop'
 import { prefersReducedMotion } from '../../hooks/useSpotlight'
 import { useSmoothScrollLock } from '../SmoothScroll/SmoothScroll'
 import PriceRangeSlider from './PriceRangeSlider'
@@ -13,6 +12,7 @@ export default function ShopFilterDrawer({
   onClose,
   category,
   onCategoryChange,
+  categoryOptions,
   tags,
   onTagsChange,
   moodOptions,
@@ -138,14 +138,13 @@ export default function ShopFilterDrawer({
             <div className="shop-filter__choices">
               {[
                 { id: 'all', label: 'All' },
-                { id: 'body', label: 'Body' },
-                // FACE_FILTER: re-enable when Clarity/Pulse/Ember/Muse exist in Shopify admin.
-                ...(FACE_FILTER_ENABLED ? [{ id: 'face', label: 'Face' }] : []),
+                ...(categoryOptions ?? []),
               ].map((opt) => (
                 <label key={opt.id} className="shop-filter__choice">
                   <input
                     type="radio"
                     name="shop-category"
+                    value={opt.id}
                     checked={category === opt.id}
                     onChange={() => onCategoryChange(opt.id)}
                     tabIndex={open ? 0 : -1}

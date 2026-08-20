@@ -10,13 +10,22 @@ export const SORT_OPTIONS = [
   {id: 'name-asc', label: 'Name: A–Z'},
 ];
 
-export const FILTER_TAGS = [
-  {id: 'bold', label: 'Bold'},
-  {id: 'calm', label: 'Calm'},
-  {id: 'warm', label: 'Warm'},
-  {id: 'deep', label: 'Deep'},
-  {id: 'fresh', label: 'Fresh'},
-];
+/** Build filter drawer options from parsed listing-card facet arrays. */
+export function buildFilterOptions(catalog, field) {
+  const seen = new Set();
+  const opts = [];
+  const toLabel = (id) => (id ? id.charAt(0).toUpperCase() + id.slice(1) : String(id));
+
+  for (const product of catalog) {
+    for (const value of product?.[field] ?? []) {
+      if (!value || seen.has(value)) continue;
+      seen.add(value);
+      opts.push({id: value, label: toLabel(value)});
+    }
+  }
+
+  return opts.sort((a, b) => a.label.localeCompare(b.label));
+}
 
 /** All variant prices on a listing card. */
 export function productVariantPrices(item) {
@@ -57,9 +66,8 @@ export function isFullPriceRange(range, bounds) {
 }
 
 export function categoryFromParam(param) {
-  if (param === 'body') return param;
-  if (param === 'face' && FACE_FILTER_ENABLED) return param;
-  return 'all';
+  if (!param || param === 'all') return 'all';
+  return param;
 }
 
 export function shopTitle(category) {
@@ -88,8 +96,8 @@ export function filterAndSortCatalog(opts = {}) {
 
   let list = Array.isArray(items) ? [...items] : [];
 
-  if (category === 'body' || category === 'face') {
-    list = list.filter((item) => item.category === category);
+  if (category !== 'all') {
+    list = list.filter((item) => (item.categories ?? []).includes(category));
   }
 
   if (tags.length) {
