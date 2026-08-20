@@ -29,7 +29,7 @@
 .pdp-main {
   width: min(100%, calc(1440 * var(--pdp-fluid) / 1440));
   margin: 0 auto;
-  padding: 120px 22px 0;
+  padding: 100px 22px 0;
   box-sizing: border-box;
 }
 

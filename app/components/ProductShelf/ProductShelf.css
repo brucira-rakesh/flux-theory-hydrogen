@@ -254,6 +254,12 @@ main[data-focus-active] .ps-header.is-pinned {
   right: 14px;
 }
 
+/* Shop / PDP / Account — floating pill sits 12px from viewport top
+   (base .ps-header is 24px). Pinned stays top: 0 via .is-pinned. */
+.ps-header.is-on-light:not(.is-pinned) {
+  top: 12px;
+}
+
 /* Shop / PDP / Account — HeaderV2 glass on the bar (both floating + pinned).
    Source (HeaderV2.jsx, unpinned light mode cluster):
      bg-white/[0.13]  → rgba(255, 255, 255, 0.13)  (--ps-nav-bg)

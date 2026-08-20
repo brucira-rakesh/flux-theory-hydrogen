@@ -404,7 +404,11 @@ export function toPdpViewModel(product) {
     name: product.title,
     focusTitle: overlay?.focusTitle ?? product.title,
     breadcrumb: overlay?.breadcrumb ?? ['Home', 'Shop All', product.title],
-    shortDescription: overlay?.shortDescription ?? product.description ?? '',
+    // Shopify primary; overlay only when metafield/native field is empty.
+    shortDescription:
+      metafieldText(product?.shortDescription) ||
+      overlay?.shortDescription ||
+      '',
     price: moneyAmount(money),
     currency: moneySymbol(money?.currencyCode),
     money,
@@ -414,7 +418,10 @@ export function toPdpViewModel(product) {
     selectedVariant: variant,
     gallery: galleryFromProduct(product, overlay),
     descriptionTitle: overlay?.descriptionTitle ?? 'Description',
-    description: overlay?.description ?? product.description ?? '',
+    description:
+      String(product?.description ?? '').trim() ||
+      overlay?.description ||
+      '',
     // Wire “small bottle graphic” + “sticky thumbnail” to native product.media.
     // If Shopify has zero media, omit cleanly by returning undefined.
     detailBottle: mediaPreviewUrl(lastMedia),

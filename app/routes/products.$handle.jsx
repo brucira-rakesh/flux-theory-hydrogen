@@ -276,6 +276,9 @@ const PRODUCT_FRAGMENT = `#graphql
       type
       value
     }
+    shortDescription: metafield(namespace: "custom", key: "short_description") {
+      value
+    }
     whyYoullLoveIt: metafield(namespace: "custom", key: "why_you_ll_love_it") {
       value
     }
