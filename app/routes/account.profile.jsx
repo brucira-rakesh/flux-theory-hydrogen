@@ -95,7 +95,7 @@ export default function AccountProfile() {
     typeof action?.error === 'string' ? action.error : null;
 
   return (
-    <div className="account-details">
+    <div className="account-details account-details--split">
       <section className="account-profile" aria-labelledby="account-profile-heading">
         <h2 id="account-profile-heading">Profile</h2>
         <Form className="account-form" method="PUT">
@@ -142,8 +142,6 @@ export default function AccountProfile() {
           </button>
         </Form>
       </section>
-
-      <hr className="account-section-divider" />
 
       <Addresses />
     </div>

@@ -71,6 +71,17 @@
   font: inherit;
   font-size: 0.875rem;
   box-sizing: border-box;
+  appearance: none;
+  outline: none;
+  box-shadow: none;
+  transition: border-color 0.15s ease;
+}
+
+.search-page__input:focus,
+.search-page__input:focus-visible {
+  outline: none;
+  border-color: var(--search-ink);
+  box-shadow: none;
 }
 
 .search-page__button {

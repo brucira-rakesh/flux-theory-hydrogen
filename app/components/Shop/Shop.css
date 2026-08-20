@@ -503,6 +503,11 @@ a.product-card__name:focus-visible {
   accent-color: #000;
 }
 
+.shop-filter__choice input:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
+
 .shop-filter__chips {
   display: flex;
   flex-wrap: wrap;
@@ -872,6 +877,11 @@ a.product-card__name:focus-visible {
   height: 46px;
   padding: 0 1.15rem;
   border: 1px solid #d0d1db;
+  transition: border-color 0.15s ease;
+}
+
+.product-form-popup__qty-control:focus-within {
+  border-color: #000;
 }
 
 .product-form-popup__qty-btn {
@@ -886,6 +896,12 @@ a.product-card__name:focus-visible {
   line-height: 1;
   cursor: pointer;
   color: #000;
+  outline: none;
+}
+
+.product-form-popup__qty-btn:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
 }
 
 .product-form-popup__qty-btn:disabled {

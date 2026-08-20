@@ -6,12 +6,14 @@ import {
   useNavigation,
   useOutletContext,
 } from 'react-router';
-import {useEffect, useState} from 'react';
+import {useEffect, useId, useRef, useState} from 'react';
+import {createPortal} from 'react-dom';
 import {
   UPDATE_ADDRESS_MUTATION,
   DELETE_ADDRESS_MUTATION,
   CREATE_ADDRESS_MUTATION,
 } from '~/graphql/customer-account/CustomerAddressMutations';
+import {useSmoothScrollLock} from '~/components/SmoothScroll/SmoothScroll';
 
 /**
  * Old URL — profile and addresses now share /account/profile.
@@ -243,24 +245,53 @@ export async function action({request, context}) {
   }
 }
 
+const EMPTY_ADDRESS = {
+  address1: '',
+  address2: '',
+  city: '',
+  company: '',
+  territoryCode: '',
+  firstName: '',
+  id: 'new',
+  lastName: '',
+  phoneNumber: '',
+  zoneCode: '',
+  zip: '',
+};
+
 export default function Addresses() {
   const {customer} = useOutletContext();
   const {defaultAddress, addresses} = customer;
   /** @type {ActionReturnData} */
   const action = useActionData();
-  const [adding, setAdding] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+  /** @type {null | 'create' | string} */
+  const [modal, setModal] = useState(null);
 
   useEffect(() => {
-    if (action?.createdAddress) setAdding(false);
-    if (action?.updatedAddress) setEditingId(null);
+    if (action?.createdAddress || action?.updatedAddress) {
+      setModal(null);
+    }
   }, [action]);
 
   const saved = addresses?.nodes ?? [];
+  const editingAddress =
+    modal && modal !== 'create'
+      ? saved.find((address) => address.id === modal) ?? null
+      : null;
+  const modalOpen = modal === 'create' || Boolean(editingAddress);
 
   return (
     <div className="account-addresses" id="addresses">
-      <h2>Addresses</h2>
+      <div className="account-addresses__head">
+        <h2>Addresses</h2>
+        <button
+          className="account-btn"
+          type="button"
+          onClick={() => setModal('create')}
+        >
+          + Add new address
+        </button>
+      </div>
 
       {saved.length ? (
         <ul className="account-address-grid">
@@ -269,13 +300,7 @@ export default function Addresses() {
               <SavedAddressCard
                 address={address}
                 defaultAddress={defaultAddress}
-                editing={editingId === address.id}
-                onEdit={() =>
-                  setEditingId((current) =>
-                    current === address.id ? null : address.id,
-                  )
-                }
-                onCancelEdit={() => setEditingId(null)}
+                onEdit={() => setModal(address.id)}
               />
             </li>
           ))}
@@ -284,70 +309,114 @@ export default function Addresses() {
         <p className="account-empty">You have no addresses saved.</p>
       )}
 
-      {adding ? (
-        <div className="account-form-panel">
-          <div className="account-form-panel__head">
-            <h3>Add new address</h3>
-            <button
-              className="account-btn account-btn--ghost"
-              type="button"
-              onClick={() => setAdding(false)}
-            >
-              Cancel
-            </button>
-          </div>
-          <NewAddressForm key={saved.length} />
-        </div>
-      ) : (
-        <button
-          className="account-btn"
-          type="button"
-          onClick={() => {
-            setEditingId(null);
-            setAdding(true);
-          }}
-        >
-          + Add new address
-        </button>
-      )}
+      {modalOpen ? (
+        <AddressModal
+          key={modal === 'create' ? 'create' : editingAddress?.id}
+          mode={modal === 'create' ? 'create' : 'edit'}
+          address={editingAddress ?? EMPTY_ADDRESS}
+          addressId={modal === 'create' ? 'NEW_ADDRESS_ID' : editingAddress.id}
+          defaultAddress={defaultAddress}
+          onClose={() => setModal(null)}
+        />
+      ) : null}
     </div>
   );
 }
 
-function NewAddressForm() {
-  const newAddress = {
-    address1: '',
-    address2: '',
-    city: '',
-    company: '',
-    territoryCode: '',
-    firstName: '',
-    id: 'new',
-    lastName: '',
-    phoneNumber: '',
-    zoneCode: '',
-    zip: '',
-  };
+/**
+ * Shared add/edit address modal.
+ * Desktop: centered overlay (ProductFormPopup pattern).
+ * Mobile (≤640px, account breakpoint): bottom sheet — same as PLP ATC popup.
+ */
+function AddressModal({mode, address, addressId, defaultAddress, onClose}) {
+  const titleId = useId();
+  const closeRef = useRef(null);
+  const isCreate = mode === 'create';
 
-  return (
-    <AddressForm
-      addressId={'NEW_ADDRESS_ID'}
-      address={newAddress}
-      defaultAddress={null}
-    >
-      {({stateForMethod}) => (
-        <div className="account-form__actions">
+  useSmoothScrollLock('account-address-modal', true);
+
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    closeRef.current?.focus();
+
+    const onKey = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
+
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="account-address-modal" role="presentation">
+      <button
+        type="button"
+        className="account-address-modal__backdrop"
+        aria-label="Close address form"
+        onClick={onClose}
+      />
+      <div
+        className="account-address-modal__panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
+        <div className="account-address-modal__head">
+          <h3 id={titleId}>{isCreate ? 'Add new address' : 'Edit address'}</h3>
           <button
-            className="account-btn"
-            disabled={stateForMethod('POST') !== 'idle'}
-            formMethod="POST"
-            type="submit"
+            ref={closeRef}
+            type="button"
+            className="account-address-modal__close"
+            aria-label="Close"
+            onClick={onClose}
           >
-            {stateForMethod('POST') !== 'idle' ? 'Creating' : 'Create'}
+            ×
           </button>
         </div>
-      )}
-    </AddressForm>
+
+        <AddressForm
+          addressId={addressId}
+          address={address}
+          defaultAddress={defaultAddress}
+        >
+          {({stateForMethod}) => {
+            const method = isCreate ? 'POST' : 'PUT';
+            const busy = stateForMethod(method) !== 'idle';
+            return (
+              <div className="account-form__actions">
+                <button
+                  className="account-btn"
+                  disabled={busy}
+                  formMethod={method}
+                  type="submit"
+                >
+                  {busy
+                    ? isCreate
+                      ? 'Creating'
+                      : 'Saving'
+                    : isCreate
+                      ? 'Create'
+                      : 'Save'}
+                </button>
+                <button
+                  className="account-btn account-btn--ghost"
+                  type="button"
+                  onClick={onClose}
+                >
+                  Cancel
+                </button>
+              </div>
+            );
+          }}
+        </AddressForm>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -355,18 +424,10 @@ function NewAddressForm() {
  * @param {{
  *   address: AddressFragment;
  *   defaultAddress: CustomerFragment['defaultAddress'];
- *   editing: boolean;
  *   onEdit: () => void;
- *   onCancelEdit: () => void;
  * }}
  */
-function SavedAddressCard({
-  address,
-  defaultAddress,
-  editing,
-  onEdit,
-  onCancelEdit,
-}) {
+function SavedAddressCard({address, defaultAddress, onEdit}) {
   const {state, formMethod} = useNavigation();
   const deleting = formMethod === 'DELETE' && state !== 'idle';
   const isDefault = defaultAddress?.id === address.id;
@@ -374,9 +435,7 @@ function SavedAddressCard({
 
   return (
     <article
-      className={`account-address-card${editing ? ' is-editing' : ''}${
-        isDefault ? ' is-default' : ''
-      }`}
+      className={`account-address-card${isDefault ? ' is-default' : ''}`}
     >
       {isDefault ? (
         <p className="account-address-card__badge">Default</p>
@@ -409,7 +468,7 @@ function SavedAddressCard({
           type="button"
           onClick={onEdit}
         >
-          {editing ? 'Close' : 'Edit'}
+          Edit
         </button>
         <Form method="DELETE">
           <input type="hidden" name="addressId" defaultValue={address.id} />
@@ -422,34 +481,6 @@ function SavedAddressCard({
           </button>
         </Form>
       </div>
-
-      {editing ? (
-        <AddressForm
-          addressId={address.id}
-          address={address}
-          defaultAddress={defaultAddress}
-        >
-          {({stateForMethod}) => (
-            <div className="account-form__actions">
-              <button
-                className="account-btn"
-                disabled={stateForMethod('PUT') !== 'idle'}
-                formMethod="PUT"
-                type="submit"
-              >
-                {stateForMethod('PUT') !== 'idle' ? 'Saving' : 'Save'}
-              </button>
-              <button
-                className="account-btn account-btn--ghost"
-                type="button"
-                onClick={onCancelEdit}
-              >
-                Cancel
-              </button>
-            </div>
-          )}
-        </AddressForm>
-      ) : null}
     </article>
   );
 }

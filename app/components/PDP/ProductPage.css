@@ -265,6 +265,11 @@
   border: 1px solid #d0d1db;
   flex-shrink: 0;
   box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+
+.pdp-controls__qty:focus-within {
+  border-color: var(--pdp-ink, #000);
 }
 
 .pdp-controls__qty-btn {
@@ -279,6 +284,12 @@
   line-height: 1;
   cursor: pointer;
   color: #000;
+  outline: none;
+}
+
+.pdp-controls__qty-btn:focus-visible {
+  outline: 2px solid var(--pdp-ink, #000);
+  outline-offset: 2px;
 }
 
 .pdp-controls__qty-btn:disabled {

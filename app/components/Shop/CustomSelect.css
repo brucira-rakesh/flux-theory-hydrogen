@@ -127,6 +127,11 @@
   cursor: pointer;
 }
 
+.custom-select__radio:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
+
 /* Compact toolbar variant (Sort by) */
 .custom-select--toolbar {
   flex-direction: row;
