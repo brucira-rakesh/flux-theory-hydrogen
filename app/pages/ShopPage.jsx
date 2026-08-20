@@ -14,6 +14,8 @@ import {
   categoryFromParam,
   shopTitle,
   filterAndSortCatalog,
+  computePriceBounds,
+  isFullPriceRange,
 } from '../data/shop'
 import { prefersReducedMotion } from '../hooks/useSpotlight'
 import { useSmoothScrollLock } from '../components/SmoothScroll/SmoothScroll'
@@ -33,7 +35,8 @@ export default function ShopPage({ catalog = [] }) {
   const [sort, setSort] = useState('featured')
   const [category, setCategory] = useState(routeCategory)
   const [tags, setTags] = useState([])
-  const [priceId, setPriceId] = useState('any')
+  /** null = full contextual range (no price filter). */
+  const [priceRange, setPriceRange] = useState(null)
   const [visibleCount, setVisibleCount] = useState(SHOP_PAGE_SIZE)
   const [loadingMore, setLoadingMore] = useState(false)
   const [activeProduct, setActiveProduct] = useState(null)
@@ -53,16 +56,46 @@ export default function ShopPage({ catalog = [] }) {
     scrollToY(0)
   }, [routeCategory])
 
+  // Price bounds reflect category + mood only (not the price slider itself).
+  // Keeps the slider range relevant to the current tag/category context and
+  // avoids selecting prices that would always yield zero results.
+  const contextualForBounds = useMemo(
+    () =>
+      filterAndSortCatalog({
+        items: catalog,
+        category,
+        tags,
+        priceRange: null,
+        sort: 'featured',
+      }),
+    [catalog, category, tags],
+  )
+
+  const priceBounds = useMemo(
+    () => computePriceBounds(contextualForBounds),
+    [contextualForBounds],
+  )
+
+  const catalogCurrency = catalog[0]?.currency ?? '₹'
+
+  const effectivePriceRange = useMemo(() => {
+    if (!priceRange || isFullPriceRange(priceRange, priceBounds)) return null
+    return {
+      min: Math.max(priceBounds.min, priceRange.min),
+      max: Math.min(priceBounds.max, priceRange.max),
+    }
+  }, [priceRange, priceBounds])
+
   const filtered = useMemo(
     () =>
       filterAndSortCatalog({
         items: catalog,
         category,
         tags,
-        priceId,
+        priceRange: effectivePriceRange,
         sort,
       }),
-    [catalog, category, tags, priceId, sort],
+    [catalog, category, tags, effectivePriceRange, sort],
   )
 
   const visible = useMemo(
@@ -75,7 +108,12 @@ export default function ShopPage({ catalog = [] }) {
   useEffect(() => {
     setVisibleCount(SHOP_PAGE_SIZE)
     revealedIdsRef.current = new Set()
-  }, [category, tags, priceId, sort])
+  }, [category, tags, effectivePriceRange, sort])
+
+  // Reset price to full contextual range when bounds or tag/category filters change.
+  useEffect(() => {
+    setPriceRange(null)
+  }, [priceBounds.min, priceBounds.max, category, tags])
 
   const animateNewCards = useCallback(() => {
     const root = gridRef.current
@@ -153,15 +191,17 @@ export default function ShopPage({ catalog = [] }) {
 
   const onClearFilters = () => {
     setTags([])
-    setPriceId('any')
+    setPriceRange(null)
     setCategory(routeCategory)
     if (routeCategory === 'all') navigate('/shop', { replace: true })
     else navigate(`/shop/${routeCategory}`, { replace: true })
   }
 
+  const priceActive = Boolean(effectivePriceRange)
+
   const badgeCount =
     tags.length +
-    (priceId !== 'any' ? 1 : 0) +
+    (priceActive ? 1 : 0) +
     (category !== routeCategory ? 1 : 0)
 
   if (!routeValid) {
@@ -303,8 +343,11 @@ export default function ShopPage({ catalog = [] }) {
         onCategoryChange={onCategoryChange}
         tags={tags}
         onTagsChange={setTags}
-        priceId={priceId}
-        onPriceChange={setPriceId}
+        priceBounds={priceBounds}
+        priceRange={priceRange ?? priceBounds}
+        priceActive={priceActive}
+        onPriceRangeChange={setPriceRange}
+        currency={catalogCurrency}
         onClear={onClearFilters}
         resultCount={filtered.length}
       />

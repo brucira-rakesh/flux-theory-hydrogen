@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef } from 'react'
 import gsap from 'gsap'
-import { FACE_FILTER_ENABLED, FILTER_TAGS, PRICE_FILTERS } from '../../data/shop'
+import { FACE_FILTER_ENABLED, FILTER_TAGS } from '../../data/shop'
 import { prefersReducedMotion } from '../../hooks/useSpotlight'
 import { useSmoothScrollLock } from '../SmoothScroll/SmoothScroll'
+import PriceRangeSlider from './PriceRangeSlider'
 
 /**
  * Right filter drawer — category, mood tags, price.
@@ -14,8 +15,11 @@ export default function ShopFilterDrawer({
   onCategoryChange,
   tags,
   onTagsChange,
-  priceId,
-  onPriceChange,
+  priceBounds,
+  priceRange,
+  priceActive,
+  onPriceRangeChange,
+  currency,
   onClear,
   resultCount,
 }) {
@@ -174,20 +178,23 @@ export default function ShopFilterDrawer({
 
           <fieldset className="shop-filter__group">
             <legend className="shop-filter__legend">Price</legend>
-            <div className="shop-filter__choices">
-              {PRICE_FILTERS.map((opt) => (
-                <label key={opt.id} className="shop-filter__choice">
-                  <input
-                    type="radio"
-                    name="shop-price"
-                    checked={priceId === opt.id}
-                    onChange={() => onPriceChange(opt.id)}
-                    tabIndex={open ? 0 : -1}
-                  />
-                  <span>{opt.label}</span>
-                </label>
-              ))}
-            </div>
+            <PriceRangeSlider
+              bounds={priceBounds}
+              value={priceRange}
+              onChange={onPriceRangeChange}
+              currency={currency}
+              tabIndex={open ? 0 : -1}
+            />
+            {priceActive && (
+              <button
+                type="button"
+                className="shop-filter__price-reset"
+                tabIndex={open ? 0 : -1}
+                onClick={() => onPriceRangeChange(null)}
+              >
+                Reset price
+              </button>
+            )}
           </fieldset>
         </div>
 

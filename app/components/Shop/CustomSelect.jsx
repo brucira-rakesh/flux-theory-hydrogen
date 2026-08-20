@@ -98,18 +98,17 @@ export default function CustomSelect({
             const isActive = opt.id === selected?.id
             return (
               <li key={opt.id} role="presentation">
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={isActive}
-                  className={`custom-select__option${isActive ? ' is-selected' : ''}`}
-                  onClick={() => choose(opt.id)}
-                >
-                  <span className="custom-select__check" aria-hidden="true">
-                    {isActive ? '✓' : ''}
-                  </span>
+                <label className={`custom-select__option${isActive ? ' is-selected' : ''}`}>
+                  <input
+                    type="radio"
+                    className="custom-select__radio"
+                    name={listId}
+                    value={opt.id}
+                    checked={isActive}
+                    onChange={() => choose(opt.id)}
+                  />
                   <span>{opt.label}</span>
-                </button>
+                </label>
               </li>
             )
           })}
