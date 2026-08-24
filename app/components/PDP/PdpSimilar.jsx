@@ -70,7 +70,6 @@ export default function PdpSimilar({products, onAdd}) {
           <li key={product.id} className="pdp-similar__item">
             <ProductCard
               product={product}
-              className="pdp-similar__card-host"
               quickAddOpen={activeId === product.id}
               onQuickAdd={(item) => setActiveId(item.id)}
             />

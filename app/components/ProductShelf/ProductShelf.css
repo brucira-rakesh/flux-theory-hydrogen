@@ -614,7 +614,7 @@ main[data-focus-active] .ps-header.is-pinned {
   }
 
   .ps-header.is-on-light .ps-header__cluster {
-    padding: 10px 16px;
+    padding: 10px 0;
     gap: 24px;
     background: var(--ps-nav-bg);
     backdrop-filter: blur(var(--ps-chrome-blur));

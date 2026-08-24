@@ -1040,12 +1040,13 @@ a.product-card__name:focus-visible {
 }
 
 @media (max-width: 640px) {
+
   /* Shop / similar grid only — skip predictive search row cards. */
   .shop-grid .product-card__media,
   .pdp-similar .product-card__media {
     flex: 0 0 auto;
     /* Shared media height across the grid (alignment). */
-    aspect-ratio: 3 / 4;
+    aspect-ratio: 1 / 1;
     width: 100%;
     min-height: 0;
     padding: 0.75rem 0.65rem 0.35rem;
