@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import iconFacebook from '../../assets/pdp/icon-facebook.svg'
 import iconInstagram from '../../assets/pdp/icon-instagram.svg'
 import iconTwitter from '../../assets/pdp/icon-twitter.svg'
+
+gsap.registerPlugin(ScrollTrigger)
 
 function AccordionItem({ item, open, onToggle }) {
   const panelId = `pdp-acc-${item.id}`
@@ -70,6 +74,17 @@ export default function PdpAccordion({ items, bottleSrc, bottleAlt, productName 
   const toastTimer = useRef(null)
 
   useEffect(() => () => clearTimeout(toastTimer.current), [])
+
+  // Accordion height changes shift the details section — re-measure ScrollTrigger
+  // (details-bottle parallax in usePdpMotion) after the panel transition settles.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => ScrollTrigger.refresh())
+    const afterPanel = window.setTimeout(() => ScrollTrigger.refresh(), 450)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.clearTimeout(afterPanel)
+    }
+  }, [openId])
 
   const onToggle = (id) => {
     setOpenId((current) => (current === id ? null : id))
@@ -165,7 +180,12 @@ export default function PdpAccordion({ items, bottleSrc, bottleAlt, productName 
 
       {bottleSrc ? (
         <figure className="pdp-details__media">
-          <img src={bottleSrc} alt={bottleAlt} draggable={false} />
+          <img
+            src={bottleSrc}
+            alt={bottleAlt}
+            draggable={false}
+            data-pdp-details-bottle
+          />
         </figure>
       ) : null}
     </section>

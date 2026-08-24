@@ -82,7 +82,7 @@
   font-size: 1rem;
   line-height: 1.5;
   color: var(--shop-muted);
-  max-width: 28rem;
+  max-width: 40rem;
 }
 
 /* Toolbar — sticky flush to the top while the header is hidden; otherwise

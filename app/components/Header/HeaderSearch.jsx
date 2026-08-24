@@ -1,4 +1,5 @@
 import {useEffect, useId, useRef, useState} from 'react';
+import {createPortal} from 'react-dom';
 import {Link, useLocation} from 'react-router';
 import {
   SEARCH_ENDPOINT,
@@ -8,131 +9,220 @@ import {SearchResultsPredictive} from '~/components/SearchResultsPredictive';
 import {urlWithTrackingParams} from '~/lib/search';
 import {moneySymbol} from '~/lib/storefrontCatalog';
 import ProductCard from '~/components/Shop/ProductCard';
+import {useSmoothScrollLock} from '~/components/SmoothScroll/SmoothScroll';
 import '~/components/Shop/Shop.css';
 import './HeaderSearch.css';
 
+/** Match mobile-nav / cart overlay timing (~300ms). */
+const OVERLAY_MS = 300;
+
 /**
- * Inline header search: icon expands into an input in the header cluster.
- * Predictive results drop below the input; Enter / "See all" go to /search.
+ * Header search: icon opens a centered full-viewport modal overlay.
+ * Predictive results render below the input inside the overlay;
+ * Enter / "See all" navigate to /search.
+ *
+ * Overlay is always portaled to document.body — the header uses CSS
+ * transforms for headroom, which would otherwise trap position:fixed
+ * and pin the dialog under the search icon with no visible backdrop.
  */
 export function HeaderSearch({toggle, toggleClassName = '', onOpenChange}) {
-  const rootRef = useRef(null);
-  const [open, setOpen] = useState(false);
+  const inputRef = useRef(null);
+  const overlayRef = useRef(null);
+  const [mounted, setMounted] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const closeTimerRef = useRef(null);
   const queriesDatalistId = useId();
+  const titleId = useId();
   const location = useLocation();
 
-  function setOpened(next) {
-    setOpen(next);
-    onOpenChange?.(next);
+  function clearCloseTimer() {
+    if (closeTimerRef.current != null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
   }
 
+  function openOverlay() {
+    clearCloseTimer();
+    setMounted(true);
+    onOpenChange?.(true);
+  }
+
+  function closeOverlay() {
+    clearCloseTimer();
+    setVisible(false);
+    closeTimerRef.current = window.setTimeout(() => {
+      closeTimerRef.current = null;
+      setMounted(false);
+      onOpenChange?.(false);
+    }, OVERLAY_MS);
+  }
+
+  function closeOverlayImmediate() {
+    clearCloseTimer();
+    setVisible(false);
+    setMounted(false);
+    onOpenChange?.(false);
+  }
+
+  useSmoothScrollLock('header-search', mounted);
+
+  // Enter animation: mount at opacity 0, force a paint, then add is-visible
+  // so the CSS transition actually runs (skipping the first paint cancels it).
   useEffect(() => {
-    if (!open) return undefined;
-    const input = rootRef.current?.querySelector('#header-search-panel');
-    input?.focus();
-    return undefined;
-  }, [open]);
+    if (!mounted) {
+      setVisible(false);
+      return undefined;
+    }
+    setVisible(false);
+    const id = requestAnimationFrame(() => {
+      if (overlayRef.current) void overlayRef.current.offsetWidth;
+      setVisible(true);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [mounted]);
 
   useEffect(() => {
-    setOpen(false);
-    onOpenChange?.(false);
+    if (!visible) return undefined;
+    const id = requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [visible]);
+
+  useEffect(() => {
+    closeOverlayImmediate();
     // Close when the route changes (Enter / result click).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search]);
 
   useEffect(() => {
-    if (!open) return undefined;
-
-    const onPointer = (event) => {
-      if (!rootRef.current?.contains(event.target)) setOpened(false);
-    };
+    if (!mounted) return undefined;
     const onKey = (event) => {
-      if (event.key === 'Escape') setOpened(false);
+      if (event.key === 'Escape') closeOverlay();
     };
-
-    document.addEventListener('mousedown', onPointer);
     document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
+    return () => document.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [mounted]);
+
+  useEffect(() => () => clearCloseTimer(), []);
 
   return (
-    <div
-      ref={rootRef}
-      className={`header-search${open ? ' is-open' : ''}`}
-    >
+    <div className={`header-search${mounted ? ' is-open' : ''}`}>
       <button
         type="button"
         className={toggleClassName}
         aria-label="Search"
-        aria-expanded={open}
+        aria-expanded={mounted}
         aria-controls="header-search-panel"
-        hidden={open}
-        onClick={() => setOpened(true)}
+        onClick={openOverlay}
       >
         {toggle}
       </button>
 
-      <SearchFormPredictive className="header-search__form">
-        {({inputRef, fetchResults, goToSearch}) => (
-          <>
-            <input
-              id="header-search-panel"
-              className="header-search__input"
-              name="q"
-              type="search"
-              placeholder="Search"
-              autoComplete="off"
-              list={queriesDatalistId}
-              onChange={fetchResults}
-              onFocus={fetchResults}
-              ref={inputRef}
-              tabIndex={open ? 0 : -1}
-            />
+      {mounted && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              ref={overlayRef}
+              className={`header-search-overlay${visible ? ' is-visible' : ''}`}
+              role="presentation"
+            >
+              {/* div (not button): avoids UA/Tailwind button background resets
+                  that can leave the tint invisible while computed styles lie. */}
+              <div
+                className="header-search-overlay__backdrop"
+                role="button"
+                tabIndex={-1}
+                aria-label="Close search"
+                onClick={closeOverlay}
+              />
 
-            {open ? (
-              <SearchResultsPredictive>
-                {({items, total, term, state, closeSearch}) => (
-                  <HeaderSearchPanel
-                    items={items}
-                    total={total}
-                    term={term}
-                    state={state}
-                    queriesDatalistId={queriesDatalistId}
-                    onNavigate={() => {
-                      closeSearch();
-                      setOpened(false);
-                    }}
-                    onSeeAll={() => {
-                      goToSearch();
-                      setOpened(false);
-                    }}
-                  />
-                )}
-              </SearchResultsPredictive>
-            ) : null}
-          </>
-        )}
-      </SearchFormPredictive>
+              <div
+                className="header-search-overlay__dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+              >
+                <h2 id={titleId} className="sr-only">
+                  Search
+                </h2>
 
-      {/* Mobile-only close button — rendered AFTER the form so it sits on the
-          right of the input. Hidden on desktop via CSS; hidden when closed via
-          the HTML hidden attribute. */}
-      <button
-        type="button"
-        className={`header-search__close ${toggleClassName}`}
-        aria-label="Close search"
-        hidden={!open}
-        onClick={() => setOpened(false)}
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M6 6L18 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          <path d="M18 6L6 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
-      </button>
+                <SearchFormPredictive className="header-search-overlay__form">
+                  {({inputRef: formInputRef, fetchResults, goToSearch}) => (
+                    <>
+                      <div className="header-search-overlay__row">
+                        <input
+                          id="header-search-panel"
+                          className="header-search-overlay__input"
+                          name="q"
+                          type="search"
+                          placeholder="Search"
+                          autoComplete="off"
+                          list={queriesDatalistId}
+                          onChange={fetchResults}
+                          onFocus={fetchResults}
+                          ref={(node) => {
+                            formInputRef.current = node;
+                            inputRef.current = node;
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="header-search-overlay__close"
+                          aria-label="Close search"
+                          onClick={closeOverlay}
+                        >
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="M6 6L18 18"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                            />
+                            <path
+                              d="M18 6L6 18"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+
+                      <SearchResultsPredictive>
+                        {({items, total, term, state, closeSearch}) => (
+                          <HeaderSearchPanel
+                            items={items}
+                            total={total}
+                            term={term}
+                            state={state}
+                            queriesDatalistId={queriesDatalistId}
+                            onNavigate={() => {
+                              closeSearch();
+                              closeOverlayImmediate();
+                            }}
+                            onSeeAll={() => {
+                              goToSearch();
+                              closeOverlayImmediate();
+                            }}
+                          />
+                        )}
+                      </SearchResultsPredictive>
+                    </>
+                  )}
+                </SearchFormPredictive>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
@@ -164,22 +254,28 @@ function HeaderSearchPanel({
   const loading = state === 'loading' && query;
 
   return (
-    <div className="header-search__panel" role="listbox" aria-label="Search suggestions">
+    <div
+      className="header-search-overlay__panel"
+      role="listbox"
+      aria-label="Search suggestions"
+      data-lenis-prevent
+      data-lenis-prevent-wheel
+    >
       <SearchResultsPredictive.Queries
         queries={queries}
         queriesDatalistId={queriesDatalistId}
       />
 
       {loading ? (
-        <p className="header-search__status">Loading…</p>
+        <p className="header-search-overlay__status">Loading…</p>
       ) : !total ? (
         <SearchResultsPredictive.Empty term={term} />
       ) : (
         <>
           {products.length ? (
-            <section className="header-search__group">
-              <h3 className="header-search__label">Products</h3>
-              <ul className="header-search__products">
+            <section className="header-search-overlay__group">
+              <h3 className="header-search-overlay__label">Products</h3>
+              <ul className="header-search-overlay__products">
                 {products.map((product) => (
                   <li key={product.id}>
                     <ProductCard
@@ -239,7 +335,7 @@ function HeaderSearchPanel({
           ) : null}
 
           <Link
-            className="header-search__all"
+            className="header-search-overlay__all"
             to={`${SEARCH_ENDPOINT}?q=${encodeURIComponent(query)}`}
             onClick={onSeeAll}
           >
@@ -253,12 +349,16 @@ function HeaderSearchPanel({
 
 function LinkGroup({label, items, hrefFor, onNavigate}) {
   return (
-    <section className="header-search__group">
-      <h3 className="header-search__label">{label}</h3>
-      <ul className="header-search__links">
+    <section className="header-search-overlay__group">
+      <h3 className="header-search-overlay__label">{label}</h3>
+      <ul className="header-search-overlay__links">
         {items.map((item) => (
           <li key={item.id}>
-            <Link className="header-search__link" to={hrefFor(item)} onClick={onNavigate}>
+            <Link
+              className="header-search-overlay__link"
+              to={hrefFor(item)}
+              onClick={onNavigate}
+            >
               {item.title}
             </Link>
           </li>

@@ -4,15 +4,13 @@ import SiteHeader from '~/components/ProductShelf/SiteHeader';
 import Footer from '~/components/Footer/Footer';
 import AnimatedTitle from '~/components/AnimatedTitle/AnimatedTitle';
 import PdpMarquee from '~/components/PDP/PdpMarquee';
-import PdpStats from '~/components/PDP/PdpStats';
+import AboutBento from '~/components/About/AboutBento';
+import ArchetypesSection from '~/components/About/ArchetypesSection';
 import {usePdpMotion} from '~/hooks/usePdpMotion';
-import {
-  ABOUT_BELIEFS,
-  ABOUT_MARQUEE_ITEMS,
-  ABOUT_STATS,
-} from '~/data/about';
+import {ABOUT_MARQUEE_ITEMS} from '~/data/about';
 import indiaOutline from '~/assets/India_outline.svg';
 import aboutHeroVideo from '~/assets/ranbir/hero-vid-v4-BQXzfmRG.mp4';
+import aboutOriginImage from '~/assets/about_us/New-bathroom-5.png';
 import '~/components/PDP/ProductPage.css';
 import '~/components/About/About.css';
 
@@ -63,49 +61,23 @@ export default function AboutPage() {
         {/* 2 — Ticker */}
         <PdpMarquee items={ABOUT_MARQUEE_ITEMS} />
 
-        {/* 3 — Four things we */}
-        <section
-          className="about-section about-section--dark"
-          aria-label="What We Believe"
-        >
-          <div className="about-inner">
-            <div className="about-beliefs__head">
-              <div>
-                <p className="about-eyebrow">What We Believe</p>
-                <h2 className="about-display about-h-section">
-                  Four things we
-                  <br />
-                  refuse to get wrong.
-                </h2>
-              </div>
-            </div>
-            <div className="about-beliefs__grid">
-              {ABOUT_BELIEFS.map((belief) => (
-                <article key={belief.index} className="about-belief">
-                  <span className="about-belief__index">{belief.index}</span>
-                  <h3 className="about-belief__title">
-                    {belief.titleLines
-                      ? belief.titleLines.map((line) => (
-                          <span key={line}>
-                            {line}
-                            <br />
-                          </span>
-                        ))
-                      : belief.title}
-                  </h3>
-                  <p className="about-belief__body">{belief.body}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
+        {/* 3 — Built On Belief. Backed By Proof. */}
+        <AboutBento />
 
-        {/* 4 — Origin */}
+        {/* 4 — Archetypes (from The Brand) */}
+        <ArchetypesSection />
+
+        {/* 5 — Origin */}
         <section className="about-section about-origin" aria-label="The Origin">
           <div className="about-inner">
             <div className="about-origin__grid">
-              <div className="about-origin__media" aria-hidden="true">
-                Origin scene
+              <div className="about-origin__media">
+                <img
+                  src={aboutOriginImage}
+                  alt="Five Flux Theory bottles on a lit bathroom shelf"
+                  className="about-origin__image"
+                  draggable={false}
+                />
               </div>
               <div className="about-origin__copy">
                 <p className="about-eyebrow">The Origin</p>
@@ -138,12 +110,7 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* 5 — Backed by Science */}
-        <div className="about-stats">
-          <PdpStats stats={ABOUT_STATS} />
-        </div>
-
-        {/* 6 — Made in India */}
+        {/* 5 — Made in India */}
         <section
           className="about-section about-made"
           aria-label="Made in India"
@@ -201,7 +168,11 @@ export default function AboutPage() {
         </section>
 
         {/* Closing CTA */}
-        <section className="about-closing" aria-label="Shop the range">
+        <section
+          id="about-closing"
+          className="about-closing"
+          aria-label="Shop the range"
+        >
           <div className="about-inner">
             <h2 className="about-closing__title">
               So — who do you

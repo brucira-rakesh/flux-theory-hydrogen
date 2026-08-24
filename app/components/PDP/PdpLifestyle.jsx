@@ -1,7 +1,9 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import AnimatedTitle from '../AnimatedTitle/AnimatedTitle'
 import AnimatedDescription from '../AnimatedDescription/AnimatedDescription'
 import PdpAutoplayVideo from './PdpAutoplayVideo'
+
+const MOBILE_LIFESTYLE_MQ = '(max-width: 640px)'
 
 const TITLE_DURATION = 0.8
 const TITLE_STAGGER = 0.02
@@ -34,12 +36,12 @@ function blurbTextFrom(blurb) {
   return String(blurb ?? '').trim()
 }
 
-function LifestyleBackground({ lifestyle, label }) {
-  if (lifestyle.video?.length) {
+function LifestyleBackground({ banner, video, label }) {
+  if (video?.length) {
     return (
       <PdpAutoplayVideo
-        sources={lifestyle.video}
-        poster={lifestyle.banner || undefined}
+        sources={video}
+        poster={banner || undefined}
         className="pdp-lifestyle__banner pdp-lifestyle__video"
         ariaLabel={label}
         preferProgressiveMax
@@ -49,7 +51,7 @@ function LifestyleBackground({ lifestyle, label }) {
 
   return (
     <img
-      src={lifestyle.banner}
+      src={banner}
       alt=""
       className="pdp-lifestyle__banner"
       draggable={false}
@@ -57,11 +59,54 @@ function LifestyleBackground({ lifestyle, label }) {
   )
 }
 
-export default function PdpLifestyle({ lifestyle }) {
+/** Mobile ≤640px uses mobile_media when populated; otherwise desktop background_media. */
+function resolveLifestyleBackground(lifestyle, isMobile) {
+  const hasMobileMedia = Boolean(
+    lifestyle.mobileVideo?.length || lifestyle.mobileBanner,
+  )
+
+  if (isMobile && hasMobileMedia) {
+    if (lifestyle.mobileVideo?.length) {
+      return {
+        banner: lifestyle.mobileBanner ?? lifestyle.banner,
+        video: lifestyle.mobileVideo,
+      }
+    }
+    return {
+      banner: lifestyle.mobileBanner ?? lifestyle.banner,
+      video: null,
+    }
+  }
+
+  return {
+    banner: lifestyle.banner,
+    video: lifestyle.video,
+  }
+}
+
+export default function PdpLifestyle({ lifestyle, sectionRef: sectionRefProp }) {
   const sectionRef = useRef(null)
+  const [isMobile, setIsMobile] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia(MOBILE_LIFESTYLE_MQ).matches,
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_LIFESTYLE_MQ)
+    const sync = () => setIsMobile(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
+  const background = useMemo(
+    () => resolveLifestyleBackground(lifestyle, isMobile),
+    [lifestyle, isMobile],
+  )
   const titleLines = useMemo(() => titleLinesFrom(lifestyle.title), [lifestyle.title])
   const blurbText = useMemo(() => blurbTextFrom(lifestyle.blurb), [lifestyle.blurb])
-  const hasVideo = Boolean(lifestyle.video?.length)
+  const hasVideo = Boolean(background.video?.length)
   const sectionLabel = Array.isArray(lifestyle.title)
     ? lifestyle.title.join(' ')
     : lifestyle.title
@@ -91,12 +136,19 @@ export default function PdpLifestyle({ lifestyle }) {
 
   return (
     <section
-      ref={sectionRef}
+      ref={(node) => {
+        sectionRef.current = node
+        if (sectionRefProp) sectionRefProp.current = node
+      }}
       className="pdp-lifestyle"
       aria-label={sectionLabel}
     >
       <div className="pdp-lifestyle__stage">
-        <LifestyleBackground lifestyle={lifestyle} label={sectionLabel} />
+        <LifestyleBackground
+          banner={background.banner}
+          video={background.video}
+          label={sectionLabel}
+        />
         {/* Bottle overlay only for static image backgrounds — skip when video */}
         {!hasVideo && lifestyle.bottle ? (
           <img

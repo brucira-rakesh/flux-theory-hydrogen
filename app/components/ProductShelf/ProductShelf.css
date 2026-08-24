@@ -309,6 +309,18 @@ main[data-focus-active] .ps-header.is-pinned {
   filter: invert(1);
 }
 
+/* About Us dark hero: floating only — white chrome over cinematic video.
+   Pinned state intentionally untouched (keeps is-on-light black frost). */
+.ps-header.is-on-light.is-on-dark-hero:not(.is-pinned) .ps-header__cluster {
+  --ps-nav-fg: #fff;
+  color: #fff;
+}
+
+.ps-header.is-on-light.is-on-dark-hero:not(.is-pinned) .ps-logo__img,
+.ps-header.is-on-light.is-on-dark-hero:not(.is-pinned) .ps-header__icon img {
+  filter: none;
+}
+
 .ps-header__nav {
   display: flex;
   align-items: center;
@@ -316,80 +328,6 @@ main[data-focus-active] .ps-header.is-pinned {
   min-width: 0;
   max-width: 40rem;
   overflow: hidden;
-  opacity: 1;
-  transition:
-    opacity 0.22s ease,
-    max-width 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    gap 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.ps-header.is-searching .ps-header__nav {
-  max-width: 0;
-  gap: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* Mobile search takeover: hide logo + all action icon-btns except the
-   HeaderSearch widget itself. Scoped to ≤640px so desktop is unchanged.
-   Root fix: the cluster and actions are flex:0 1 auto by default — they
-   only size to content width. When searching, promote cluster+actions to
-   flex:1 so they fill the full bar (minus logo), giving header-search the
-   complete available width to expand into. */
-@media (max-width: 640px) {
-
-  /* display:none removes the logo from flex flow entirely so it stops
-     reserving its width + the bar gap. opacity:0 alone keeps it in flow. */
-  .ps-header.is-searching .ps-logo {
-    display: none;
-  }
-
-  /* Remove the bar's gap too — with logo gone the gap slot also disappears,
-     letting the cluster fill the full bar inner width. */
-  .ps-header.is-searching .ps-header__bar {
-    gap: 0;
-  }
-
-  /* Promote cluster and actions to fill the full bar.
-     Zero out the gap so the 3 collapsed zero-width icon buttons don't each
-     claim a gap slot (on-light uses 24–40px; 3 × 24px ≈ 72px dead space).
-     Include .is-on-light so we beat later equal-specificity on-light gap rules. */
-  .ps-header.is-searching .ps-header__cluster,
-  .ps-header.is-searching .ps-header__actions,
-  .ps-header.is-on-light.is-searching .ps-header__cluster,
-  .ps-header.is-on-light.is-searching .ps-header__actions {
-    flex: 1;
-    min-width: 0;
-    gap: 0;
-  }
-
-  /* Collapse sibling icon buttons so they don't consume layout space.
-     min-width/min-height must also be zeroed — ps-header__icon-btn is 24×24
-     which otherwise prevents collapse to zero. */
-  .ps-header.is-searching .ps-header__actions>.ps-header__icon-btn {
-    flex: 0 0 0;
-    width: 0;
-    height: 0;
-    min-width: 0;
-    min-height: 0;
-    padding: 0;
-    overflow: hidden;
-    opacity: 0;
-    pointer-events: none;
-    transition:
-      opacity 0.2s ease,
-      flex-basis 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-      width 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-      height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-      min-width 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-      min-height 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  /* header-search fills the remaining actions width */
-  .ps-header.is-searching .ps-header__actions>.header-search {
-    flex: 1;
-    min-width: 0;
-  }
 }
 
 .ps-header__nav-link {
@@ -631,15 +569,6 @@ main[data-focus-active] .ps-header.is-pinned {
 
   .ps-header__actions {
     gap: 16px;
-  }
-
-  /* Searching takeover must win over on-light gaps above (and @960 cluster gap).
-     Without this, collapsed account/bag/menu buttons still leave 3×24px empty. */
-  .ps-header.is-searching .ps-header__cluster,
-  .ps-header.is-searching .ps-header__actions,
-  .ps-header.is-on-light.is-searching .ps-header__cluster,
-  .ps-header.is-on-light.is-searching .ps-header__actions {
-    gap: 0;
   }
 
   .ps-logo__img {

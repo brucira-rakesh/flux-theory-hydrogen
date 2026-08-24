@@ -5,10 +5,60 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 gsap.registerPlugin(ScrollTrigger)
 
 const REVEAL_SELECTOR = '[data-pdp-reveal]'
+/** Side-by-side details layout — matches ProductPage.css `@media (max-width: 960px)`. */
+const DETAILS_PARALLAX_MQ = '(min-width: 961px)'
+/**
+ * Directional parallax travel (px). Section entering → y start (image sits high);
+ * section exiting → y end (image lags downward vs accordion text). Total 140px.
+ */
+const DETAILS_BOTTLE_PARALLAX_START = -70
+const DETAILS_BOTTLE_PARALLAX_END = 70
+
+function scheduleDetailsParallaxRefresh() {
+  requestAnimationFrame(() => ScrollTrigger.refresh())
+  window.setTimeout(() => ScrollTrigger.refresh(), 120)
+  window.setTimeout(() => ScrollTrigger.refresh(), 750)
+}
+
+/**
+ * Scroll-scrub parallax on the Product Details bottle (desktop side-by-side only).
+ * @returns {(() => void) | undefined} cleanup
+ */
+function setupDetailsBottleParallax(detailsSection, detailsBottle) {
+  gsap.set(detailsBottle, { y: DETAILS_BOTTLE_PARALLAX_START, force3D: true })
+
+  const tween = gsap.to(detailsBottle, {
+    y: DETAILS_BOTTLE_PARALLAX_END,
+    ease: 'none',
+    scrollTrigger: {
+      trigger: detailsSection,
+      start: 'top bottom',
+      end: 'bottom top',
+      scrub: true,
+      invalidateOnRefresh: true,
+    },
+  })
+
+  scheduleDetailsParallaxRefresh()
+
+  const refreshAfterImage = () => ScrollTrigger.refresh()
+  if (detailsBottle.complete) {
+    requestAnimationFrame(refreshAfterImage)
+  } else {
+    detailsBottle.addEventListener('load', refreshAfterImage, { once: true })
+  }
+
+  return () => {
+    detailsBottle.removeEventListener('load', refreshAfterImage)
+    tween.scrollTrigger?.kill()
+    tween.kill()
+    gsap.set(detailsBottle, { clearProps: 'transform' })
+  }
+}
 
 /**
  * GSAP motion for the PDP, gated with matchMedia prefers-reduced-motion.
- * - no-preference: scroll reveals + infinite marquee
+ * - no-preference: scroll reveals + infinite marquee + details-bottle parallax (desktop)
  * - reduce: instant final states, marquee frozen, CSS motion class applied
  */
 export function usePdpMotion(pageRef, { enabled = true, replayKey } = {}) {
@@ -55,10 +105,27 @@ export function usePdpMotion(pageRef, { enabled = true, replayKey } = {}) {
         })
       }
 
-      ScrollTrigger.refresh()
+      // Product Details bottle — directional scroll-scrub parallax beside the accordion.
+      const detailsSection = page.querySelector('.pdp-details')
+      const detailsBottle = detailsSection?.querySelector('[data-pdp-details-bottle]')
+      let detailsParallaxMm
+      let cleanupDetailsParallax
+      if (detailsSection && detailsBottle) {
+        detailsParallaxMm = gsap.matchMedia()
+        detailsParallaxMm.add(DETAILS_PARALLAX_MQ, () => {
+          cleanupDetailsParallax = setupDetailsBottleParallax(detailsSection, detailsBottle)
+          return () => {
+            cleanupDetailsParallax?.()
+            cleanupDetailsParallax = undefined
+          }
+        })
+      }
+
+      scheduleDetailsParallaxRefresh()
 
       return () => {
         marqueeTween?.kill()
+        detailsParallaxMm?.revert()
       }
     })
 

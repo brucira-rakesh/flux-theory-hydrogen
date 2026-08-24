@@ -7,7 +7,7 @@ import PdpDescription from '~/components/PDP/PdpDescription'
 import PdpAccordion from '~/components/PDP/PdpAccordion'
 import PdpMarquee from '~/components/PDP/PdpMarquee'
 import PdpLifestyle from '~/components/PDP/PdpLifestyle'
-import PdpStats from '~/components/PDP/PdpStats'
+
 import PdpHowTo from '~/components/PDP/PdpHowTo'
 import PdpBenefits from '~/components/PDP/PdpBenefits'
 import PdpSimilar from '~/components/PDP/PdpSimilar'
@@ -29,7 +29,12 @@ export default function ProductPage({
   const [size, setSize] = useState(product?.defaultSize)
   const [quantity, setQuantity] = useState(1)
   const [stickyVisible, setStickyVisible] = useState(false)
+  const [heroFormOutOfView, setHeroFormOutOfView] = useState(false)
+  const [lifestyleInView, setLifestyleInView] = useState(false)
+  const [howToApproaching, setHowToApproaching] = useState(false)
   const formRef = useRef(null)
+  const lifestyleRef = useRef(null)
+  const howToRef = useRef(null)
   const heroControlsRef = useRef(null)
   const pageRef = useRef(null)
   const footerSentinelRef = useRef(null)
@@ -65,6 +70,9 @@ export default function ProductPage({
     setSize(product.defaultSize)
     setQuantity(1)
     setStickyVisible(false)
+    setHeroFormOutOfView(false)
+    setLifestyleInView(false)
+    setHowToApproaching(false)
     scrollToY(0)
   }, [product?.slug])
 
@@ -78,19 +86,80 @@ export default function ProductPage({
   }
 
   useEffect(() => {
+    // Reveal once How to Use is approaching — even if lifestyle is still
+    // partially on screen — so the bar isn't stuck waiting for a full exit.
+    setStickyVisible(heroFormOutOfView && (!lifestyleInView || howToApproaching))
+  }, [heroFormOutOfView, lifestyleInView, howToApproaching])
+
+  useEffect(() => {
     const form = formRef.current
     if (!form || typeof IntersectionObserver === 'undefined') return
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setStickyVisible(!entry.isIntersecting)
+    const lifestyle = lifestyleRef.current
+    const howTo = howToRef.current
+    let formOut = false
+    let lifestyleVisible = false
+    let howToNear = false
+
+    const recompute = () => {
+      setHeroFormOutOfView(formOut)
+      setLifestyleInView(lifestyleVisible)
+      setHowToApproaching(howToNear)
+      setStickyVisible(formOut && (!lifestyleVisible || howToNear))
+    }
+
+    // Seed initial state before IO callbacks run.
+    formOut = form.getBoundingClientRect().bottom <= 0
+    if (lifestyle) {
+      const rect = lifestyle.getBoundingClientRect()
+      lifestyleVisible = rect.bottom > 0 && rect.top < window.innerHeight
+    }
+    if (howTo) {
+      const rect = howTo.getBoundingClientRect()
+      // Match the howTo observer's small bottom rootMargin (~56px early).
+      const early = 56
+      howToNear = rect.top < window.innerHeight + early && rect.bottom > 0
+    }
+    recompute()
+
+    // Form + lifestyle: exact viewport edges — hide while lifestyle is truly on screen.
+    const gateObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.target === form) formOut = !entry.isIntersecting
+          if (lifestyle && entry.target === lifestyle) {
+            lifestyleVisible = entry.isIntersecting
+          }
+        }
+        recompute()
       },
       { threshold: 0, rootMargin: '0px' },
     )
 
-    observer.observe(form)
-    return () => observer.disconnect()
-  }, [product])
+    gateObserver.observe(form)
+    if (lifestyle) gateObserver.observe(lifestyle)
+
+    // How to Use: reveal as it reaches the viewport (small bottom rootMargin =
+    // slight lead). Observing how-to is more precise than shrinking lifestyle's
+    // exit margin — a full-bleed 100dvh lifestyle can't "exit early" via
+    // rootMargin without still covering the screen.
+    let howToObserver
+    if (howTo) {
+      howToObserver = new IntersectionObserver(
+        ([entry]) => {
+          howToNear = entry.isIntersecting
+          recompute()
+        },
+        { threshold: 0, rootMargin: '0px 0px 56px 0px' },
+      )
+      howToObserver.observe(howTo)
+    }
+
+    return () => {
+      gateObserver.disconnect()
+      howToObserver?.disconnect()
+    }
+  }, [product?.slug, Boolean(product?.lifestyle), Boolean(product?.howTo)])
 
   if (!product) {
     if (typeof window !== 'undefined') {
@@ -139,16 +208,13 @@ export default function ProductPage({
           <PdpMarquee items={product.marquee.items} />
         </div>
       ) : null}
-      {product.lifestyle ? <PdpLifestyle lifestyle={product.lifestyle} /> : null}
-      {product.stats ? (
-        <div data-pdp-reveal>
-          <PdpStats stats={product.stats} />
-        </div>
+      {product.lifestyle ? (
+        <PdpLifestyle lifestyle={product.lifestyle} sectionRef={lifestyleRef} />
       ) : null}
 
       <div className="pdp-main pdp-main--lower">
         {product.howTo ? (
-          <div data-pdp-reveal>
+          <div ref={howToRef} data-pdp-reveal>
             <PdpHowTo howTo={product.howTo} />
           </div>
         ) : null}

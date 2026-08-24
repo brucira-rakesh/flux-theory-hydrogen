@@ -291,10 +291,8 @@ const PRODUCT_FRAGMENT = `#graphql
     suitableFor: metafield(namespace: "custom", key: "suitable_for") {
       value
     }
-    stateOfMind: metafield(namespace: "custom", key: "state_of_mind") {
-      value
-    }
-    fragranceNotes: metafield(namespace: "custom", key: "fragrance_notes") {
+    allBenefits: metafield(namespace: "custom", key: "all_benefits") {
+      type
       value
     }
     howToUse: metafield(namespace: "custom", key: "how_to_use") {
@@ -379,6 +377,18 @@ const PRODUCT_FRAGMENT = `#graphql
           description: field(key: "description") { value }
           # Canonical media field (Video | MediaImage) — same union as how_to_use.media
           backgroundMedia: field(key: "background_media") {
+            reference {
+              __typename
+              ... on MediaImage {
+                image { url altText width height }
+              }
+              ... on Video {
+                sources { url mimeType }
+                previewImage { url }
+              }
+            }
+          }
+          mobileMedia: field(key: "mobile_media") {
             reference {
               __typename
               ... on MediaImage {

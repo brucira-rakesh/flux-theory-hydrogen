@@ -1,0 +1,362 @@
+/* The Brand — page layout. Tokens reuse PDP (--pdp-*) via .pdp-page. */
+
+.brand-page {
+  --page-inset: 16px;
+  background: #fff;
+  color: var(--pdp-ink);
+  font-family: var(--pdp-body);
+  overflow-x: clip;
+}
+
+.brand-inner {
+  width: min(100%, calc(1440 * var(--pdp-fluid) / 1440));
+  margin: 0 auto;
+  padding-inline: var(--page-inset);
+  box-sizing: border-box;
+}
+
+.brand-eyebrow {
+  font-family: var(--pdp-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0 0 calc(20 * var(--pdp-fluid) / 1440);
+  opacity: 0.6;
+}
+
+.brand-display {
+  font-family: var(--pdp-display);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: calc(-2 * var(--pdp-fluid) / 1440);
+  line-height: 0.95;
+  margin: 0;
+  color: inherit;
+}
+
+.brand-h-section {
+  font-size: 40px;
+  font-size: calc(40 * var(--pdp-fluid, 1440px) / 1440);
+  margin-bottom: calc(16 * var(--pdp-fluid) / 1440);
+}
+
+.brand-body {
+  font-size: calc(16 * var(--pdp-fluid) / 1440);
+  line-height: 1.6;
+  margin: 0 0 1.1em;
+  max-width: 58ch;
+}
+
+.brand-body:last-child {
+  margin-bottom: 0;
+}
+
+.brand-section {
+  padding-block: calc(120 * var(--pdp-fluid) / 1440);
+}
+
+/* ---------- Shift lockup (mirrors FT logo mid-band) ---------- */
+
+.brand-shift-lockup {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.brand-shift-lockup__stack {
+  position: relative;
+  display: grid;
+  justify-items: stretch;
+  width: max-content;
+  max-width: 100%;
+}
+
+.brand-shift-lockup__half {
+  font-family: var(--pdp-hero-display, 'Mohave', sans-serif);
+  font-weight: 700;
+  font-size: calc(96 * var(--pdp-fluid) / 1440);
+  line-height: 0.9;
+  letter-spacing: calc(-3.2 * var(--pdp-fluid) / 1440);
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #fff;
+  grid-area: 1 / 1;
+}
+
+.brand-shift-lockup__half--top {
+  clip-path: inset(0 0 54% 0);
+  transform: translateX(calc(-4 * var(--pdp-fluid) / 1440));
+}
+
+.brand-shift-lockup__half--bottom {
+  clip-path: inset(54% 0 0 0);
+  transform: translateX(calc(4 * var(--pdp-fluid) / 1440));
+}
+
+.brand-shift-lockup__gap {
+  /* Structural spacer only — the clip inset creates the Shift channel. */
+  display: none;
+}
+
+/* ---------- 1. Hero ---------- */
+
+.brand-hero {
+  position: relative;
+  isolation: isolate;
+  background: var(--pdp-ink);
+  color: #fff;
+  height: 100vh;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  /* Same clearance as .shop-main / About hero under the floating SiteHeader */
+  padding: 120px 0 calc(120 * var(--pdp-fluid) / 1440);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.brand-hero__video {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  pointer-events: none;
+}
+
+.brand-hero__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom,
+      rgba(0, 0, 0, 0.55) 0%,
+      rgba(0, 0, 0, 0.35) 40%,
+      rgba(0, 0, 0, 0.7) 100%);
+}
+
+.brand-hero__content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(40 * var(--pdp-fluid) / 1440);
+}
+
+.brand-hero__tagline {
+  margin: 0;
+  max-width: 36ch;
+  font-family: var(--pdp-body);
+  font-size: calc(18 * var(--pdp-fluid) / 1440);
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 0.85;
+  color: #fff;
+}
+
+/* ---------- Placeholders ---------- */
+
+.brand-placeholder {
+  position: relative;
+  background: #1a1a1a;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.brand-placeholder__label {
+  position: absolute;
+  inset: auto 16px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.brand-placeholder--portrait {
+  aspect-ratio: 4 / 5;
+  background:
+    radial-gradient(ellipse 55% 70% at 50% 42%, #3a3a3a 0%, transparent 70%),
+    linear-gradient(160deg, #222 0%, #0d0d0d 100%);
+}
+
+.brand-placeholder--metal {
+  aspect-ratio: 16 / 10;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      #2a2a2a 0px,
+      #3c3c3c 1px,
+      #2a2a2a 2px,
+      #2a2a2a 8px
+    ),
+    linear-gradient(135deg, #4a4a4a 0%, #1a1a1a 50%, #5a5a5a 100%);
+}
+
+/* ---------- 2. Philosophy ---------- */
+
+.brand-philosophy__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: calc(56 * var(--pdp-fluid) / 1440);
+  align-items: center;
+}
+
+.brand-philosophy__title {
+  margin: 0 0 calc(28 * var(--pdp-fluid) / 1440);
+}
+
+.brand-philosophy__copy .brand-body {
+  margin-top: 0;
+}
+
+/* ---------- 3. Duality ---------- */
+
+.brand-duality__block {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: calc(40 * var(--pdp-fluid) / 1440);
+  align-items: center;
+}
+
+.brand-duality__block--industrial {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+}
+
+.brand-duality__block--industrial .brand-duality__copy {
+  order: 2;
+}
+
+.brand-duality__block--industrial .brand-placeholder {
+  order: 1;
+}
+
+/* ---------- 4. Closing ---------- */
+
+.brand-closing {
+  background: var(--pdp-ink);
+  color: #fff;
+  text-align: center;
+  padding-block: calc(160 * var(--pdp-fluid) / 1440);
+}
+
+.brand-closing__title {
+  margin: 0;
+  font-family: var(--pdp-hero-display, 'Mohave', sans-serif);
+  font-weight: 700;
+  font-size: calc(76 * var(--pdp-fluid) / 1440);
+  line-height: 0.95;
+  letter-spacing: calc(-3.2 * var(--pdp-fluid) / 1440);
+  text-transform: uppercase;
+  color: #fff;
+}
+
+/* ============================================================
+   RESPONSIVE — tablet 960 / mobile 640
+   Verified targets: 375 · 768 · 1024 · 1440+
+   ============================================================ */
+
+@media (max-width: 960px) {
+  .brand-section {
+    padding-block: 88px;
+  }
+
+  .brand-h-section {
+    font-size: 36px;
+    letter-spacing: -1.4px;
+  }
+
+  .brand-philosophy__grid,
+  .brand-duality__block,
+  .brand-duality__block--industrial {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 36px;
+  }
+
+  .brand-duality__block--industrial .brand-duality__copy,
+  .brand-duality__block--industrial .brand-placeholder {
+    order: unset;
+  }
+
+  .brand-shift-lockup__half {
+    font-size: clamp(40px, 11vw, 72px);
+    letter-spacing: -2px;
+  }
+
+  .brand-hero {
+    padding: 100px 0 72px;
+  }
+
+  .brand-hero__tagline {
+    font-size: 16px;
+  }
+
+  .brand-closing__title {
+    font-size: 48px;
+    letter-spacing: -2px;
+  }
+}
+
+@media (max-width: 640px) {
+  .brand-page {
+    --page-inset: 16px;
+  }
+
+  .brand-section {
+    padding-block: 64px;
+  }
+
+  .brand-h-section {
+    font-size: 28px;
+    letter-spacing: -1.2px;
+  }
+
+  .brand-body {
+    font-size: 14px;
+  }
+
+  .brand-hero {
+    height: 100vh;
+    min-height: 100vh;
+    padding: 100px 0 64px;
+  }
+
+  .brand-hero__content {
+    gap: 28px;
+  }
+
+  .brand-shift-lockup__half {
+    font-size: clamp(32px, 10.5vw, 44px);
+    letter-spacing: -1.4px;
+  }
+
+  .brand-shift-lockup__half--top {
+    transform: translateX(-2px);
+  }
+
+  .brand-shift-lockup__half--bottom {
+    transform: translateX(2px);
+  }
+
+  .brand-hero__tagline {
+    font-size: 14px;
+    max-width: 32ch;
+  }
+
+  .brand-closing {
+    padding-block: 96px;
+  }
+
+  .brand-closing__title {
+    font-size: 32px;
+    letter-spacing: -1.3px;
+  }
+}

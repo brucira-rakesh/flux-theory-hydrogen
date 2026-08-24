@@ -165,17 +165,21 @@
 }
 
 .about-origin__media {
+  position: relative;
   background: var(--pdp-panel);
   aspect-ratio: auto;
   min-height: 0;
   height: 100%;
   max-height: 100%;
-  display: grid;
-  place-items: center;
-  color: var(--pdp-muted);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  overflow: hidden;
+}
+
+.about-origin__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 
 .about-origin__copy {
@@ -221,61 +225,224 @@
   border-top: 1px solid var(--pdp-line);
 }
 
-/* ---------- 4. Beliefs ---------- */
+/* ---------- Bento: Built On Belief. Backed By Proof. ---------- */
 
-.about-beliefs__head {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  gap: 40px;
-  margin-bottom: calc(72 * var(--pdp-fluid) / 1440);
+.about-bento {
+  background: #fff;
+  color: var(--pdp-ink);
 }
 
-.about-beliefs__grid {
+.about-bento__head {
+  margin-bottom: calc(48 * var(--pdp-fluid) / 1440);
+}
+
+.about-bento__title {
+  white-space: normal;
+}
+
+.about-bento__grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  grid-template-columns: minmax(0, 1.15fr) repeat(3, minmax(0, 1fr));
+  grid-template-rows: minmax(220px, 1fr) auto;
+  grid-template-areas:
+    'image free clinical formulas'
+    'image beliefs beliefs beliefs';
+  gap: 12px;
+  align-items: stretch;
 }
 
-.about-belief {
-  background: var(--pdp-ink);
-  padding: calc(44 * var(--pdp-fluid) / 1440);
+.about-bento__tile--image {
+  grid-area: image;
 }
 
-.about-belief__index {
-  font-family: var(--pdp-body);
+.about-bento__tile--free {
+  grid-area: free;
+}
+
+.about-bento__tile--clinical {
+  grid-area: clinical;
+}
+
+.about-bento__tile--formulas {
+  grid-area: formulas;
+}
+
+.about-bento__tile--beliefs {
+  grid-area: beliefs;
+}
+
+.about-bento__tile {
+  background: var(--pdp-panel);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.about-bento__tile--image {
+  position: relative;
+  overflow: hidden;
+  min-height: 420px;
+  background: #1a1a1a;
+}
+
+.about-bento__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.about-bento__caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 16px 18px;
+  font-family: var(--pdp-display);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent);
+}
+
+.about-bento__tile--stat,
+.about-bento__tile--clinical {
+  padding: calc(28 * var(--pdp-fluid) / 1440) calc(24 * var(--pdp-fluid) / 1440);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.about-bento__value {
+  margin: 0;
+  font-family: var(--pdp-display);
+  font-size: clamp(56px, calc(72 * var(--pdp-fluid) / 1440), 80px);
+  font-weight: 600;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.about-bento__label {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  opacity: 0.65;
+}
+
+.about-bento__icon {
+  display: block;
+  flex-shrink: 0;
+  color: var(--pdp-ink);
+}
+
+.about-bento__card-title {
+  margin: 0;
+  font-family: var(--pdp-display);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.about-bento__card-body {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  opacity: 0.65;
+  flex: 1;
+}
+
+.about-bento__cta {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  margin-top: 8px;
+  font-family: var(--pdp-display);
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  opacity: 0.4;
-  display: block;
-  margin-bottom: calc(24 * var(--pdp-fluid) / 1440);
-}
-
-.about-belief__title {
-  font-family: var(--pdp-display);
-  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  font-size: calc(24 * var(--pdp-fluid) / 1440);
-  letter-spacing: calc(-1 * var(--pdp-fluid) / 1440);
-  line-height: 1.1;
-  margin: 0 0 calc(16 * var(--pdp-fluid) / 1440);
+  text-decoration: none;
+  color: var(--pdp-ink);
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 2px;
 }
 
-.about-belief__body {
-  font-size: calc(15 * var(--pdp-fluid) / 1440);
-  line-height: 1.6;
-  opacity: 0.65;
+.about-bento__cta:hover,
+.about-bento__cta:focus-visible {
+  opacity: 0.7;
+}
+
+.about-bento__tile--beliefs {
+  padding: calc(28 * var(--pdp-fluid) / 1440) calc(24 * var(--pdp-fluid) / 1440);
+}
+
+.about-bento__beliefs-heading {
+  margin: 0 0 20px;
+  font-family: var(--pdp-display);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.about-bento__beliefs {
+  list-style: none;
   margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
 }
 
-/* ---------- Stats (PdpStats) ---------- */
+.about-bento__belief {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
 
-.about-stats .pdp-stats__title {
-  white-space: pre-line;
+.about-bento__belief-title {
+  margin: 0 0 6px;
+  font-family: var(--pdp-display);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.about-bento__belief-body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 0.65;
+}
+
+/* ---------- Archetypes (below bento) ---------- */
+
+.about-archetypes__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: calc(40 * var(--pdp-fluid) / 1440);
+  align-items: center;
+}
+
+.about-archetypes__copy {
+  min-width: 0;
+}
+
+.about-archetypes__copy .about-h-section {
+  margin-bottom: calc(16 * var(--pdp-fluid) / 1440);
+}
+
+.about-archetypes__media {
+  min-width: 0;
 }
 
 /* ---------- Made here ---------- */
@@ -420,7 +587,8 @@
   }
 
   .about-origin__grid,
-  .about-made__grid {
+  .about-made__grid,
+  .about-archetypes__grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 40px;
   }
@@ -464,9 +632,28 @@
     letter-spacing: -2px;
   }
 
-  .about-stats .pdp-stats__title {
-    font-size: 36px;
-    letter-spacing: -1.6px;
+  /* Bento — tablet: A full; B|E; C full; D full */
+  .about-bento__head {
+    margin-bottom: 36px;
+  }
+
+  .about-bento__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
+    grid-template-areas:
+      'image image'
+      'free formulas'
+      'clinical clinical'
+      'beliefs beliefs';
+  }
+
+  .about-bento__tile--image {
+    min-height: 360px;
+    aspect-ratio: 16 / 10;
+  }
+
+  .about-bento__beliefs {
+    gap: 16px;
   }
 }
 
@@ -508,29 +695,6 @@
     font-size: 18px;
   }
 
-  .about-beliefs__head {
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-    margin-bottom: 40px;
-  }
-
-  .about-beliefs__grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .about-belief {
-    padding: 28px 20px;
-  }
-
-  .about-belief__title {
-    font-size: 24px;
-  }
-
-  .about-belief__body {
-    font-size: 14px;
-  }
-
   .about-page .pdp-marquee {
     padding-block: 18px;
   }
@@ -550,26 +714,68 @@
     gap: 22px;
   }
 
-  .about-stats .pdp-stats__title {
+  /* Bento — mobile: A → B → E → C → D */
+  .about-bento__head {
+    margin-bottom: 28px;
+  }
+
+  .about-bento__title {
     font-size: 28px;
-    letter-spacing: -1.2px;
-    margin-bottom: 36px;
   }
 
-  .about-stats .pdp-stats__card {
-    height: auto;
-    min-height: 140px;
-    padding: 26px 16px;
+  .about-bento__grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'image'
+      'free'
+      'formulas'
+      'clinical'
+      'beliefs';
+    gap: 12px;
   }
 
-  .about-stats .pdp-stats__value {
-    font-size: 24px;
-    letter-spacing: -1.2px;
+  .about-bento__tile--image {
+    min-height: 280px;
+    aspect-ratio: 4 / 5;
   }
 
-  .about-stats .pdp-stats__text {
+  .about-bento__caption {
     font-size: 12px;
-    max-width: none;
+    padding: 14px 16px;
+  }
+
+  .about-bento__tile--stat,
+  .about-bento__tile--clinical,
+  .about-bento__tile--beliefs {
+    padding: 24px 16px;
+  }
+
+  .about-bento__value {
+    font-size: 56px;
+  }
+
+  .about-bento__label,
+  .about-bento__card-body,
+  .about-bento__belief-body {
+    font-size: 14px;
+  }
+
+  .about-bento__card-title {
+    font-size: 18px;
+  }
+
+  .about-bento__beliefs-heading,
+  .about-bento__belief-title {
+    font-size: 14px;
+  }
+
+  .about-bento__cta {
+    font-size: 12px;
+  }
+
+  .about-bento__beliefs {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
   }
 
   .about-made__list span {

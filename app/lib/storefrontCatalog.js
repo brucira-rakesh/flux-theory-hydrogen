@@ -362,9 +362,36 @@ function statsFromMetafield(product) {
 }
 
 /**
+ * Parse a lifestyle banner file_reference (Video | MediaImage) into banner + video.
+ * @returns {{ banner: string, video: Array | null } | undefined}
+ */
+function parseLifestyleMediaReference(mediaRef) {
+  if (!mediaRef) return undefined;
+
+  if (mediaRef.__typename === 'Video') {
+    const sources = mediaRef.sources ?? [];
+    if (!sources.length) return undefined;
+    return {
+      banner: mediaRef.previewImage?.url ?? '',
+      video: sources,
+    };
+  }
+
+  const bannerImg = mediaRef.image;
+  if (!bannerImg?.url) return undefined;
+
+  return {
+    banner: bannerImg.url,
+    video: null,
+  };
+}
+
+/**
  * custom.product_lifestyle_banner_content → PdpLifestyle shape.
  * Prefer background_media; fall back to legacy image. Video → sources + poster
  * (bottle overlay skipped at render). MediaImage → banner + product_shot bottle.
+ * mobile_media is mapped separately; PdpLifestyle falls back to background_media
+ * on mobile when mobile_media is absent.
  * Returns undefined when the metafield or background media is absent.
  */
 function lifestyleFromMetafield(product) {
@@ -373,81 +400,121 @@ function lifestyleFromMetafield(product) {
 
   const title = mo.title?.value?.trim() ?? '';
   const blurb = mo.description?.value?.trim() ?? '';
-  const mediaRef =
-    mo.backgroundMedia?.reference ?? mo.image?.reference ?? null;
+  const desktop = parseLifestyleMediaReference(
+    mo.backgroundMedia?.reference ?? mo.image?.reference ?? null,
+  );
+  const mobile = parseLifestyleMediaReference(mo.mobileMedia?.reference ?? null);
   const bottleImg = mo.productShot?.reference?.image;
 
-  if (!mediaRef) return undefined;
-
-  if (mediaRef.__typename === 'Video') {
-    const sources = mediaRef.sources ?? [];
-    if (!sources.length) return undefined;
-    return {
-      title: title || undefined,
-      blurb: blurb || undefined,
-      // Poster / legacy banner slot — used by <video poster>, not as an <img>
-      banner: mediaRef.previewImage?.url ?? '',
-      // Mapped for completeness; PdpLifestyle skips bottle when video is set
-      bottle: bottleImg?.url ?? undefined,
-      video: sources,
-    };
-  }
-
-  // MediaImage (and any other image-like reference with .image)
-  const bannerImg = mediaRef.image;
-  if (!bannerImg?.url) return undefined;
+  if (!desktop) return undefined;
 
   return {
     title: title || undefined,
     blurb: blurb || undefined,
-    banner: bannerImg.url,
+    banner: desktop.banner,
     bottle: bottleImg?.url ?? undefined,
-    video: null,
+    video: desktop.video,
+    mobileBanner: mobile?.banner,
+    mobileVideo: mobile?.video ?? null,
   };
 }
 
 /**
  * Product-level `custom` metafields → PDP accordion.
- * Overlay accordion (the-dreamer) wins when present so the Figma tree stays intact.
+ * Each item is Shopify-first; overlay fills that slot only when its metafield
+ * is empty. Overlay is never an all-or-nothing replacement for the whole list.
  */
-export function accordionFromMetafields(product) {
-  const details = parseProductDetailsRichText(product?.productDetails);
-  const allIngredients = metafieldText(product?.allIngredients);
-  const whyLove = metafieldText(product?.whyYoullLoveIt);
-  const suitableFor = metafieldText(product?.suitableFor);
-  const stateOfMind = metafieldText(product?.stateOfMind);
-  const fragranceNotes = metafieldText(product?.fragranceNotes);
+export function accordionFromMetafields(product, overlayItems) {
+  const overlayById = new Map(
+    (overlayItems ?? []).filter((item) => item?.id).map((item) => [item.id, item]),
+  );
+
+  const shopifyDetails = parseProductDetailsRichText(product?.productDetails);
+  const shopifyIngredients = metafieldText(product?.allIngredients);
+  const shopifyWhyLove = metafieldText(product?.whyYoullLoveIt);
+  const shopifyBenefits = parseProductDetailsRichText(product?.allBenefits);
+  const shopifySuitable = metafieldText(product?.suitableFor);
 
   const items = [];
-  if (details.intro || details.bullets.length) {
-    items.push({
+
+  const details = pickRichAccordionItem({
+    shopify: shopifyDetails,
+    overlay: overlayById.get('product-details'),
+    defaults: {
       id: 'product-details',
       title: 'Product details',
       defaultOpen: true,
-      intro: details.intro || undefined,
-      bullets: details.bullets.length ? details.bullets : undefined,
-    });
-  }
-  if (allIngredients) {
-    items.push({
-      id: 'all-ingredients',
-      title: 'All Ingredients',
-      body: allIngredients,
-    });
-  }
-  if (whyLove) {
-    items.push({id: 'why-love', title: 'Why You’ll Love It', body: whyLove});
-  }
-  if (suitableFor) {
-    items.push({id: 'suitable-for', title: 'Suitable For', body: suitableFor});
-  }
-  if (stateOfMind) {
-    items.push({id: 'state-of-mind', title: 'State of Mind', body: stateOfMind});
-  }
-  if (fragranceNotes) {
-    items.push({id: 'fragrance', title: 'Fragrance Notes', body: fragranceNotes});
-  }
+    },
+  });
+  if (details) items.push(details);
+
+  const benefits = pickRichAccordionItem({
+    shopify: shopifyBenefits,
+    overlay: overlayById.get('all-benefits'),
+    defaults: {id: 'all-benefits', title: 'All Benefits'},
+  });
+  if (benefits) items.push(benefits);
+
+  const whyLove = pickBodyAccordionItem({
+    shopify: shopifyWhyLove,
+    overlay: overlayById.get('why-love'),
+    defaults: {id: 'why-love', title: 'Why You’ll Love It'},
+  });
+  if (whyLove) items.push(whyLove);
+
+  const ingredients = pickBodyAccordionItem({
+    shopify: shopifyIngredients,
+    overlay: overlayById.get('all-ingredients'),
+    defaults: {id: 'all-ingredients', title: 'All Ingredients'},
+  });
+  if (ingredients) items.push(ingredients);
+
+  const suitable = pickBodyAccordionItem({
+    shopify: shopifySuitable,
+    overlay: overlayById.get('suitable-for'),
+    defaults: {id: 'suitable-for', title: 'Suitable For'},
+  });
+  if (suitable) items.push(suitable);
+
   return items.length ? items : undefined;
+}
+
+function hasRichAccordionContent(parsed) {
+  return Boolean(parsed?.intro || parsed?.bullets?.length);
+}
+
+/** Shopify rich-text item, else overlay {intro, bullets, body} for the same id. */
+function pickRichAccordionItem({shopify, overlay, defaults}) {
+  if (hasRichAccordionContent(shopify)) {
+    return {
+      ...defaults,
+      intro: shopify.intro || undefined,
+      bullets: shopify.bullets.length ? shopify.bullets : undefined,
+    };
+  }
+  if (!overlay) return undefined;
+  if (!(overlay.intro || overlay.body || overlay.bullets?.length)) return undefined;
+  return {
+    ...defaults,
+    title: overlay.title ?? defaults.title,
+    intro: overlay.intro || undefined,
+    body: overlay.body,
+    bullets: overlay.bullets?.length ? overlay.bullets : undefined,
+    defaultOpen: overlay.defaultOpen ?? defaults.defaultOpen,
+  };
+}
+
+/** Shopify multi-line / plain body, else overlay.body for the same id. */
+function pickBodyAccordionItem({shopify, overlay, defaults}) {
+  if (shopify) {
+    return {...defaults, body: shopify};
+  }
+  if (!overlay?.body) return undefined;
+  return {
+    ...defaults,
+    title: overlay.title ?? defaults.title,
+    body: overlay.body,
+  };
 }
 
 export function toPdpViewModel(product) {
@@ -509,7 +576,7 @@ export function toPdpViewModel(product) {
     // If Shopify has zero media, omit cleanly by returning undefined.
     detailBottle: mediaPreviewUrl(lastMedia),
     stickyThumb: mediaPreviewUrl(firstMedia),
-    accordion: overlay?.accordion ?? accordionFromMetafields(product),
+    accordion: accordionFromMetafields(product, overlay?.accordion),
     marquee: (() => {
       const shopifyItems = marqueeItemsFromMetafield(product);
       if (shopifyItems) {

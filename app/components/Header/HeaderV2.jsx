@@ -202,11 +202,7 @@ export default function HeaderV2({ logoTo = HOME_URL, mode = 'light', visible = 
           >
             <nav
               aria-label="Primary"
-              className={`hidden items-center overflow-hidden whitespace-nowrap transition-[opacity,max-width,gap] duration-300 min-[961px]:flex ${
-                searching
-                  ? 'pointer-events-none max-w-0 gap-0 opacity-0'
-                  : 'max-w-[40rem] gap-8 opacity-100'
-              }`}
+              className="hidden max-w-[40rem] items-center gap-8 overflow-hidden whitespace-nowrap min-[961px]:flex"
             >
               {navLinks.map((link) => {
                 const isActive = link.id === activeId

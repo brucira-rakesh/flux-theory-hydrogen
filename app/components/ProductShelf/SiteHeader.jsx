@@ -17,7 +17,7 @@ const FALLBACK_NAV_LINKS = [
   { id: 'shop', label: 'Shop All', to: '/shop' },
   { id: 'body', label: 'Body', to: '/shop/body' },
   ...(FACE_FILTER_ENABLED ? [{ id: 'face', label: 'Face', to: '/shop/face' }] : []),
-  { id: 'brand', label: 'The Brand', href: '#brand' },
+  { id: 'brand', label: 'The Brand', to: '/the-brand' },
   { id: 'about', label: 'About Us', to: '/about-us' },
 ]
 
@@ -120,6 +120,7 @@ const LABEL_PATHS = [
   [/^body$/i, '/shop/body'],
   [/^face$/i, '/shop/face'],
   [/^about\s*us$/i, '/about-us'],
+  [/^the\s*brand$/i, '/the-brand'],
 ]
 
 function linkPath(link) {
@@ -168,8 +169,13 @@ function isLightSurfacePath(pathname) {
     pathname.startsWith('/shop') ||
     pathname.startsWith('/products') ||
     pathname.startsWith('/account') ||
-    pathname === '/about-us'
+    pathname === '/about-us' ||
+    pathname === '/the-brand'
   )
+}
+
+function isDarkHeroPath(pathname) {
+  return pathname === '/about-us' || pathname === '/the-brand'
 }
 
 export default function SiteHeader({ logoTo = HOME_URL }) {
@@ -187,6 +193,7 @@ export default function SiteHeader({ logoTo = HOME_URL }) {
   const lastScrollY = useRef(0)
   const activeId = resolveActiveId(location.pathname, location.hash, navLinks)
   const onLight = isLightSurfacePath(location.pathname)
+  const onDarkHero = isDarkHeroPath(location.pathname)
   const onPdp = location.pathname.startsWith('/products')
   const { openCart } = useCartDrawer()
   const logoIsExternal = isExternalUrl(logoTo)
@@ -319,7 +326,7 @@ export default function SiteHeader({ logoTo = HOME_URL }) {
   return (
     <>
       <header
-        className={`ps-header${pinned ? ' is-pinned' : ''}${onLight ? ' is-on-light' : ''}${onPdp ? ' is-on-pdp' : ''}${hidden && !open && !searching ? ' is-hidden' : ''}${searching ? ' is-searching' : ''}${open ? ' is-drawer-open' : ''}`}
+        className={`ps-header${pinned ? ' is-pinned' : ''}${onLight ? ' is-on-light' : ''}${onDarkHero ? ' is-on-dark-hero' : ''}${onPdp ? ' is-on-pdp' : ''}${hidden && !open && !searching ? ' is-hidden' : ''}${open ? ' is-drawer-open' : ''}`}
       >
         <div className="ps-header__bar">
           {logoIsExternal ? (

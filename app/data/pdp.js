@@ -65,16 +65,6 @@ export const pdpCatalog = {
         title: 'Suitable For',
         body: 'All skin types. Ideal for daily use and anyone seeking a calming, hydrating cleanse.',
       },
-      {
-        id: 'state-of-mind',
-        title: 'THE DREAMER STATE OF MIND',
-        body: 'Visionary. Imaginative. Exact. Built for the mind that designs before it speaks.',
-      },
-      {
-        id: 'fragrance',
-        title: 'Fragrance Notes',
-        body: 'Cool depth with a visionary finish — fresh top notes that settle into a lasting dreamlike trail.',
-      },
     ],
     marquee: {
       mark: marqueeMark,
