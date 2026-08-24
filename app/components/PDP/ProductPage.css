@@ -343,7 +343,7 @@
   text-align: center;
   font-size: calc(12 * var(--pdp-fluid) / 1440);
   font-weight: 400;
-  background: #fff;
+  background: #f4f4f4;
   align-self: stretch;
 }
 
