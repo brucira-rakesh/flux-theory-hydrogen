@@ -323,13 +323,21 @@ export default function AnimatedTitle({
           { opacity: 0, filter: 'blur(20px)', y: 0 },
           {
             ...reveal,
+            // fromTo defaults to immediateRender:true which fights ScrollTrigger
+            // and can leave mid-page titles stuck at the from state.
+            immediateRender: false,
             scrollTrigger: {
-              start: 'top top',
+              start: 'top 80%',
+              end: 'bottom top',
+              toggleActions: 'play none none none',
               ...raw,
               trigger: triggerEl,
             },
           },
         )
+
+        // Lenis / late layout: re-measure so in-view titles fire onEnter.
+        requestAnimationFrame(() => ScrollTrigger.refresh())
       } else {
         gsap.fromTo(
           targets,

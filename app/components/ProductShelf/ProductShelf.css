@@ -254,46 +254,50 @@ main[data-focus-active] .ps-header.is-pinned {
   right: 14px;
 }
 
-/* Shop / PDP / Account — floating pill sits 12px from viewport top
-   (base .ps-header is 24px). Pinned stays top: 0 via .is-pinned. */
-.ps-header.is-on-light:not(.is-pinned) {
-  top: 12px;
-}
+/* Shop / PDP / Account — match HeaderV2 (dev.flux-theory.pages.dev) spacing.
+   Floating: logo outside glass; glass + padding only on the right cluster.
+   Insets stay on base .ps-header (24px / 12px ≤600) — do not pull top to 12px
+   on desktop (HeaderV2: sm:top-6). Pinned: full-bleed bar, cluster clear. */
 
-/* Shop / PDP / Account — HeaderV2 glass on the bar (both floating + pinned).
-   Source (HeaderV2.jsx, unpinned light mode cluster):
-     bg-white/[0.13]  → rgba(255, 255, 255, 0.13)  (--ps-nav-bg)
-     backdrop-blur-[12.85px] → blur(12.85px)       (--ps-chrome-blur)
-     no border
-   Positioning (inset vs full-bleed) stays on .ps-header / .is-pinned. */
 .ps-header.is-on-light .ps-header__bar {
-  padding: 16px 0;
-  background: var(--ps-nav-bg);
-  backdrop-filter: blur(var(--ps-chrome-blur));
-  -webkit-backdrop-filter: blur(var(--ps-chrome-blur));
-  border-bottom: 0;
-  pointer-events: auto;
-}
-
-/* Glass lives on the bar — cluster stays clear so there's no double-layer pill.
-   Figma 2007:24 padding lives on the bar; cluster is gap-only. */
-.ps-header.is-on-light .ps-header__cluster {
-  --ps-nav-fg: #000;
   padding: 0;
-  gap: 40px;
   background: transparent;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  border-bottom: 0;
+}
+
+/* HeaderV2 unpinned light cluster:
+   bg-white/[0.13], backdrop-blur-[12.85px], px-4 py-2.5 / sm:px-6 sm:py-4, gap-6 / sm:gap-10 */
+.ps-header.is-on-light .ps-header__cluster {
+  --ps-nav-fg: #000;
+  padding: 16px 24px;
+  gap: 40px;
+  background: var(--ps-nav-bg);
+  backdrop-filter: blur(var(--ps-chrome-blur));
+  -webkit-backdrop-filter: blur(var(--ps-chrome-blur));
   color: var(--ps-nav-fg);
 }
 
+/* HeaderV2 pinned bar: px-4 py-3 / sm:px-6, solid frost — cluster px-0 py-0 */
 .ps-header.is-on-light.is-pinned .ps-header__bar {
-  padding: 16px 24px;
+  padding: 12px 24px;
+  background: var(--ps-chrome-bg);
+  backdrop-filter: blur(var(--ps-chrome-blur));
+  -webkit-backdrop-filter: blur(var(--ps-chrome-blur));
+  border-bottom: 0;
+  box-shadow: 0 1px 0 var(--ps-chrome-line);
+  pointer-events: auto;
 }
 
 .ps-header.is-on-light.is-pinned .ps-header__cluster {
   padding: 0;
   gap: 40px;
+  --ps-nav-fg: var(--pdp-ink, #000);
+  color: var(--ps-nav-fg);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* White SVG artwork — invert to black so it reads on 13% white glass over
@@ -360,17 +364,25 @@ main[data-focus-active] .ps-header.is-pinned {
   }
 
   /* Collapse sibling icon buttons so they don't consume layout space.
-     min-width must also be zeroed — ps-header__icon-btn sets min-width:24px
+     min-width/min-height must also be zeroed — ps-header__icon-btn is 24×24
      which otherwise prevents collapse to zero. */
   .ps-header.is-searching .ps-header__actions>.ps-header__icon-btn {
     flex: 0 0 0;
     width: 0;
+    height: 0;
     min-width: 0;
+    min-height: 0;
     padding: 0;
     overflow: hidden;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.2s ease, flex-basis 0.28s cubic-bezier(0.22, 1, 0.36, 1), width 0.28s cubic-bezier(0.22, 1, 0.36, 1), min-width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    transition:
+      opacity 0.2s ease,
+      flex-basis 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      width 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      min-width 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      min-height 0.28s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   /* header-search fills the remaining actions width */
@@ -427,13 +439,14 @@ main[data-focus-active] .ps-header.is-pinned {
   gap: 24px;
 }
 
+/* Match HeaderV2 ICON_BTN size-6 (24×24) — glyphs stay ~12–14px inside. */
 .ps-header__icon-btn {
   display: grid;
   place-items: center;
-  width: auto;
-  height: auto;
-  min-width: 0;
-  min-height: 0;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -515,15 +528,35 @@ main[data-focus-active] .ps-header.is-pinned {
     padding: 4px 0;
   }
 
-  .ps-header.is-on-light .ps-header__bar,
-  .ps-header.is-on-light.is-pinned .ps-header__bar {
-    padding: 16px 0;
+  .ps-header.is-on-light .ps-header__bar {
+    padding: 0;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
-  .ps-header.is-on-light .ps-header__cluster,
+  .ps-header.is-on-light.is-pinned .ps-header__bar {
+    padding: 12px 16px;
+    background: var(--ps-chrome-bg);
+    backdrop-filter: blur(var(--ps-chrome-blur));
+    -webkit-backdrop-filter: blur(var(--ps-chrome-blur));
+  }
+
+  /* HeaderV2: gap-6 / px-4 py-2.5 below sm */
+  .ps-header.is-on-light .ps-header__cluster {
+    padding: 10px 16px;
+    gap: 24px;
+    background: var(--ps-nav-bg);
+    backdrop-filter: blur(var(--ps-chrome-blur));
+    -webkit-backdrop-filter: blur(var(--ps-chrome-blur));
+  }
+
   .ps-header.is-on-light.is-pinned .ps-header__cluster {
     padding: 0;
-    gap: 40px;
+    gap: 24px;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   .ps-header__menu-btn {
@@ -556,14 +589,6 @@ main[data-focus-active] .ps-header.is-pinned {
     padding: 10px 12px;
   }
 
-  .ps-header.is-on-light .ps-header__bar {
-    padding: 16px 0;
-  }
-
-  .ps-header.is-on-light.is-pinned .ps-header__bar {
-    padding: 16px 8px;
-  }
-
   .ps-header__cluster {
     gap: 16px;
     padding: 10px 0;
@@ -573,18 +598,39 @@ main[data-focus-active] .ps-header.is-pinned {
     padding: 4px 0;
   }
 
-  .ps-header.is-on-light .ps-header__cluster,
+  .ps-header.is-on-light .ps-header__bar {
+    padding: 0;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* HeaderV2 pinned: px-4 py-3 */
+  .ps-header.is-on-light.is-pinned .ps-header__bar {
+    padding: 12px 16px;
+    background: var(--ps-chrome-bg);
+    backdrop-filter: blur(var(--ps-chrome-blur));
+    -webkit-backdrop-filter: blur(var(--ps-chrome-blur));
+  }
+
+  .ps-header.is-on-light .ps-header__cluster {
+    padding: 10px 16px;
+    gap: 24px;
+    background: var(--ps-nav-bg);
+    backdrop-filter: blur(var(--ps-chrome-blur));
+    -webkit-backdrop-filter: blur(var(--ps-chrome-blur));
+  }
+
   .ps-header.is-on-light.is-pinned .ps-header__cluster {
     padding: 0;
-    gap: 40px;
+    gap: 16px;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   .ps-header__actions {
     gap: 16px;
-  }
-
-  .ps-header.is-on-light .ps-header__actions {
-    gap: 24px;
   }
 
   /* Searching takeover must win over on-light gaps above (and @960 cluster gap).
@@ -727,7 +773,7 @@ main[data-focus-active] .ps-header.is-pinned {
   width: 100%;
   padding: 0.85rem 0;
   font-family: var(--ps-display);
-  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-size: clamp(1rem, 2vw, 1.5rem);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;

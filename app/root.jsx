@@ -36,6 +36,7 @@ function isBrandedPath(pathname) {
   }
   if (pathname === '/shop' || pathname.startsWith('/shop/')) return true;
   if (pathname.startsWith('/products/')) return true;
+  if (pathname === '/about-us') return true;
   if (pathname === '/account' || pathname.startsWith('/account/')) return true;
   return false;
 }

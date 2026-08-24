@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import SiteHeader from '~/components/ProductShelf/SiteHeader'
 import Footer from '~/components/Footer/Footer'
 import PdpHero from '~/components/PDP/PdpHero'
@@ -13,6 +13,7 @@ import PdpBenefits from '~/components/PDP/PdpBenefits'
 import PdpSimilar from '~/components/PDP/PdpSimilar'
 import PdpStickyBar from '~/components/PDP/PdpStickyBar'
 import { getPdpBySlug, getSimilarProducts } from '~/data/pdp'
+import { HOME_URL } from '~/data/site'
 import { usePdpMotion } from '~/hooks/usePdpMotion'
 import { scrollToY } from '~/components/SmoothScroll/smoothScrollApi'
 import '~/components/PDP/ProductPage.css'
@@ -92,14 +93,17 @@ export default function ProductPage({
   }, [product])
 
   if (!product) {
-    return <Navigate to="/" replace />
+    if (typeof window !== 'undefined') {
+      window.location.replace(HOME_URL)
+    }
+    return null
   }
 
   const similar = similarProp ?? getSimilarProducts(product.id)
 
   return (
     <div ref={pageRef} className="pdp-page">
-      <SiteHeader logoTo="/" />
+      <SiteHeader />
       <main className="pdp-main">
         <div data-pdp-reveal data-pdp-reveal-y="18">
           <PdpHero
@@ -176,7 +180,9 @@ export default function ProductPage({
       />
       <Footer />
       <p className="visually-hidden">
-        <Link to="/">Back to home</Link>
+        <a href={HOME_URL} className="visually-hidden">
+          Back to home
+        </a>
       </p>
     </div>
   )

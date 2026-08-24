@@ -245,10 +245,10 @@ function parseProductDetailsRichText(metafield) {
 }
 
 /**
- * custom.how_to_use → PdpHowTo shape (normalised to match the overlay schema
- * so PdpHowTo.jsx requires no changes).
+ * custom.how_to_use → PdpHowTo shape (normalised to match the overlay schema).
  * media branches on __typename: MediaImage → image/imageAlt string pair,
  * Video → object with sources/poster so the component can render <video>.
+ * Each step may include an optional icon URL from file_reference (per-step).
  * Returns undefined when the metafield or media is absent.
  */
 function howToFromMetafield(product) {
@@ -278,10 +278,12 @@ function howToFromMetafield(product) {
   }
 
   const steps = (mo.step?.references?.nodes ?? [])
-    .map((n) => ({
-      title: n?.title?.value?.trim() ?? '',
-      body: n?.description?.value?.trim() ?? '',
-    }))
+    .map((n) => {
+      const title = n?.title?.value?.trim() ?? '';
+      const body = n?.description?.value?.trim() ?? '';
+      const icon = n?.icon?.reference?.image?.url?.trim() || undefined;
+      return {title, body, icon};
+    })
     .filter((s) => s.title);
 
   if (!mediaShape.image || !steps.length) return undefined;

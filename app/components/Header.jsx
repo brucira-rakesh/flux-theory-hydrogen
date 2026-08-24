@@ -2,6 +2,7 @@ import {Suspense} from 'react';
 import {Await, NavLink, useAsyncValue} from 'react-router';
 import {useAnalytics, useOptimisticCart} from '@shopify/hydrogen';
 import {useAside} from '~/components/Aside';
+import {HOME_URL} from '~/data/site';
 
 /**
  * @param {HeaderProps}
@@ -10,9 +11,9 @@ export function Header({header, isLoggedIn, cart, publicStoreDomain}) {
   const {shop, menu} = header;
   return (
     <header className="header">
-      <NavLink prefetch="intent" to="/" style={activeLinkStyle} end>
+      <a href={HOME_URL}>
         <strong>{shop.name}</strong>
-      </NavLink>
+      </a>
       <HeaderMenu
         menu={menu}
         viewport="desktop"
@@ -44,15 +45,9 @@ export function HeaderMenu({
   return (
     <nav className={className} role="navigation">
       {viewport === 'mobile' && (
-        <NavLink
-          end
-          onClick={close}
-          prefetch="intent"
-          style={activeLinkStyle}
-          to="/"
-        >
+        <a href={HOME_URL} onClick={close} className="header-menu-item">
           Home
-        </NavLink>
+        </a>
       )}
       {(menu || FALLBACK_HEADER_MENU).items.map((item) => {
         if (!item.url) return null;

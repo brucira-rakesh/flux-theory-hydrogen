@@ -56,7 +56,7 @@ export default function AccountLayout() {
 
   return (
     <div className="account-page">
-      <SiteHeader logoTo="/" />
+      <SiteHeader />
       <div className="account-page__inner">
         <header className="account-page__hero">
           <p className="account-page__eyebrow">Account</p>

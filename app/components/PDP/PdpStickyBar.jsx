@@ -5,6 +5,43 @@ import { useSmoothScrollLock } from '../SmoothScroll/SmoothScroll'
 import { getLenis } from '../SmoothScroll/smoothScrollApi'
 
 /**
+ * Intentional two-line sticky title for wide (desktop) bars.
+ * Mobile wrap is natural CSS; desktop is too wide for the same break, so we
+ * split titles that end in "Body Wash":
+ *   line 2 = last 3 words ("Hydrating Body Wash"), or 4 when an intensifier
+ *   precedes the descriptor ("Deep Cleansing Body Wash").
+ *   line 1 = the remainder ("Flux Theory The Dreamer").
+ * @returns {{line1: string, line2: string} | null}
+ */
+function splitStickyProductTitle(name) {
+  const normalized = String(name ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  const words = normalized.split(' ').filter(Boolean)
+  if (words.length < 4) return null
+  if (
+    words[words.length - 1].toLowerCase() !== 'wash' ||
+    words[words.length - 2].toLowerCase() !== 'body'
+  ) {
+    return null
+  }
+
+  const intensifiers = new Set(['deep', 'ultra', 'daily', 'gentle', 'intense'])
+  let take = 3
+  if (
+    words.length >= 5 &&
+    intensifiers.has(words[words.length - 4].toLowerCase())
+  ) {
+    take = 4
+  }
+
+  return {
+    line1: words.slice(0, -take).join(' '),
+    line2: words.slice(-take).join(' '),
+  }
+}
+
+/**
  * Keep the fixed ATC bar from sliding under the footer: as the footer's top
  * edge enters the viewport, raise `bottom` by the intrusion so the bar docks
  * on the footer and scrolls away with the page. Driven from Lenis's scroll
@@ -134,6 +171,8 @@ export default function PdpStickyBar({
   useSmoothScrollLock('pdp-sticky-popup', popupOpen)
   useStickyFooterDock(barRef, footerSentinelRef, visible)
 
+  const titleSplit = splitStickyProductTitle(product.name)
+
   return (
     <>
       <aside
@@ -150,7 +189,16 @@ export default function PdpStickyBar({
             </div>
           ) : null}
           <div className="pdp-sticky__copy">
-            <p className="pdp-sticky__title">{product.name}</p>
+            <p className="pdp-sticky__title">
+              {titleSplit ? (
+                <>
+                  <span className="pdp-sticky__title-line">{titleSplit.line1}</span>
+                  <span className="pdp-sticky__title-line">{titleSplit.line2}</span>
+                </>
+              ) : (
+                product.name
+              )}
+            </p>
             <p className="pdp-sticky__price">
               {product.currency}
               {Number(product.price).toLocaleString('en-IN', {

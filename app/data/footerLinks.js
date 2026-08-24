@@ -14,7 +14,7 @@ export const footerNav = [
     id: 'know-more',
     title: 'KNOW MORE',
     links: [
-      { label: 'About Us', href: '#about' },
+      { label: 'About Us', href: '/about-us' },
       { label: 'Flux Theory Affiliate Program', href: '#affiliate' },
       { label: 'Tracking Link', href: '#tracking' },
       { label: 'Lab Reports', href: '#lab-reports' },

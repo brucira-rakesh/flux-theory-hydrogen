@@ -8,6 +8,7 @@ import iconUserUrl from '../../assets/brand/header/icon-user.svg'
 import iconBagUrl from '../../assets/brand/header/icon-bag.svg'
 import { useSmoothScrollLock } from '../SmoothScroll/SmoothScroll'
 import { FACE_FILTER_ENABLED } from '../../data/shop'
+import { HOME_URL, isExternalUrl } from '../../data/site'
 import { useCartDrawer } from '../Cart/CartProvider'
 import './ProductShelf.css'
 
@@ -17,7 +18,7 @@ const FALLBACK_NAV_LINKS = [
   { id: 'body', label: 'Body', to: '/shop/body' },
   ...(FACE_FILTER_ENABLED ? [{ id: 'face', label: 'Face', to: '/shop/face' }] : []),
   { id: 'brand', label: 'The Brand', href: '#brand' },
-  { id: 'about', label: 'About Us', href: '#about' },
+  { id: 'about', label: 'About Us', to: '/about-us' },
 ]
 
 /**
@@ -118,6 +119,7 @@ const LABEL_PATHS = [
   [/^shop\s*all$/i, '/shop'],
   [/^body$/i, '/shop/body'],
   [/^face$/i, '/shop/face'],
+  [/^about\s*us$/i, '/about-us'],
 ]
 
 function linkPath(link) {
@@ -165,11 +167,12 @@ function isLightSurfacePath(pathname) {
   return (
     pathname.startsWith('/shop') ||
     pathname.startsWith('/products') ||
-    pathname.startsWith('/account')
+    pathname.startsWith('/account') ||
+    pathname === '/about-us'
   )
 }
 
-export default function SiteHeader({ logoTo = '/' }) {
+export default function SiteHeader({ logoTo = HOME_URL }) {
   const rootData = useRouteLoaderData('root')
   const navLinks = useNavLinks(rootData)
   const location = useLocation()
@@ -186,6 +189,7 @@ export default function SiteHeader({ logoTo = '/' }) {
   const onLight = isLightSurfacePath(location.pathname)
   const onPdp = location.pathname.startsWith('/products')
   const { openCart } = useCartDrawer()
+  const logoIsExternal = isExternalUrl(logoTo)
 
   useSmoothScrollLock('site-header-menu', open)
 
@@ -318,9 +322,15 @@ export default function SiteHeader({ logoTo = '/' }) {
         className={`ps-header${pinned ? ' is-pinned' : ''}${onLight ? ' is-on-light' : ''}${onPdp ? ' is-on-pdp' : ''}${hidden && !open && !searching ? ' is-hidden' : ''}${searching ? ' is-searching' : ''}${open ? ' is-drawer-open' : ''}`}
       >
         <div className="ps-header__bar">
-          <Link to={logoTo} className="ps-logo" aria-label="Flux Theory home">
-            <img src={logoUrl} alt="" width={45} height={44} className="ps-logo__img" />
-          </Link>
+          {logoIsExternal ? (
+            <a href={logoTo} className="ps-logo" aria-label="Flux Theory home">
+              <img src={logoUrl} alt="" width={45} height={44} className="ps-logo__img" />
+            </a>
+          ) : (
+            <Link to={logoTo} className="ps-logo" aria-label="Flux Theory home">
+              <img src={logoUrl} alt="" width={45} height={44} className="ps-logo__img" />
+            </Link>
+          )}
 
           <div className="ps-header__cluster">
             <nav className="ps-header__nav" aria-label="Primary">
@@ -419,9 +429,27 @@ export default function SiteHeader({ logoTo = '/' }) {
           aria-hidden={!open}
         >
           <div className="ps-drawer__top">
-            <Link to={logoTo} className="ps-drawer__logo" aria-label="Flux Theory home" tabIndex={open ? 0 : -1} onClick={closeDrawer}>
-              <img src={logoUrl} alt="" width={45} height={44} className="ps-logo__img" />
-            </Link>
+            {logoIsExternal ? (
+              <a
+                href={logoTo}
+                className="ps-drawer__logo"
+                aria-label="Flux Theory home"
+                tabIndex={open ? 0 : -1}
+                onClick={closeDrawer}
+              >
+                <img src={logoUrl} alt="" width={45} height={44} className="ps-logo__img" />
+              </a>
+            ) : (
+              <Link
+                to={logoTo}
+                className="ps-drawer__logo"
+                aria-label="Flux Theory home"
+                tabIndex={open ? 0 : -1}
+                onClick={closeDrawer}
+              >
+                <img src={logoUrl} alt="" width={45} height={44} className="ps-logo__img" />
+              </Link>
+            )}
             <button
               ref={closeBtnRef}
               type="button"

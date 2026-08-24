@@ -223,6 +223,9 @@ html[data-header-hidden='true'] .shop-toolbar {
   padding: 1.5rem 1rem 0.5rem;
   text-decoration: none;
   color: inherit;
+  /* Keep bottle art inside the media slot so it cannot paint over __meta / cart. */
+  overflow: hidden;
+  isolation: isolate;
 }
 
 .product-card__media img {
@@ -241,19 +244,46 @@ html[data-header-hidden='true'] .shop-toolbar {
 
 .product-card__meta {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding: 0.75rem 1.15rem 1.15rem;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  /* Same panel grey as the card — one uniform surface, not a white meta strip. */
+  background: transparent;
+  border-top: 0;
+}
+
+/* Price + ATC on one row under the full-width title. */
+.product-card__row {
+  display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 1.15rem 1.15rem;
+  gap: 0.75rem;
+  min-width: 0;
+  width: 100%;
 }
 
 .product-card__name {
-  margin: 0 0 0.15rem;
+  margin: 0;
+  width: 100%;
+  min-width: 0;
   font-size: 1rem;
   font-weight: 500;
   line-height: 1.5;
   color: inherit;
   text-decoration: none;
+  /* Fixed 2-line slot — long titles truncate; short titles still reserve height
+     so meta/price/ATC stay aligned card-to-card. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: calc(1em * 1.5 * 2);
 }
 
 a.product-card__name:hover,
@@ -263,6 +293,8 @@ a.product-card__name:focus-visible {
 
 .product-card__price {
   margin: 0;
+  min-width: 0;
+  flex: 1 1 auto;
   font-size: 0.875rem;
   font-weight: 500;
   line-height: 1.5;
@@ -275,6 +307,8 @@ a.product-card__name:focus-visible {
   cursor: pointer;
   flex-shrink: 0;
   line-height: 0;
+  position: relative;
+  z-index: 1;
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.18));
   transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -1005,6 +1039,126 @@ a.product-card__name:focus-visible {
   }
 }
 
+@media (max-width: 640px) {
+  /* Shop / similar grid only — skip predictive search row cards. */
+  .shop-grid .product-card__media,
+  .pdp-similar .product-card__media {
+    flex: 0 0 auto;
+    /* Shared media height across the grid (alignment). */
+    aspect-ratio: 3 / 4;
+    width: 100%;
+    min-height: 0;
+    padding: 0.75rem 0.65rem 0.35rem;
+    box-sizing: border-box;
+    display: grid;
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+    place-items: stretch;
+    overflow: hidden;
+  }
+
+  /*
+    Measured bug (375px): max-height:92% did NOT clamp — img painted ~107×261
+    inside a 170×226 media box, so overflow:hidden cropped the bottle cap.
+    Percentage max-height failed against the aspect-ratio box; absolute
+    width/height:100% + inset also overflowed. Fix: stretch into the padded
+    grid cell (definite size) + object-fit:contain.
+  */
+  .shop-grid .product-card__media img,
+  .pdp-similar .product-card__media img {
+    position: static;
+    inset: auto;
+    grid-area: 1 / 1;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    object-fit: contain;
+    object-position: center bottom;
+  }
+
+  .shop-grid .product-card,
+  .pdp-similar .product-card {
+    min-height: 0;
+  }
+
+  /* Mobile: full wrapping titles — no 2-line clamp (desktop keeps base clamp). */
+  .shop-grid .product-card__name,
+  .pdp-similar .product-card__name {
+    font-size: 0.875rem;
+    display: block;
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+    -webkit-box-orient: unset;
+    overflow: visible;
+    text-overflow: unset;
+    min-height: 0;
+    white-space: normal;
+  }
+
+  .shop-grid .product-card__meta,
+  .pdp-similar .product-card__meta {
+    padding: 0.65rem 0.75rem 0.85rem;
+    gap: 0.4rem;
+    background: transparent;
+    border-top: 0;
+  }
+
+  .shop-grid .product-card__row,
+  .pdp-similar .product-card__row {
+    gap: 0.5rem;
+  }
+
+  .shop-grid .product-card__cart img,
+  .pdp-similar .product-card__cart img {
+    width: 36px;
+    height: 36px;
+  }
+
+  /*
+    Subgrid row sync (shop grid only): each card spans 3 parent rows
+    (media | title | price+ATC). Title row height = tallest title in that
+    grid row — no fixed min-height / empty space under short titles.
+    Baseline widely available (Chrome/Safari/Firefox since 2023); @supports
+    keeps the prior flex stack on older engines.
+  */
+  @supports (grid-template-rows: subgrid) {
+    .shop-grid {
+      grid-auto-rows: auto;
+    }
+
+    .shop-grid__item {
+      display: grid;
+      grid-template-rows: subgrid;
+      grid-row: span 3;
+    }
+
+    .shop-grid .product-card {
+      display: grid;
+      grid-template-rows: subgrid;
+      grid-row: span 3;
+      height: auto;
+      align-content: start;
+    }
+
+    .shop-grid .product-card__meta {
+      display: grid;
+      grid-template-rows: subgrid;
+      grid-row: span 2;
+      /* Gap would sit between inherited tracks unevenly — space via title margin. */
+      gap: 0;
+    }
+
+    .shop-grid .product-card__name {
+      margin: 0 0 0.4rem;
+      align-self: start;
+    }
+
+    .shop-grid .product-card__row {
+      align-self: start;
+    }
+  }
+}
+
 @media (max-width: 600px) {
   .shop-main {
     padding: 100px 16px 3rem;
@@ -1020,10 +1174,6 @@ a.product-card__name:focus-visible {
   .shop-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.25rem;
-  }
-
-  .product-card {
-    min-height: 380px;
   }
 
   .product-form-popup {

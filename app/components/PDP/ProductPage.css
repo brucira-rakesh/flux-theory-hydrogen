@@ -184,15 +184,36 @@
   min-width: 0;
 }
 
+.pdp-hero__title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .pdp-hero__title {
   margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
   font-family: var(--pdp-display);
   font-weight: 600;
   font-size: calc(40 * var(--pdp-fluid) / 1440);
-  letter-spacing: calc(-2 * var(--pdp-fluid) / 1440);
+  letter-spacing: -5%;
   text-transform: uppercase;
   line-height: 1;
   opacity: 0.9;
+}
+
+/* Desktop: price stays in PdpControls (right column). Shown only when hero stacks. */
+.pdp-hero__price {
+  display: none;
+  margin: 0;
+  flex: 0 0 auto;
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .pdp-hero__blurb {
@@ -979,14 +1000,33 @@
 .pdp-howto__step {
   display: flex;
   align-items: center;
-  gap: calc(11 * var(--pdp-fluid) / 1440);
+  gap: calc(14 * var(--pdp-fluid) / 1440);
 }
 
 .pdp-howto__icon {
-  width: calc(59 * var(--pdp-fluid) / 1440);
-  height: calc(59 * var(--pdp-fluid) / 1440);
+  /* Was 59×59 — dominated the 12px step label. 32×32 matches the SVG’s
+     native artboard and sits as a supporting mark beside the copy. */
+  width: calc(32 * var(--pdp-fluid) / 1440);
+  height: calc(32 * var(--pdp-fluid) / 1440);
   flex-shrink: 0;
   background: #d9d9d9;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+.pdp-howto__icon--image {
+  background: transparent;
+  /* Uploaded SVGs are solid fill="#000" (not adjustable stroke). Mute to the
+     same visual tier as .pdp-howto__step-title (opacity 0.6). */
+  opacity: 0.55;
+}
+
+.pdp-howto__icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .pdp-howto__step-title {
@@ -1315,6 +1355,26 @@
   opacity: 0.9;
 }
 
+/* Default: lines flow as one string (mobile natural wrap unchanged).
+   Desktop forces the intentional Body Wash split onto two stacked lines. */
+.pdp-sticky__title-line {
+  display: inline;
+}
+
+.pdp-sticky__title-line+.pdp-sticky__title-line::before {
+  content: ' ';
+}
+
+@media (min-width: 961px) {
+  .pdp-sticky__title-line {
+    display: block;
+  }
+
+  .pdp-sticky__title-line+.pdp-sticky__title-line::before {
+    content: none;
+  }
+}
+
 .pdp-sticky__price {
   margin: 0.35rem 0 0;
   font-size: 0.875rem;
@@ -1346,6 +1406,27 @@
   .pdp-hero__info {
     flex-direction: column;
     align-items: stretch;
+    gap: 20px;
+  }
+
+  .pdp-hero__copy {
+    max-width: none;
+  }
+
+  /* Title left / price right — same visual relationship as desktop row.
+     Price top-aligns to the first title line when the name wraps. */
+  .pdp-hero__price {
+    display: block;
+  }
+
+  .pdp-hero .pdp-controls__price {
+    display: none;
+  }
+
+  /* No size select: the controls top row was price-only — drop it so qty/ATC
+     sit directly under the blurb without a vacant right-aligned price row. */
+  .pdp-hero .pdp-controls__row:not(:has(.pdp-controls__size-select)) {
+    display: none;
   }
 
   .pdp-controls {
@@ -1444,6 +1525,7 @@
     width: calc(100% + 22px);
     margin: 0 -22px 5rem 0;
     overflow: hidden;
+    gap: calc(32 * var(--pdp-fluid) / 1440);
   }
 
   .pdp-benefits__grid {
@@ -1573,7 +1655,7 @@
   }
 
   .pdp-main {
-    padding-top: 100px;
+    padding-top: 80px;
     padding-left: 16px;
     padding-right: 16px;
   }
@@ -1597,6 +1679,32 @@
     --pdp-gallery-per-view: 1.15;
   }
 
+  /* Cap gallery HEIGHT only — keep per-view peek (1.15) and width formula.
+     Before (375px): item ~316px wide × 3/4 ≈ 421px tall.
+     After: fixed 40vh tall so title/price/size/ATC stay in the first fold. */
+  .pdp-gallery__item {
+    /* Definite height so object-fit can scale into the box; drop 3/4 so
+       width (from per-view) and height (40vh) don't fight. */
+    aspect-ratio: auto;
+    height: 40vh;
+    max-height: 40vh;
+  }
+
+  /* Front bottle: fill the box then scale UNIFORMLY (contain), never crop.
+     Absolute + inset + contain beats width/height:auto + overflow:hidden,
+     which was clipping the bottle bottom inside the shorter 40vh frame. */
+  .pdp-gallery__item:first-child img,
+  .pdp-gallery__item--front img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    object-fit: contain;
+    object-position: center;
+  }
+
   /* Spacer grows to fill any vertical surplus from the 90vh min-height,
      placing extra whitespace between gallery and info rather than trailing
      at the bottom. Gallery keeps its natural aspect-ratio size. */
@@ -1611,12 +1719,13 @@
   }
 
   .pdp-hero__title {
-    font-size: 32px;
-    letter-spacing: -1.6px;
+    /* Role B — product/emphasis */
+    font-size: 24px;
   }
 
   .pdp-description__text {
-    font-size: 20px;
+    /* Role D — body emphasis */
+    font-size: 16px;
   }
 
   .pdp-marquee {
@@ -1629,8 +1738,9 @@
   }
 
   .pdp-marquee__label {
-    font-size: 24px;
-    letter-spacing: -1.2px;
+    /* Role C — marquee */
+    font-size: 18px;
+    letter-spacing: -0.9px;
   }
 
   .pdp-marquee__mark {
@@ -1646,13 +1756,26 @@
 
   .pdp-lifestyle__title,
   .pdp-lifestyle__title.at-title {
-    font-size: 38px;
-    letter-spacing: -2.66px;
-    line-height: 37px;
+    /* Role A — section heading (Mohave weight unchanged) */
+    font-size: 28px;
+    letter-spacing: -1.4px;
+    line-height: 1.05;
   }
 
   .pdp-lifestyle__blurb {
-    font-size: 16px;
+    /* Role E — body */
+    font-size: 14px;
+  }
+
+  .pdp-stats__title {
+    /* Role A — section heading */
+    font-size: 28px;
+    letter-spacing: -1.4px;
+    margin: 0 0 calc(32 * var(--pdp-fluid) / 1440);
+  }
+
+  .pdp-stats__eyebrow {
+    margin: 0 0 calc(16 * var(--pdp-fluid) / 1440);
   }
 
   .pdp-stats__grid {
@@ -1662,18 +1785,37 @@
   }
 
   .pdp-stats__value {
-    font-size: 32px;
-    letter-spacing: -1.6px;
+    /* Role B — product/emphasis */
+    font-size: 24px;
+    letter-spacing: -1.2px;
   }
 
   .pdp-stats__text {
+    /* Role F — label / fine */
     max-width: 100%;
-    font-size: 11px;
+    font-size: 12px;
+  }
+
+  .pdp-howto__title {
+    /* Role A — section heading */
+    font-size: 28px;
+    letter-spacing: -1.4px;
+  }
+
+  .pdp-howto__step-body {
+    /* Role E — body */
+    font-size: 14px;
   }
 
   .pdp-benefits {
     width: calc(100% + 16px);
     margin: 0 -16px 5rem 0;
+  }
+
+  .pdp-benefits__title {
+    /* Role A — section heading */
+    font-size: 28px;
+    letter-spacing: -1.4px;
   }
 
   .pdp-benefits__grid {
@@ -1693,8 +1835,25 @@
   }
 
   .pdp-benefits__name {
+    /* Role B — product/emphasis */
+    font-size: 24px;
+    letter-spacing: -1.2px;
+  }
+
+  .pdp-benefits__body {
+    /* Role E — body */
+    font-size: 14px;
+  }
+
+  .pdp-similar__title {
+    /* Role A — section heading */
     font-size: 28px;
     letter-spacing: -1.4px;
+  }
+
+  .pdp-similar .product-card__name {
+    /* Role E — body */
+    font-size: 14px;
   }
 
   .pdp-similar__rail {
@@ -1708,7 +1867,8 @@
   }
 
   .pdp-sticky__title {
-    font-size: 14px;
+    /* Compact chrome — keep 14px (not a content-section role) */
+    font-size: 12px;
     letter-spacing: 0;
   }
 }

@@ -196,7 +196,9 @@
     position: relative;
     inset: auto;
     z-index: 4;
-    margin-top: -28%;
+    /* Was -28% — pulled the panel over the busts. Softer overlap keeps
+       FLUX THEORY + statue heads readable above the accordion. */
+    margin-top: -12%;
     padding: 0 1.15rem 1.75rem;
     pointer-events: auto;
   }
@@ -204,9 +206,11 @@
   .ft-nav-grid {
     grid-template-columns: 1fr;
     gap: 0;
-    background: rgba(202, 202, 202, 0.92);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    /* Solid stone panel — was rgba(202,202,202,0.92) + blur, so the statue
+       (pulled under via margin-top) bled through and washed out accordion text. */
+    background: var(--ft-stone);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     border-radius: 0.5rem;
     padding: 0.35rem 0.85rem 0.65rem;
   }

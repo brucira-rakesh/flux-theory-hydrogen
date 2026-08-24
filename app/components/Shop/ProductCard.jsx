@@ -10,6 +10,7 @@ function formatPrice(value) {
 
 /**
  * PDP-matching product card for PLP grid + similar rail.
+ * Layout: image → full-width title → price + quick-add (inline).
  */
 export default function ProductCard({
   product,
@@ -33,31 +34,32 @@ export default function ProductCard({
       )}
 
       <div className="product-card__meta">
-        <div>
-          {product.href ? (
-            <Link to={product.href} className="product-card__name">
-              {product.name}
-            </Link>
-          ) : (
-            <p className="product-card__name">{product.name}</p>
-          )}
+        {product.href ? (
+          <Link to={product.href} className="product-card__name">
+            {product.name}
+          </Link>
+        ) : (
+          <p className="product-card__name">{product.name}</p>
+        )}
+
+        <div className="product-card__row">
           <p className="product-card__price">
             {product.currency}
             {formatPrice(product.price)}
           </p>
+          {showQuickAdd ? (
+            <button
+              type="button"
+              className="product-card__cart"
+              aria-label={`Quick add ${product.name}`}
+              aria-haspopup="dialog"
+              aria-expanded={quickAddOpen}
+              onClick={() => onQuickAdd?.(product)}
+            >
+              <img src={cartIcon} alt="" width={40} height={40} />
+            </button>
+          ) : null}
         </div>
-        {showQuickAdd ? (
-          <button
-            type="button"
-            className="product-card__cart"
-            aria-label={`Quick add ${product.name}`}
-            aria-haspopup="dialog"
-            aria-expanded={quickAddOpen}
-            onClick={() => onQuickAdd?.(product)}
-          >
-            <img src={cartIcon} alt="" width={40} height={40} />
-          </button>
-        ) : null}
       </div>
     </article>
   )

@@ -31,7 +31,13 @@ export default function PdpHowTo({ howTo }) {
         <ol className="pdp-howto__steps">
           {howTo.steps.map((step) => (
             <li key={step.title} className="pdp-howto__step">
-              <span className="pdp-howto__icon" aria-hidden="true" />
+              {step.icon ? (
+                <span className="pdp-howto__icon pdp-howto__icon--image" aria-hidden="true">
+                  <img src={step.icon} alt="" draggable={false} />
+                </span>
+              ) : (
+                <span className="pdp-howto__icon" aria-hidden="true" />
+              )}
               <div className="pdp-howto__step-copy">
                 <p className="pdp-howto__step-title">{step.title}</p>
                 <p className="pdp-howto__step-body">{step.body}</p>

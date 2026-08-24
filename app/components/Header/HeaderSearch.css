@@ -14,17 +14,20 @@
   display: flex;
   align-items: center;
   width: 0;
+  height: 0;
   min-width: 0;
   overflow: hidden;
   opacity: 0;
   pointer-events: none;
   transition:
     width 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
     opacity 0.2s ease;
 }
 
 .header-search.is-open .header-search__form {
   width: min(18rem, calc(100vw - 12.5rem));
+  height: 46px;
   opacity: 1;
   overflow: visible;
   pointer-events: auto;

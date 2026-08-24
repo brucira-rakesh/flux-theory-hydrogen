@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useLocation, useRouteLoaderData } from 'react-router-dom'
 import { IconBag, IconClose, IconMenu, IconSearch, IconUser, Logo } from './icons'
 import { FACE_FILTER_ENABLED } from '../../data/shop'
+import { HOME_URL, isExternalUrl } from '../../data/site'
 import { LoggedInState } from './LoggedInState'
 import { HeaderSearch } from './HeaderSearch'
 
@@ -70,7 +71,7 @@ function resolveActiveId(pathname, hash, links) {
  * `handoff` cue so the header arrives in step with the hero's own reveal
  * instead of sitting on screen before the intro has played.
  */
-export default function HeaderV2({ logoTo = '/', mode = 'light', visible = true }) {
+export default function HeaderV2({ logoTo = HOME_URL, mode = 'light', visible = true }) {
   const rootData = useRouteLoaderData('root')
   const navLinks = useNavLinks(rootData)
   const location = useLocation()
@@ -84,6 +85,7 @@ export default function HeaderV2({ logoTo = '/', mode = 'light', visible = true 
   const lastScrollY = useRef(0)
   const activeId = resolveActiveId(location.pathname, location.hash, navLinks)
   const isGlass = mode === 'light'
+  const logoIsExternal = isExternalUrl(logoTo)
 
   useEffect(() => {
     if (!open) return undefined
@@ -167,15 +169,27 @@ export default function HeaderV2({ logoTo = '/', mode = 'light', visible = true 
             ? 'border-b border-black/[0.06] bg-white px-4 py-3 text-black sm:px-6'
             : ''
         }`}>
-          <Link
-            to={logoTo}
-            aria-label="Flux Theory home"
-            className={`grid shrink-0 place-items-center leading-none no-underline transition-colors duration-300 ${
-              pinned ? 'text-black' : isGlass ? 'text-white' : 'text-black'
-            }`}
-          >
-            <Logo className="h-[35px] w-9 sm:h-11 sm:w-[45px]" />
-          </Link>
+          {logoIsExternal ? (
+            <a
+              href={logoTo}
+              aria-label="Flux Theory home"
+              className={`grid shrink-0 place-items-center leading-none no-underline transition-colors duration-300 ${
+                pinned ? 'text-black' : isGlass ? 'text-white' : 'text-black'
+              }`}
+            >
+              <Logo className="h-[35px] w-9 sm:h-11 sm:w-[45px]" />
+            </a>
+          ) : (
+            <Link
+              to={logoTo}
+              aria-label="Flux Theory home"
+              className={`grid shrink-0 place-items-center leading-none no-underline transition-colors duration-300 ${
+                pinned ? 'text-black' : isGlass ? 'text-white' : 'text-black'
+              }`}
+            >
+              <Logo className="h-[35px] w-9 sm:h-11 sm:w-[45px]" />
+            </Link>
+          )}
 
           <div
             className={`flex items-center justify-end gap-6 transition-[padding,background,backdrop-filter,color] duration-300 sm:gap-10 ${

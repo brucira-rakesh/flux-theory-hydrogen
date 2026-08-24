@@ -320,6 +320,13 @@ const PRODUCT_FRAGMENT = `#graphql
                 ... on Metaobject {
                   title: field(key: "title") { value }
                   description: field(key: "description") { value }
+                  icon: field(key: "icon") {
+                    reference {
+                      ... on MediaImage {
+                        image { url altText width height }
+                      }
+                    }
+                  }
                 }
               }
             }

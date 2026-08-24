@@ -17,6 +17,7 @@ import {
   computePriceBounds,
   isFullPriceRange,
 } from '../data/shop'
+import { HOME_URL } from '../data/site'
 import { prefersReducedMotion } from '../hooks/useSpotlight'
 import { useSmoothScrollLock } from '../components/SmoothScroll/SmoothScroll'
 import { scrollToY } from '../components/SmoothScroll/smoothScrollApi'
@@ -220,15 +221,15 @@ export default function ShopPage({ catalog = [] }) {
 
   return (
     <div className="shop-page">
-      <SiteHeader logoTo="/" />
+      <SiteHeader />
 
       <main className="shop-main">
         <header className="shop-hero">
           <nav className="shop-breadcrumb" aria-label="Breadcrumb">
             <span className="shop-breadcrumb__item">
-              <Link to="/" className="shop-breadcrumb__link">
+              <a href={HOME_URL} className="shop-breadcrumb__link">
                 Home
-              </Link>
+              </a>
             </span>
             {routeCategory === 'all' ? (
               <span className="shop-breadcrumb__item">

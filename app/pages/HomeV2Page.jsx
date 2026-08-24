@@ -19,6 +19,7 @@ import Footer from "../components/Footer/Footer";
 import HeaderV2 from "../components/Header/HeaderV2";
 import KeyHighlightsV2 from "../components/KeyHighlights/KeyHighlightsV2";
 import { useDebugGui } from "../scenes-v2/useDebugGui";
+import { HOME_URL } from "../data/site";
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
 
@@ -149,7 +150,7 @@ export const HomeV2Page = () => {
         ref={lenisRef}
         options={{ autoRaf: false, duration: 1.2, smoothWheel: true }}
       >
-        <SiteHeaderReveal logoTo="/home" mode={headerMode} />
+        <SiteHeaderReveal logoTo={HOME_URL} mode={headerMode} />
         <CloudTransition boundaryRef={seawaveToSceneRef} />
         <main ref={rootRef}>
           <IntroHeroV2 onAutoplayDone={() => setIntroAutoplayDone(true)} />

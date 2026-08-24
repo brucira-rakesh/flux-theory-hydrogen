@@ -129,7 +129,18 @@ export default function PdpHero({
 
       <div ref={formRef} className="pdp-hero__info">
         <div className="pdp-hero__copy">
-          <h1 className="pdp-hero__title">{product.name}</h1>
+          <div className="pdp-hero__title-row">
+            <h1 className="pdp-hero__title">{product.name}</h1>
+            {/* Mobile/tablet only (CSS): sits title-left / price-right like desktop.
+                Desktop keeps price in PdpControls — this node is display:none there. */}
+            <p className="pdp-hero__price">
+              {product.currency}
+              {Number(product.price).toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
+          </div>
           <p className="pdp-hero__blurb">{product.shortDescription}</p>
         </div>
 
