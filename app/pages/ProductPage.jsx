@@ -9,7 +9,6 @@ import PdpMarquee from '~/components/PDP/PdpMarquee'
 import PdpLifestyle from '~/components/PDP/PdpLifestyle'
 
 import PdpHowTo from '~/components/PDP/PdpHowTo'
-import PdpBenefits from '~/components/PDP/PdpBenefits'
 import PdpSimilar from '~/components/PDP/PdpSimilar'
 import PdpStickyBar from '~/components/PDP/PdpStickyBar'
 import { getPdpBySlug, getSimilarProducts } from '~/data/pdp'
@@ -216,11 +215,6 @@ export default function ProductPage({
         {product.howTo ? (
           <div ref={howToRef} data-pdp-reveal>
             <PdpHowTo howTo={product.howTo} />
-          </div>
-        ) : null}
-        {product.benefits ? (
-          <div data-pdp-reveal>
-            <PdpBenefits benefits={product.benefits} />
           </div>
         ) : null}
         <div data-pdp-reveal>

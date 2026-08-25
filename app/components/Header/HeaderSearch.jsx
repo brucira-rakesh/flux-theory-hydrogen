@@ -31,7 +31,6 @@ export function HeaderSearch({toggle, toggleClassName = '', onOpenChange}) {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const closeTimerRef = useRef(null);
-  const queriesDatalistId = useId();
   const titleId = useId();
   const location = useLocation();
 
@@ -157,9 +156,8 @@ export function HeaderSearch({toggle, toggleClassName = '', onOpenChange}) {
                           className="header-search-overlay__input"
                           name="q"
                           type="search"
-                          placeholder="Search"
+                          placeholder="Search..."
                           autoComplete="off"
-                          list={queriesDatalistId}
                           onChange={fetchResults}
                           onFocus={fetchResults}
                           ref={(node) => {
@@ -167,33 +165,28 @@ export function HeaderSearch({toggle, toggleClassName = '', onOpenChange}) {
                             inputRef.current = node;
                           }}
                         />
-                        <button
-                          type="button"
-                          className="header-search-overlay__close"
-                          aria-label="Close search"
-                          onClick={closeOverlay}
-                        >
+                        <span className="header-search-overlay__icon" aria-hidden="true">
                           <svg
-                            width="20"
-                            height="20"
+                            width="22"
+                            height="22"
                             viewBox="0 0 24 24"
                             fill="none"
-                            aria-hidden="true"
                           >
-                            <path
-                              d="M6 6L18 18"
+                            <circle
+                              cx="11"
+                              cy="11"
+                              r="6"
                               stroke="currentColor"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
+                              strokeWidth="1.25"
                             />
                             <path
-                              d="M18 6L6 18"
+                              d="M16 16L20 20"
                               stroke="currentColor"
-                              strokeWidth="1.5"
+                              strokeWidth="1.25"
                               strokeLinecap="round"
                             />
                           </svg>
-                        </button>
+                        </span>
                       </div>
 
                       <SearchResultsPredictive>
@@ -203,7 +196,6 @@ export function HeaderSearch({toggle, toggleClassName = '', onOpenChange}) {
                             total={total}
                             term={term}
                             state={state}
-                            queriesDatalistId={queriesDatalistId}
                             onNavigate={() => {
                               closeSearch();
                               closeOverlayImmediate();
@@ -233,7 +225,6 @@ export function HeaderSearch({toggle, toggleClassName = '', onOpenChange}) {
  *   total: number;
  *   term: React.MutableRefObject<string>;
  *   state: string;
- *   queriesDatalistId: string;
  *   onNavigate: () => void;
  *   onSeeAll: () => void;
  * }}
@@ -243,14 +234,13 @@ function HeaderSearchPanel({
   total,
   term,
   state,
-  queriesDatalistId,
   onNavigate,
   onSeeAll,
 }) {
   const query = term.current?.trim() ?? '';
   if (!query && state === 'idle') return null;
 
-  const {products, pages, articles, collections, queries} = items;
+  const {products, pages, articles, collections} = items;
   const loading = state === 'loading' && query;
 
   return (
@@ -261,11 +251,6 @@ function HeaderSearchPanel({
       data-lenis-prevent
       data-lenis-prevent-wheel
     >
-      <SearchResultsPredictive.Queries
-        queries={queries}
-        queriesDatalistId={queriesDatalistId}
-      />
-
       {loading ? (
         <p className="header-search-overlay__status">Loading…</p>
       ) : !total ? (

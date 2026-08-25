@@ -11,7 +11,6 @@ const FALLBACK_NAV_LINKS = [
   { id: 'body', label: 'Body', to: '/shop/body' },
   ...(FACE_FILTER_ENABLED ? [{ id: 'face', label: 'Face', to: '/shop/face' }] : []),
   { id: 'brand', label: 'The Brand', href: '#brand' },
-  { id: 'about', label: 'About Us', href: '#about' },
 ]
 
 function menuItemToNavLink(item) {

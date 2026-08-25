@@ -1,7 +1,6 @@
 import {getPdpBySlug} from '~/data/pdp';
 
 const FILTER_TAG_RE = /^filter:([^:]+):(.+)$/i;
-const DREAMER_BENEFITS_TITLE = getPdpBySlug('the-dreamer')?.benefits?.title;
 /** Hardcoded stats chrome (eyebrow/title/footnote) — shared across all products. */
 const DREAMER_STATS_CHROME = (() => {
   const stats = getPdpBySlug('the-dreamer')?.stats;
@@ -311,35 +310,6 @@ function marqueeItemsFromMetafield(product) {
 }
 
 /**
- * custom.daily_routine (list.metaobject_reference) → PDP benefits cards.
- * Returns undefined when the metafield is absent.
- */
-function benefitsFromMetafield(product) {
-  const nodes = product?.dailyRoutine?.references?.nodes ?? [];
-  if (!nodes?.length) return undefined;
-
-  const cards = nodes
-    .map((n) => {
-      const position = Number(n?.position?.value ?? 0);
-      if (!Number.isFinite(position) || position <= 0) return null;
-
-      const id = String(position).padStart(2, '0');
-      const title = n?.title?.value?.trim() ?? '';
-      const body = n?.description?.value?.trim() ?? '';
-      const image = n?.image?.reference?.image?.url ?? '';
-
-      if (!title || !body || !image) return null;
-      return {position, id, title, body, image};
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.position - b.position)
-    .map(({position: _position, ...rest}) => rest);
-
-  if (!cards.length) return undefined;
-  return {cards};
-}
-
-/**
  * custom.formulation (list.metaobject_reference) → PdpStats cards.
  * Eyebrow/title/footnote stay hardcoded (DREAMER_STATS_CHROME); only cards
  * come from Shopify. Returns undefined when the metafield is absent.
@@ -592,19 +562,6 @@ export function toPdpViewModel(product) {
     lifestyle: lifestyleFromMetafield(product) ?? overlay?.lifestyle,
     stats: statsFromMetafield(product) ?? overlay?.stats,
     howTo: howToFromMetafield(product) ?? overlay?.howTo,
-    benefits: (() => {
-      const shopifyBenefits = benefitsFromMetafield(product);
-
-      // Dreamer's benefits heading is intentionally hardcoded from the overlay.
-      const title =
-        DREAMER_BENEFITS_TITLE ?? overlay?.benefits?.title ?? undefined;
-      if (shopifyBenefits?.cards?.length) {
-        if (!title) return undefined;
-        return {title, cards: shopifyBenefits.cards};
-      }
-
-      return overlay?.benefits;
-    })(),
     variantGid: variant?.id,
     variantBySize,
     listId: product.id,

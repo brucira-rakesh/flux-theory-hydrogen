@@ -107,13 +107,11 @@ export async function loader(args) {
 
   if (isBrandedPath(pathname)) {
     const {storefront} = args.context;
-    // Fetch only the nav menu — deliberately excludes the Shop fragment,
-    // footer, cart-line details, and customer data that the full loader
-    // fetches. Adds exactly +1 Storefront API call vs the previous
-    // header:null short-circuit, with CacheLong so it's free on repeat loads.
+    // Nav menus change in Admin — CacheShort so removals/additions show up
+    // quickly instead of sticking for weeks under CacheLong.
     const navMenu = await storefront
       .query(MENU_QUERY, {
-        cache: storefront.CacheLong(),
+        cache: storefront.CacheShort(),
         variables: {menuHandle: 'main-menu'},
       })
       .catch(() => null);
@@ -169,7 +167,7 @@ async function loadCriticalData({context}) {
 
   const [header] = await Promise.all([
     storefront.query(HEADER_QUERY, {
-      cache: storefront.CacheLong(),
+      cache: storefront.CacheShort(),
       variables: {
         headerMenuHandle: 'main-menu', // Adjust to your header menu handle
       },

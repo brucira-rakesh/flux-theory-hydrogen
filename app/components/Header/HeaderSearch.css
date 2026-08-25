@@ -10,15 +10,20 @@
   invalid, causing an instant pop instead of a fade.
 */
 .header-search-overlay {
-  /* Same tokens as .ps-header (ProductShelf.css) — duplicated here because
-     the overlay is portaled to document.body and cannot inherit from the header. */
-  --ps-nav-bg: rgba(255, 255, 255, 0.13);
-  --ps-chrome-bg: rgba(255, 255, 255, 0.82);
-  --ps-chrome-blur: 12.85px;
-  --ps-chrome-line: rgba(0, 0, 0, 0.06);
-
+  /*
+    Neumorphic search — bar MUST share the same flat light-grey as the
+    full-bleed scrim or the extruded dual-shadow effect will not read.
+  */
+  --header-search-surface: #e8eaed;
+  --header-search-ink: #6b7280;
+  --header-search-muted: #9ca3af;
   --header-search-line: #d0d1db;
   --header-search-panel: #eff2f4;
+  /* Dual soft shadows tuned for #e8eaed (cool light grey) */
+  --header-search-neu-dark: 6px 6px 12px rgba(163, 177, 198, 0.55);
+  --header-search-neu-light: -6px -6px 12px rgba(255, 255, 255, 0.9);
+  --header-search-neu-dark-focus: 8px 8px 16px rgba(163, 177, 198, 0.65);
+  --header-search-neu-light-focus: -8px -8px 16px rgba(255, 255, 255, 0.95);
   --header-search-display: var(--font-title, 'Oswald', sans-serif);
   --header-search-body: var(--font-body, 'Geist', sans-serif);
   --header-search-ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -27,20 +32,25 @@
   position: fixed;
   inset: 0;
   z-index: 140;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
   pointer-events: none;
   font-family: var(--header-search-body);
-  color: #000;
+  color: var(--header-search-ink);
 }
 
 .header-search-overlay__backdrop {
   position: fixed;
   inset: 0;
   z-index: 0;
+  width: 100%;
+  height: 100%;
   margin: 0;
   padding: 0;
   border: 0;
-  /* Intentionally darker than cart drawer rgba(10,10,12,0.4) */
-  background: rgb(0, 0, 0);
+  background: var(--header-search-surface);
   opacity: 0;
   cursor: pointer;
   pointer-events: auto;
@@ -48,26 +58,33 @@
 }
 
 .header-search-overlay.is-visible .header-search-overlay__backdrop {
-  opacity: 0.85;
+  opacity: 1;
 }
 
 .header-search-overlay__dialog {
+  --header-search-bar-h: 68px;
+  --header-search-stack-gap: 0.75rem;
+
   position: fixed;
   z-index: 1;
-  top: min(50vh, 16rem);
+  top: 50%;
   left: 50%;
-  width: min(36rem, calc(100vw - 2.5rem));
-  /* Cap to remaining viewport below the bar so results never spill off-screen. */
-  max-height: calc(100dvh - min(50vh, 16rem) - 1.5rem);
+  width: min(40rem, calc(100vw - 2rem));
+  /* From bar mid-line down to near the bottom edge */
+  max-height: calc(50dvh + (var(--header-search-bar-h) / 2) - 1rem);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  /* Contain flex children — without this, max-height doesn't clip and the
-     panel grows past the viewport with overflow:visible ancestors. */
-  overflow: hidden;
+  gap: var(--header-search-stack-gap);
+  /*
+    MUST stay overflow: visible — overflow:hidden here clipped the
+    neumorphic box-shadow on the search bar (shadows paint outside the
+    bar box; dialog width matched the bar so L/R/top shadows vanished).
+    Results scrolling is owned by .header-search-overlay__panel instead.
+  */
+  overflow: visible;
   pointer-events: auto;
   opacity: 0;
-  transform: translate(-50%, 10px);
+  transform: translate(-50%, calc(-0.5 * var(--header-search-bar-h) + 12px));
   transition:
     opacity var(--header-search-duration) ease,
     transform var(--header-search-duration) var(--header-search-ease);
@@ -75,7 +92,7 @@
 
 .header-search-overlay.is-visible .header-search-overlay__dialog {
   opacity: 1;
-  transform: translate(-50%, 0);
+  transform: translate(-50%, calc(-0.5 * var(--header-search-bar-h)));
 }
 
 .header-search-overlay__form {
@@ -85,35 +102,52 @@
   margin: 0;
   min-height: 0;
   flex: 1 1 auto;
-  overflow: hidden;
+  /* Same as dialog — do not clip the bar's extruded shadows */
+  overflow: visible;
 }
 
 .header-search-overlay__row {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   flex-shrink: 0;
-  gap: 0;
-  /* Pinned SiteHeader chrome — denser frost reads cleanly on the 0.75 black
-     backdrop; floating 13% glass would nearly vanish against it. */
-  background: var(--ps-chrome-bg);
-  backdrop-filter: blur(var(--ps-chrome-blur));
-  -webkit-backdrop-filter: blur(var(--ps-chrome-blur));
-  border: 1px solid var(--ps-chrome-line);
-  box-shadow: 0 1px 0 var(--ps-chrome-line);
-  overflow: hidden;
+  gap: 14px;
+  /* ~16–18px vertical / 20–24px horizontal per spec */
+  padding: 17px 22px;
+  /* Same fill as scrim — depth comes from dual neu shadows only */
+  background: #fff;
+  border: none;
+  border-radius: 0;
+  box-shadow:
+    var(--header-search-neu-dark),
+    var(--header-search-neu-light);
+  color: var(--header-search-ink);
+  transition: box-shadow 0.25s ease;
+  /* Own overflow does not clip own box-shadow; leave visible for safety */
+  overflow: visible;
+}
+
+/* Focus indication via deepened extrude (no browser outline ring) */
+.header-search-overlay__row:focus-within {
+  box-shadow:
+    var(--header-search-neu-dark-focus),
+    var(--header-search-neu-light-focus);
 }
 
 .header-search-overlay__input {
   flex: 1;
   min-width: 0;
-  height: 52px;
-  padding: 16px 8px 16px 20px;
-  border: 0;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
   background: transparent;
-  color: #000;
+  color: var(--header-search-ink);
   font-family: var(--header-search-body);
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: left;
   line-height: 1;
   box-sizing: border-box;
   appearance: none;
@@ -123,13 +157,16 @@
 
 .header-search-overlay__input:focus,
 .header-search-overlay__input:focus-visible {
-  border: 0;
+  border: none;
   outline: none;
   box-shadow: none;
 }
 
 .header-search-overlay__input::placeholder {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--header-search-muted);
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 1;
 }
 
 .header-search-overlay__input::-webkit-search-decoration,
@@ -137,71 +174,53 @@
   appearance: none;
 }
 
-.header-search-overlay__close {
+.header-search-overlay__icon {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  width: 52px;
-  height: 52px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: #000;
-  cursor: pointer;
-  appearance: none;
-  opacity: 0.7;
-  transition: opacity 0.15s ease;
+  width: 24px;
+  height: 24px;
+  color: var(--header-search-muted);
+  pointer-events: none;
 }
 
-.header-search-overlay__close:hover,
-.header-search-overlay__close:focus-visible {
-  background: transparent;
-  color: #000;
-  opacity: 1;
-  outline: none;
+.header-search-overlay__icon svg {
+  display: block;
 }
 
-/* Results stay solid for product-card / link legibility — glass only on the bar.
-   Explicit max-height (not only flex) so the panel stays viewport-bound even if
-   the form/dialog height:auto chain fails. data-lenis-prevent on the element
-   lets native wheel scroll work while site Lenis is stopped. */
+/* Results panel — white card so it separates from the grey neu scrim. */
 .header-search-overlay__panel {
-  --header-search-bar-h: 54px;
-  --header-search-stack-gap: 0.75rem;
-  --header-search-bottom-gap: 1.5rem;
-
   display: grid;
   gap: 1rem;
   flex: 1 1 auto;
   min-height: 0;
-  max-height: calc(
-    100dvh - min(50vh, 16rem) - var(--header-search-bar-h) - var(--header-search-stack-gap) -
-      var(--header-search-bottom-gap)
-  );
+  max-height: calc(50dvh - (var(--header-search-bar-h) / 2) - var(--header-search-stack-gap) - 1rem);
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
-  padding: 1rem 1.15rem 1.15rem;
+  scrollbar-width: thin;
+  scrollbar-color: #000 transparent;
+  padding: 1rem var(--page-inset, 16px) 1.15rem;
+  color: var(--header-search-ink);
   background: #fff;
   border: 1px solid var(--header-search-line);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.08);
+  min-width: 0;
 }
 
 .header-search-overlay__panel::-webkit-scrollbar {
-  width: 8px;
+  width: 4.8px;
+  /* 60% of previous 8px */
 }
 
 .header-search-overlay__panel::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.28);
-  border-radius: 0;
+  background: #000;
 }
 
 .header-search-overlay__panel::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.06);
+  background: transparent;
 }
 
 .header-search-overlay__status,
@@ -233,13 +252,20 @@
   padding: 0;
   display: grid;
   gap: 0.5rem;
+  min-width: 0;
+}
+
+.header-search-overlay__products > li,
+.header-search-overlay__links > li {
+  min-width: 0;
 }
 
 .header-search-overlay .product-card--predictive {
   min-height: 0;
+  min-width: 0;
+  width: 100%;
   flex-direction: row;
   align-items: center;
-  border-radius: 0;
   background: var(--header-search-panel);
 }
 
@@ -261,20 +287,45 @@
 }
 
 .header-search-overlay .product-card--predictive .product-card__meta {
+  /* Flex default min-width:auto prevents shrink → titles overflow the viewport */
+  flex: 1 1 auto;
+  min-width: 0;
   padding: 0.65rem 0.85rem 0.65rem 0;
 }
 
 .header-search-overlay .product-card--predictive .product-card__name {
   font-size: 0.875rem;
+  white-space: normal;
+  /* Compact search rows: clamp to 2 lines, don't reserve empty second-line height */
+  min-height: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-search-overlay .product-card--predictive .product-card__row {
+  min-width: 0;
+  width: 100%;
+}
+
+.header-search-overlay .product-card--predictive .product-card__price {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .header-search-overlay__link {
   display: block;
   padding: 0.75rem 0.85rem;
   background: var(--header-search-panel);
-  color: inherit;
+  color: var(--header-search-ink);
   text-decoration: none;
   font-size: 0.875rem;
+  overflow-wrap: anywhere;
 }
 
 .header-search-overlay__link:hover,
@@ -300,28 +351,32 @@
 }
 
 @media (max-width: 640px) {
+  .header-search-overlay {
+    /* Tighter blur so soft shadows don't overwhelm a narrow bar */
+    --header-search-neu-dark: 4px 4px 8px rgba(163, 177, 198, 0.5);
+    --header-search-neu-light: -4px -4px 8px rgba(255, 255, 255, 0.85);
+    --header-search-neu-dark-focus: 5px 5px 10px rgba(163, 177, 198, 0.6);
+    --header-search-neu-light-focus: -5px -5px 10px rgba(255, 255, 255, 0.92);
+  }
+
   .header-search-overlay__dialog {
-    top: min(12vh, 4.5rem);
-    width: min(36rem, calc(100vw - 2rem));
-    max-height: calc(100dvh - min(12vh, 4.5rem) - 1.5rem);
+    --header-search-bar-h: 58px;
+    width: calc(100vw - 1.5rem);
+    max-height: calc(50dvh + (var(--header-search-bar-h) / 2) - 0.75rem);
+  }
+
+  .header-search-overlay__row {
+    padding: 14px 18px;
+    gap: 12px;
   }
 
   .header-search-overlay__input {
-    height: 48px;
+    height: 28px;
     font-size: 1rem;
   }
 
-  .header-search-overlay__close {
-    width: 48px;
-    height: 48px;
-  }
-
   .header-search-overlay__panel {
-    --header-search-bar-h: 50px;
-    max-height: calc(
-      100dvh - min(12vh, 4.5rem) - var(--header-search-bar-h) - var(--header-search-stack-gap) -
-        var(--header-search-bottom-gap)
-    );
+    max-height: calc(50dvh - (var(--header-search-bar-h) / 2) - var(--header-search-stack-gap) - 0.75rem);
   }
 }
 
