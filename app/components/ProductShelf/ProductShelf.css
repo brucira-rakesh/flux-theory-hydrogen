@@ -254,6 +254,73 @@ main[data-focus-active] .ps-header.is-pinned {
   right: 14px;
 }
 
+/* Flux PDP (/products/*) — Figma Frame 61: solid black bar, white chrome.
+   Scoped away from /old-pdp and /shop (those keep is-on-light). */
+.ps-header.is-on-flux-pdp,
+.ps-header.is-on-flux-pdp.is-on-pdp:not(.is-pinned) {
+  top: 8px;
+  left: 0;
+  right: 0;
+  margin-inline: 16px;
+}
+
+.ps-header.is-on-flux-pdp.is-pinned {
+  top: 8px;
+  left: 0;
+  right: 0;
+  margin-inline: 16px;
+}
+
+/* top: 8px means translateY(-100%) still leaves an 8px strip — clear fully. */
+.ps-header.is-on-flux-pdp.is-hidden {
+  transform: translateY(calc(-100% - 16px));
+}
+
+.ps-header.is-on-flux-pdp .ps-header__bar {
+  padding: 0 24px;
+  pointer-events: auto;
+  background: #000;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom: 0;
+  color: #fff;
+}
+
+.ps-header.is-on-flux-pdp .ps-header__cluster {
+  --ps-nav-fg: #fff;
+  padding: 16px 0;
+  gap: 40px;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  color: var(--ps-nav-fg);
+}
+
+.ps-header.is-on-flux-pdp.is-pinned .ps-header__bar {
+  background: #000;
+}
+
+.ps-header.is-on-flux-pdp.is-pinned .ps-header__cluster {
+  --ps-nav-fg: #fff;
+  background: transparent;
+  color: var(--ps-nav-fg);
+}
+
+/* White SVG chrome — do NOT invert on the black Flux bar (that made logo/icons
+   invisible). Keep artwork as authored white so it reads on #000. */
+.ps-header.is-on-flux-pdp .ps-logo__img,
+.ps-header.is-on-flux-pdp.is-pinned .ps-logo__img,
+.ps-header.is-on-flux-pdp .ps-header__icon img,
+.ps-header.is-on-flux-pdp.is-pinned .ps-header__icon img {
+  filter: none;
+}
+
+.ps-header.is-on-flux-pdp .ps-header__nav-link,
+.ps-header.is-on-flux-pdp .ps-header__icon-btn {
+  color: #fff;
+}
+
 /* Shop / PDP / Account — match HeaderV2 (dev.flux-theory.pages.dev) spacing.
    Floating: logo outside glass; glass + padding only on the right cluster.
    Insets stay on base .ps-header (24px / 12px ≤600) — do not pull top to 12px

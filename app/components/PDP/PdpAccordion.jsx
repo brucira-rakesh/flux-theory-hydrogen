@@ -7,9 +7,9 @@ import iconTwitter from '../../assets/pdp/icon-twitter.svg'
 
 gsap.registerPlugin(ScrollTrigger)
 
-function AccordionItem({ item, open, onToggle }) {
+function AccordionItem({ item, open, onToggle, extra = null }) {
   const panelId = `pdp-acc-${item.id}`
-  const hasBody = Boolean(item.intro || item.body || item.bullets?.length)
+  const hasBody = Boolean(item.intro || item.body || item.bullets?.length || extra)
 
   return (
     <div className={`pdp-acc__item${open ? ' is-open' : ''}`}>
@@ -46,6 +46,7 @@ function AccordionItem({ item, open, onToggle }) {
                 ))}
               </ul>
             )}
+            {extra}
           </div>
         </div>
       )}
@@ -66,7 +67,13 @@ function CopyToast({ visible }) {
   )
 }
 
-export default function PdpAccordion({ items, bottleSrc, bottleAlt, productName = '' }) {
+export default function PdpAccordion({
+  items,
+  bottleSrc,
+  bottleAlt,
+  productName = '',
+  detailsExtra = null,
+}) {
   const [openId, setOpenId] = useState(
     () => items.find((item) => item.defaultOpen)?.id ?? null,
   )
@@ -136,6 +143,7 @@ export default function PdpAccordion({ items, bottleSrc, bottleAlt, productName 
             item={item}
             open={openId === item.id}
             onToggle={onToggle}
+            extra={item.id === 'product-details' ? detailsExtra : null}
           />
         ))}
 

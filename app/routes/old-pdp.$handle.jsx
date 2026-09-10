@@ -1,21 +1,20 @@
+import {useEffect, useState} from 'react';
+import {useLoaderData, useNavigate} from 'react-router';
 import {
   getAdjacentAndFirstAvailableVariants,
+  getProductOptions,
   getSelectedProductOptions,
   useOptimisticVariant,
   useSelectedOptionInUrlParam,
 } from '@shopify/hydrogen';
-import {Link, useLoaderData} from 'react-router';
-import FluxPdpHero from '~/components/FluxPDP/FluxPdpHero';
-import Footer from '~/components/Footer/Footer';
-import SiteHeader from '~/components/ProductShelf/SiteHeader';
 import {redirectIfHandleIsLocalized} from '~/lib/redirect';
 import {
+  PRODUCT_SIMILAR_QUERY,
   applySelectedVariant,
+  toListingCard,
   toPdpViewModel,
   withoutShopifyDefaultTitleOptions,
 } from '~/lib/storefrontCatalog';
-import '~/components/PDP/ProductPage.css';
-import '~/components/FluxPDP/FluxPdp.css';
 
 /**
  * @type {Route.MetaFunction}
@@ -25,7 +24,7 @@ export const meta = ({data}) => {
     {title: `Flux Theory | ${data?.product?.title ?? ''}`},
     {
       rel: 'canonical',
-      href: `/flux-pdp/${data?.product?.handle}`,
+      href: `/old-pdp/${data?.product?.handle}`,
     },
   ];
 };
@@ -50,9 +49,14 @@ async function loadCriticalData({context, params, request}) {
     throw new Error('Expected product handle to be defined');
   }
 
-  const {product} = await storefront.query(PRODUCT_QUERY, {
-    variables: {handle, selectedOptions: getSelectedProductOptions(request)},
-  });
+  const [{product}, similarResult] = await Promise.all([
+    storefront.query(PRODUCT_QUERY, {
+      variables: {handle, selectedOptions: getSelectedProductOptions(request)},
+    }),
+    storefront.query(PRODUCT_SIMILAR_QUERY, {
+      variables: {first: 8},
+    }),
+  ]);
 
   if (!product?.id) {
     throw new Response(null, {status: 404});
@@ -60,9 +64,14 @@ async function loadCriticalData({context, params, request}) {
 
   redirectIfHandleIsLocalized(request, {handle, data: product});
 
+  const similar = (similarResult?.products?.nodes ?? [])
+    .filter((node) => node.handle !== product.handle)
+    .map((node, index) => toListingCard(node, index));
+
   return {
     product,
     pdp: toPdpViewModel(product),
+    similar,
   };
 }
 
@@ -73,26 +82,10 @@ function loadDeferredData() {
   return {};
 }
 
-/** Percent off from Shopify compare-at vs current price. Null when inapplicable. */
-function percentOffFromCompare(price, compareAtPrice) {
-  const current = Number(price?.amount);
-  const compare = Number(compareAtPrice?.amount);
-  if (
-    !compareAtPrice ||
-    !Number.isFinite(current) ||
-    !Number.isFinite(compare) ||
-    compare <= 0 ||
-    current >= compare
-  ) {
-    return null;
-  }
-  const percent = Math.round(((compare - current) / compare) * 100);
-  return percent > 0 ? percent : null;
-}
-
-export default function FluxPdp() {
+export default function ProductHandle() {
   /** @type {LoaderReturnData} */
-  const {product, pdp} = useLoaderData();
+  const {product, pdp, similar} = useLoaderData();
+  const navigate = useNavigate();
   const selectedVariant = useOptimisticVariant(
     product.selectedOrFirstAvailableVariant,
     getAdjacentAndFirstAvailableVariants(product),
@@ -100,51 +93,45 @@ export default function FluxPdp() {
   useSelectedOptionInUrlParam(
     withoutShopifyDefaultTitleOptions(selectedVariant?.selectedOptions),
   );
+  const productOptions = getProductOptions({
+    ...product,
+    selectedOrFirstAvailableVariant: selectedVariant,
+  });
   const view = applySelectedVariant(pdp, selectedVariant);
-  const price = selectedVariant?.price ?? view.money;
-  const compareAtPrice = selectedVariant?.compareAtPrice ?? null;
-  const percentOff = percentOffFromCompare(price, compareAtPrice);
 
+  const onSizeChange = (value) => {
+    const sizeOption = productOptions.find(
+      (option) => option.name?.toLowerCase() === 'size',
+    );
+    const next = sizeOption?.optionValues?.find((option) => option.name === value);
+    if (next?.variantUriQuery) {
+      void navigate(`?${next.variantUriQuery}`, {
+        replace: true,
+        preventScrollReset: true,
+      });
+    }
+  };
+
+  const [bundle, setBundle] = useState(null);
+
+  useEffect(() => {
+    Promise.all([
+      import('~/pages/ProductPage'),
+      import('~/components/SmoothScroll/SmoothScroll'),
+    ]).then(([pageMod, scrollMod]) => {
+      setBundle({
+        Page: pageMod.default,
+        SmoothScroll: scrollMod.default,
+      });
+    });
+  }, []);
+
+  if (!bundle) return null;
+  const {Page, SmoothScroll} = bundle;
   return (
-    <div className="pdp-page flux-pdp">
-      <SiteHeader />
-      <main className="pdp-main">
-        <nav className="pdp-breadcrumb" aria-label="Breadcrumb">
-          {view.breadcrumb.map((crumb, index) => {
-            const isLast = index === view.breadcrumb.length - 1;
-            return (
-              <span key={crumb} className="pdp-breadcrumb__item">
-                {index > 0 && (
-                  <span className="pdp-breadcrumb__sep" aria-hidden="true">
-                    /
-                  </span>
-                )}
-                {isLast ? (
-                  <span className="pdp-breadcrumb__current">{crumb}</span>
-                ) : (
-                  <Link
-                    to={index === 0 ? '/' : '#'}
-                    className="pdp-breadcrumb__link"
-                  >
-                    {crumb}
-                  </Link>
-                )}
-              </span>
-            );
-          })}
-        </nav>
-
-        <FluxPdpHero
-          product={product}
-          view={view}
-          selectedVariant={selectedVariant}
-          price={price}
-          compareAtPrice={compareAtPrice}
-          percentOff={percentOff}
-        />
-      </main>
-      <Footer />
-    </div>
+    <SmoothScroll>
+      <Page product={view} similar={similar} onSizeChange={onSizeChange} />
+    </SmoothScroll>
   );
 }
 
@@ -454,5 +441,5 @@ const PRODUCT_QUERY = `#graphql
   ${PRODUCT_FRAGMENT}
 `;
 
-/** @typedef {import('./+types/flux-pdp.$handle').Route} Route */
+/** @typedef {import('./+types/old-pdp.$handle').Route} Route */
 /** @typedef {ReturnType<typeof useLoaderData<typeof loader>>} LoaderReturnData */

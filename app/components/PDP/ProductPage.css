@@ -1,4 +1,13 @@
-/* Product Detail Page — Figma 1205:1646 (The Dreamer) */
+/* Product Detail Page — Figma 1205:1646 (The Dreamer)
+ *
+ * Scaling contract (--pdp-fluid):
+ * - <1440: token stays 1440px so calc(N * var(--pdp-fluid) / 1440) == Npx
+ * - 1440–1920: token = 100vw (proportional scale)
+ * - >1920: token capped at 1920px — content columns use
+ *   width: min(100%, var(--pdp-fluid)) + margin auto (side gutters).
+ * Full-bleed backgrounds (lifestyle, gift, reviews) stay edge-to-edge;
+ * UI layered on them centers inside the capped artboard.
+ */
 
 .pdp-page {
   --pdp-fluid: 1440px;
@@ -27,17 +36,18 @@
 }
 
 .pdp-main {
-  width: min(100%, calc(1440 * var(--pdp-fluid) / 1440));
+  /* Equals --pdp-fluid above 1440; below that, full width of the viewport. */
+  width: min(100%, var(--pdp-fluid));
   margin: 0 auto;
-  padding: 100px 22px 0;
+  padding: 88px 22px 44px;
   box-sizing: border-box;
 }
 
 .pdp-main--lower {
-  padding-top: calc(160 * var(--pdp-fluid) / 1440);
+  padding-top: calc(70 * var(--pdp-fluid) / 1440);
   /* `--pdp-sticky-bar-h` is the live sticky bar height (0 when hidden) so
      Similar Products can scroll clear of the fixed bar before the footer. */
-  padding-bottom: calc(80 * var(--pdp-fluid) / 1440 + var(--pdp-sticky-bar-h, 0px));
+  padding-bottom: calc(70 * var(--pdp-fluid) / 1440 + var(--pdp-sticky-bar-h, 0px));
 }
 
 .visually-hidden {
@@ -670,7 +680,7 @@
   }
 }
 
-/* Marquee — Figma 1205:1747 */
+/* Marquee — Figma 1205:1747 (legacy dark) / 3101:2760 (Flux light) */
 
 .pdp-marquee {
   /* Pills clipping at the viewport edges is the looping strip, not overflow.
@@ -680,6 +690,12 @@
   background: #000;
   color: #fff;
   padding: calc(24 * var(--pdp-fluid) / 1440) calc(16 * var(--pdp-fluid) / 1440);
+}
+
+/* Flux PDP — Figma 3101:2760: white bar, black Oswald (fluid sizes inherit). */
+.pdp-marquee--light {
+  background: #fff;
+  color: #111;
 }
 
 .pdp-marquee__track {
@@ -693,6 +709,11 @@
 .pdp-page:not(.pdp-page--reduce-motion) .pdp-marquee__track {
   /* Driven by GSAP in usePdpMotion — CSS loop disabled */
   animation: none;
+}
+
+/* Flux PDP has no usePdpMotion — self-drive the infinite strip via CSS. */
+.pdp-page.flux-pdp:not(.pdp-page--reduce-motion) .pdp-marquee__track {
+  animation: pdp-marquee 32s linear infinite;
 }
 
 .pdp-marquee__item {
@@ -712,10 +733,18 @@
   white-space: nowrap;
 }
 
+.pdp-marquee--light .pdp-marquee__label {
+  font-family: var(--pdp-display, 'Oswald', sans-serif);
+}
+
 .pdp-marquee__mark {
   width: calc(40 * var(--pdp-fluid) / 1440);
   height: calc(40 * var(--pdp-fluid) / 1440);
   flex-shrink: 0;
+}
+
+.pdp-marquee--light .pdp-marquee__mark {
+  opacity: 1;
 }
 
 @keyframes pdp-marquee {

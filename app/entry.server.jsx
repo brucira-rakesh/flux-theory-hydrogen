@@ -42,6 +42,20 @@ export default async function handleRequest(
     ],
     workerSrc: ["'self'", 'blob:'],
     connectSrc: ['blob:'],
+    // Without an explicit img-src, images fall under default-src and Judge.me
+    // review CDN photos are blocked (broken <img> on the reviews wall).
+    imgSrc: [
+      "'self'",
+      'data:',
+      'blob:',
+      'https://cdn.shopify.com',
+      'https://shopify.com',
+      context.env.PUBLIC_STORE_DOMAIN,
+      'http://localhost:*',
+      'https://review-images.judgeme.com',
+      'https://*.judgeme.com',
+      'https://judgeme.imgix.net',
+    ],
     mediaSrc: [
       "'self'",
       context.env.PUBLIC_STORE_DOMAIN,

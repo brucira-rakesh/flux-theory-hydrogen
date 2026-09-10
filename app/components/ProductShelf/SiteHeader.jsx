@@ -166,7 +166,7 @@ function resolveActiveId(pathname, hash, links) {
 function isLightSurfacePath(pathname) {
   return (
     pathname.startsWith('/shop') ||
-    pathname.startsWith('/products') ||
+    pathname.startsWith('/old-pdp') ||
     pathname.startsWith('/account') ||
     pathname === '/about-us' ||
     pathname === '/the-brand'
@@ -175,6 +175,10 @@ function isLightSurfacePath(pathname) {
 
 function isDarkHeroPath(pathname) {
   return pathname === '/about-us' || pathname === '/the-brand'
+}
+
+function isFluxPdpPath(pathname) {
+  return pathname.startsWith('/products')
 }
 
 export default function SiteHeader({ logoTo = HOME_URL }) {
@@ -193,7 +197,8 @@ export default function SiteHeader({ logoTo = HOME_URL }) {
   const activeId = resolveActiveId(location.pathname, location.hash, navLinks)
   const onLight = isLightSurfacePath(location.pathname)
   const onDarkHero = isDarkHeroPath(location.pathname)
-  const onPdp = location.pathname.startsWith('/products')
+  const onFluxPdp = isFluxPdpPath(location.pathname)
+  const onPdp = onFluxPdp || location.pathname.startsWith('/old-pdp')
   const { openCart } = useCartDrawer()
   const logoIsExternal = isExternalUrl(logoTo)
 
@@ -268,6 +273,8 @@ export default function SiteHeader({ logoTo = HOME_URL }) {
   }, [hidden, open, searching, pinned])
 
   // Dawn-style sticky header: hide on scroll down, reveal on scroll up.
+  // Flux PDP keeps the bar fully off-screen once past the top (no scroll-up
+  // reveal) so it never peeks over the buy box / mid-page content.
   // Stay put through the IntroHero pin scrub — that scroll distance is
   // programmatic (video → mist cover), not a page leave.
   useEffect(() => {
@@ -302,7 +309,7 @@ export default function SiteHeader({ logoTo = HOME_URL }) {
         setHidden(false)
       } else if (delta > 6) {
         setHidden(true)
-      } else if (delta < -6) {
+      } else if (delta < -6 && !onFluxPdp) {
         setHidden(false)
       }
 
@@ -318,14 +325,14 @@ export default function SiteHeader({ logoTo = HOME_URL }) {
 
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
-  }, [open, searching])
+  }, [open, searching, onFluxPdp])
 
   const closeDrawer = () => setOpen(false)
 
   return (
     <>
       <header
-        className={`ps-header${pinned ? ' is-pinned' : ''}${onLight ? ' is-on-light' : ''}${onDarkHero ? ' is-on-dark-hero' : ''}${onPdp ? ' is-on-pdp' : ''}${hidden && !open && !searching ? ' is-hidden' : ''}${open ? ' is-drawer-open' : ''}`}
+        className={`ps-header${pinned ? ' is-pinned' : ''}${onLight ? ' is-on-light' : ''}${onDarkHero ? ' is-on-dark-hero' : ''}${onPdp ? ' is-on-pdp' : ''}${onFluxPdp ? ' is-on-flux-pdp' : ''}${hidden && !open && !searching ? ' is-hidden' : ''}${open ? ' is-drawer-open' : ''}`}
       >
         <div className="ps-header__bar">
           {logoIsExternal ? (

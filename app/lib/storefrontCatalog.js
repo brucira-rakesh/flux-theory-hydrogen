@@ -66,6 +66,154 @@ export function cartLinesForMerchandise(merchandiseId, quantity = 1, selectedVar
 }
 
 /**
+ * Pack-of-1 (base) variant for gift-bundle ATC — independent of PDP pack selection.
+ * @param {{variants?: {nodes?: Array<{
+ *   id?: string,
+ *   title?: string | null,
+ *   availableForSale?: boolean,
+ *   price?: {amount?: string, currencyCode?: string} | null,
+ *   compareAtPrice?: {amount?: string, currencyCode?: string} | null,
+ *   selectedOptions?: Array<{name?: string | null, value?: string | null}> | null,
+ *   image?: unknown,
+ * }>}}} product
+ */
+export function basePackVariantFromProduct(product) {
+  const nodes = product?.variants?.nodes ?? [];
+  if (!nodes.length) return null;
+
+  const isPackOf1 = (variant) => {
+    const title = String(variant?.title ?? '');
+    if (/pack\s*of\s*1/i.test(title)) return true;
+    return (variant?.selectedOptions ?? []).some((option) =>
+      /pack\s*of\s*1/i.test(String(option?.value ?? '')),
+    );
+  };
+
+  return (
+    nodes.find(isPackOf1) ??
+    nodes.find((variant) => variant.availableForSale !== false) ??
+    nodes[0] ??
+    null
+  );
+}
+
+/** Parse list.number_decimal / JSON list metafield values into [x, y] percentages. */
+function parseXyPercent(raw) {
+  if (raw == null) return null;
+  let parsed = raw;
+  if (typeof raw === 'string') {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  if (!Array.isArray(parsed) || parsed.length < 2) return null;
+  const x = Number(parsed[0]);
+  const y = Number(parsed[1]);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return {x, y};
+}
+
+function mediaImageFromReference(field) {
+  const image = field?.reference?.image;
+  if (!image?.url) return null;
+  return {
+    url: image.url,
+    altText: image.altText ?? null,
+    width: image.width ?? null,
+    height: image.height ?? null,
+  };
+}
+
+/**
+ * `custom.product_bundle` → gift section view model.
+ * Returns null when metafield / banner / hotspots are absent (omit section).
+ *
+ * @param {{
+ *   productBundle?: {
+ *     reference?: {
+ *       sectionTitle?: {value?: string | null} | null,
+ *       sectionDescription?: {value?: string | null} | null,
+ *       desktopBanner?: {reference?: {image?: unknown}} | null,
+ *       mobileBanner?: {reference?: {image?: unknown}} | null,
+ *       bundleHotspot?: {references?: {nodes?: unknown[]}} | null,
+ *     } | null,
+ *   } | null,
+ * }} product
+ */
+export function giftBundleFromMetafield(product) {
+  const meta = product?.productBundle?.reference;
+  if (!meta) return null;
+
+  const desktopBanner = mediaImageFromReference(meta.desktopBanner);
+  const mobileBanner =
+    mediaImageFromReference(meta.mobileBanner) ?? desktopBanner;
+  if (!desktopBanner) return null;
+
+  const titleRaw = String(meta.sectionTitle?.value ?? '').trim();
+  const description = String(meta.sectionDescription?.value ?? '').trim();
+
+  /** @type {string[]} */
+  let titleLines = [];
+  if (titleRaw.includes('\n')) {
+    titleLines = titleRaw
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+  } else {
+    const ofBreak = titleRaw.search(/\s+OF\s+/i);
+    if (ofBreak > 0) {
+      titleLines = [
+        titleRaw.slice(0, ofBreak).trim(),
+        titleRaw.slice(ofBreak + 1).trim(),
+      ];
+    } else if (titleRaw) {
+      titleLines = [titleRaw];
+    }
+  }
+  if (!titleLines.length) return null;
+
+  const hotspotNodes = meta.bundleHotspot?.references?.nodes ?? [];
+  const hotspots = [];
+  for (const node of hotspotNodes) {
+    if (!node || typeof node !== 'object') continue;
+    const referenced = node.product?.reference;
+    if (!referenced?.id) continue;
+    const variant = basePackVariantFromProduct(referenced);
+    if (!variant?.id) continue;
+
+    const desktopXy = parseXyPercent(node.desktopXy?.value);
+    const mobileXy = parseXyPercent(node.mobileXy?.value) ?? desktopXy;
+    if (!desktopXy) continue;
+
+    hotspots.push({
+      id: node.id || referenced.id,
+      productId: referenced.id,
+      handle: referenced.handle || '',
+      title: referenced.title || referenced.handle || 'Product',
+      desktopXy,
+      mobileXy,
+      variantId: variant.id,
+      price: variant.price ?? null,
+      compareAtPrice: variant.compareAtPrice ?? null,
+      availableForSale: variant.availableForSale !== false,
+      selectedVariant: variant,
+    });
+  }
+
+  if (!hotspots.length) return null;
+
+  return {
+    titleLines,
+    description,
+    desktopBanner,
+    mobileBanner,
+    hotspots,
+  };
+}
+
+/**
  * Shopify's auto "Title / Default Title" option on single-variant products.
  * Ignored for shopper-facing size UI, cart labels, and product URL sync.
  * @param {{name?: string | null, value?: string | null} | null | undefined} option
@@ -293,6 +441,77 @@ function howToFromMetafield(product) {
     ...mediaShape,
     steps,
   };
+}
+
+/**
+ * custom.product_offers (list.metaobject_reference) → PDP offer cards.
+ *
+ * Visibility gate: Storefront only returns ACTIVE/published entries for
+ * publishable metaobject types. Confirmed against Admin schema — status is
+ * NOT a top-level Metaobject field; it lives at
+ * `capabilities.publishable.status` with enum values `ACTIVE` | `DRAFT`
+ * (Admin API). Storefront Metaobject has no `status` field, so we treat
+ * presence in `references.nodes` as the ACTIVE gate (Draft → omitted by
+ * Shopify, no Admin discount lookup). Empty list → omit Offers section.
+ *
+ * @param {{
+ *   productOffers?: {
+ *     references?: {
+ *       nodes?: Array<{
+ *         id?: string,
+ *         couponCode?: {value?: string | null} | null,
+ *         name?: {value?: string | null} | null,
+ *         description?: {value?: string | null} | null,
+ *       } | null> | null,
+ *     } | null,
+ *   } | null,
+ * }} product
+ * @returns {Array<{
+ *   id: string,
+ *   code: string,
+ *   title: string,
+ *   headline: string,
+ *   benefit: string,
+ *   detail: string,
+ *   variant: 'solid' | 'dashed',
+ * }>}
+ */
+export function activeOffersFromMetafield(product) {
+  const nodes = product?.productOffers?.references?.nodes ?? [];
+  /** @type {Array<{
+   *   id: string,
+   *   code: string,
+   *   title: string,
+   *   headline: string,
+   *   benefit: string,
+   *   detail: string,
+   *   variant: 'solid' | 'dashed',
+   * }>} */
+  const offers = [];
+
+  for (const node of nodes) {
+    if (!node || typeof node !== 'object') continue;
+    // INTENTIONAL: coupon_code is merchandising content only — it is NOT
+    // validated against Shopify Discounts (codeDiscountNodeByCode). A typo,
+    // expired, or never-created code still renders a normal card. Whoever
+    // manages product_offers must keep coupon_code in sync with Discounts.
+    const code = String(node.couponCode?.value ?? '').trim();
+    const name = String(node.name?.value ?? '').trim();
+    const description = String(node.description?.value ?? '').trim();
+    if (!code || !name) continue;
+
+    offers.push({
+      id: node.id || code,
+      code,
+      title: name,
+      headline: name,
+      benefit: '',
+      detail: description,
+      variant: offers.length % 2 === 0 ? 'solid' : 'dashed',
+    });
+  }
+
+  return offers;
 }
 
 /**
@@ -548,16 +767,13 @@ export function toPdpViewModel(product) {
     stickyThumb: mediaPreviewUrl(firstMedia),
     accordion: accordionFromMetafields(product, overlay?.accordion),
     marquee: (() => {
+      // Flux Figma ticker copy (Detan / Odour defence / …) lives on the overlay.
+      // Prefer it over shop metafield when present so PDP matches design.
+      const overlayItems = overlay?.marquee?.items;
+      if (overlayItems?.length) return {items: overlayItems};
       const shopifyItems = marqueeItemsFromMetafield(product);
-      if (shopifyItems) {
-        // Mark SVG is imported in PdpMarquee — only pass pill text here.
-        return {items: shopifyItems};
-      }
-      // Overlay fallback (dreamer) may still include items; mark unused by component.
-      const overlayMarquee = overlay?.marquee;
-      return overlayMarquee?.items?.length
-        ? {items: overlayMarquee.items}
-        : undefined;
+      if (shopifyItems) return {items: shopifyItems};
+      return undefined;
     })(),
     lifestyle: lifestyleFromMetafield(product) ?? overlay?.lifestyle,
     stats: statsFromMetafield(product) ?? overlay?.stats,
@@ -571,9 +787,14 @@ export function toPdpViewModel(product) {
 /** Overlay loader PDP fields with the currently selected (optimistic) variant. */
 export function applySelectedVariant(pdp, variant) {
   if (!pdp || !variant) return pdp;
-  const sizeValue = variant.selectedOptions?.find(
-    (option) => option.name?.toLowerCase() === 'size',
-  )?.value;
+  const sizeValue =
+    variant.selectedOptions?.find((option) => {
+      const name = option.name?.toLowerCase() ?? '';
+      return name === 'size' || name.includes('pack');
+    })?.value ??
+    variant.selectedOptions?.find((option) =>
+      /pack of\s*\d+/i.test(option.value ?? ''),
+    )?.value;
   const variantImage = variant.image?.url;
   const gallery = pdp.gallery ?? [];
   const first = gallery[0];
