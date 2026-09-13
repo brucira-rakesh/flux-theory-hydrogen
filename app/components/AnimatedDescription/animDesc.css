@@ -1,0 +1,22 @@
+/* AnimatedDescription — word-split shell. Visual styling comes from className. */
+
+.animDesc-description {
+  margin: 0;
+}
+
+.animDesc-line {
+  display: block;
+}
+
+.animDesc-word {
+  display: inline-block;
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animDesc-word {
+    will-change: auto;
+    opacity: 1;
+    transform: none;
+  }
+}

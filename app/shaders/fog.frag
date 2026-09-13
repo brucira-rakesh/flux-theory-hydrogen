@@ -29,8 +29,47 @@ uniform float uPulseSpeed;
 uniform vec3 uColor;
 uniform float uOpacity; // overall max opacity
 
+// Cursor reactivity — a live little fluid sim (see SteamOverlay/
+// useFogMouseInteraction for the JS side that advects + splats this every
+// frame): xy is flow velocity used to warp the noise sampling so the mist
+// visibly gets pushed/swirled by the cursor, z is a clear-mask amount that
+// punches a hole in the fog around it. Off by default (uMouseStrength <= 0
+// leaves the field unsampled), so every fog plane that doesn't opt in — e.g.
+// SceneOneV2's fogone/fogtwo — is bit-for-bit unchanged.
+uniform sampler2D uVelocityField;
+uniform float uMouseStrength;
+
+// Soft-particle depth fade — fades this fragment out as it nears whatever
+// solid geometry is behind it, instead of a hard depthTest cutoff. Off by
+// default (uSoftFadeDistance <= 0.0 skips the texture read below entirely),
+// so this is a no-op for every fog plane that doesn't explicitly opt in and
+// supply a real scene-depth texture (see makeFogMaterial's own comment).
+uniform sampler2D uSceneDepth;
+uniform float uCameraNear;
+uniform float uCameraFar;
+uniform vec2 uResolution;
+uniform float uSoftFadeDistance; // world units of fade; <= 0 disables
+
+// Camera-proximity fade — fades this fragment out as the camera gets close
+// to it, so a large plane can't turn into a wall of solid colour filling the
+// screen when the camera dollies in near/through it. Off by default (<= 0.0
+// disables), same opt-in shape as the soft-particle fade above.
+uniform float uNearFadeDistance; // world units; alpha ramps 0 -> full over this span
+
+// Reveal fade — a plain 0..1 multiplier a caller eases over time (e.g. once
+// a cinematic transition covering this plane has cleared), NOT an opt-in
+// like the two uniforms above: defaults to 1 (fully visible, no-op) so
+// every fog plane that never touches this looks exactly as before.
+uniform float uRevealFade;
+
 varying vec2 vUv;
 varying vec3 vWorldPos;
+
+// Standard perspective depth-buffer value (0..1) -> linear eye-space
+// distance from the camera, for a camera with the given near/far.
+float linearEyeDepth(float depth, float near, float far) {
+  return (near * far) / (far - depth * (far - near));
+}
 
 void main() {
   // Wind direction animation: the heading swings back and forth around the
@@ -52,15 +91,31 @@ void main() {
   vec2 perp = vec2(-windDirection.y, windDirection.x);
   flow += perp * sin(uTime * uWobbleSpeed) * uWobbleAmount;
 
+  // Cursor warp: drag the noise sample point by the local flow field (a soft
+  // rational clamp keeps it bounded under sustained fast movement) so the
+  // mist reads as pushed/swirled by the cursor instead of a static pattern.
+  vec2 mouseWarp = vec2(0.0);
+  float mouseClear = 0.0;
+  if (uMouseStrength > 0.0) {
+    vec3 field = texture2D(uVelocityField, vUv).xyz;
+    vec2 mouseFlow = field.xy * uMouseStrength;
+    mouseWarp = mouseFlow / (1.0 + length(mouseFlow));
+    mouseClear = clamp(field.z, 0.0, 1.0);
+  }
+
   // Two scrolling samples of the same noise texture, different scale/phase/
   // speed, multiplied together — this produces drifting wispy patches
   // instead of one uniform tileable haze.
-  vec2 uv1 = vUv * uTiling + flow;
-  vec2 uv2 = vUv * uTiling * 1.6 - flow * 0.6 + vec2(0.37, 0.21);
+  vec2 uv1 = vUv * uTiling + flow + mouseWarp;
+  vec2 uv2 = vUv * uTiling * 1.6 - flow * 0.6 + vec2(0.37, 0.21) + mouseWarp;
 
   float n1 = texture2D(uNoiseMap, uv1).r;
   float n2 = texture2D(uNoiseMap, uv2).r;
   float density = clamp(n1 * n2 * uDensity, 0.0, 1.0);
+  // Punch the fog away around the cursor and let it drift/decay back in on
+  // its own once the cursor moves off (mouseClear rides the same fluid sim
+  // as the warp above, see uVelocityField's own comment).
+  density *= 1.0 - mouseClear;
 
   // Slow density "breathing" pulse — patches of mist thicken/thin over time
   // instead of holding one constant density forever.
@@ -81,6 +136,22 @@ void main() {
   float boost = mix(1.0, 1.0 + uGrazingBoost, grazing);
 
   float alpha = clamp(density * edgeFade * uOpacity * boost, 0.0, 1.0);
+
+  if (uSoftFadeDistance > 0.0) {
+    vec2 screenUv = gl_FragCoord.xy / uResolution;
+    float sceneDepthRaw = texture2D(uSceneDepth, screenUv).x;
+    float sceneEyeDepth = linearEyeDepth(sceneDepthRaw, uCameraNear, uCameraFar);
+    float fragEyeDepth = linearEyeDepth(gl_FragCoord.z, uCameraNear, uCameraFar);
+    float soft = clamp((sceneEyeDepth - fragEyeDepth) / uSoftFadeDistance, 0.0, 1.0);
+    alpha *= soft;
+  }
+
+  if (uNearFadeDistance > 0.0) {
+    float camDist = length(cameraPosition - vWorldPos);
+    alpha *= smoothstep(0.0, uNearFadeDistance, camDist);
+  }
+
+  alpha *= uRevealFade;
 
   gl_FragColor = vec4(uColor, alpha);
 }

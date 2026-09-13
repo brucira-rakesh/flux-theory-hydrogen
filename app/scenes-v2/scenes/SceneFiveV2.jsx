@@ -19,15 +19,12 @@ import {
 } from "../gui/guiHelpers";
 import { disposeObject } from "../disposeObject";
 import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl';
-import rebelBakeUrl from '~/assets/ktx2/Rebel_New_Bake_2_etc1s.ktx2?url';
-import rebelSlatesUrl from '~/assets/ktx2/Rebel_slates_etc1s.ktx2?url';
-import rebelBgUrl from '~/assets/ktx2/Rebel_new_bg.ktx2?url';
 
 const MODEL_MAIN_URL = oxygenPublicUrl("/models/Rebel_new_2-v1.glb");
 const MODEL_SLABS_URL = oxygenPublicUrl("/models/Rebel_new_Stones_Slabs-v1.glb");
-const TEXTURE_URL = rebelBakeUrl;
-const SLATES_TEXTURE_URL = rebelSlatesUrl;
-const BG_TEXTURE_URL = rebelBgUrl;
+const TEXTURE_URL = oxygenPublicUrl("/textures/Rebel_New_Bake_2_etc1s.ktx2");
+const SLATES_TEXTURE_URL = oxygenPublicUrl("/textures/Rebel_slates_etc1s.ktx2");
+const BG_TEXTURE_URL = oxygenPublicUrl("/textures/Rebel_new_bg.ktx2");
 
 // Rebel_new_2-v1.glb ships five nodes: Water (sea shader, same as the other
 // scenes' pools), "Fluted Glass Divider" (same glass shader as Scene Four's
@@ -35,7 +32,7 @@ const BG_TEXTURE_URL = rebelBgUrl;
 // (flat scene texture), and Stone_stabs (slates texture). The standalone
 // slab geometry in Rebel_new_Stones_Slabs-v1.glb wears that same slates
 // texture, so its single mesh shares the Stone_stabs material instance.
-export default function SceneFiveV2({ visible = true, sharedMaps }) {
+export default function SceneFiveV2({ visible = true, sharedMaps, lightsRef }) {
   const groupRef = useRef(null);
   const { gl } = useThree();
   const { engine, gui, settings } = useSceneEngine();
@@ -142,6 +139,18 @@ export default function SceneFiveV2({ visible = true, sharedMaps }) {
       model.position.z = 6.19894796319227;
       group.add(model);
 
+      // The whole room — bake, background, stone slabs — is baked lighting,
+      // not a real THREE.Light (see Scene.v2.jsx's SceneLights comment), so
+      // all of it fades together as this scene swings toward/away from
+      // FRONT (see swingCarousel.js's applyBakedLightFactor).
+      if (lightsRef) {
+        lightsRef.current = [
+          bakeMaterial,
+          backgroundMaterial,
+          slatesMaterial,
+        ].filter(Boolean);
+      }
+
       const range = Math.max(size.x, size.y, size.z) || 1;
       if (gui) {
         folder = gui.addFolder("Scene Five");
@@ -177,6 +186,7 @@ export default function SceneFiveV2({ visible = true, sharedMaps }) {
       folder?.destroy();
       disposeObject(group);
       group.clear();
+      if (lightsRef) lightsRef.current = [];
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sharedMaps]);

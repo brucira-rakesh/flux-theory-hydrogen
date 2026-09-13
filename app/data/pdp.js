@@ -6,8 +6,12 @@ import detailBottle from '../assets/pdp/detail-bottle.png'
 import lifestyleBanner from '../assets/pdp/lifestyle-banner.png'
 import lifestyleBottle from '../assets/pdp/lifestyle-bottle.png'
 import howtoMedia from '../assets/pdp/howto-media.png'
+import benefit01 from '../assets/pdp/benefit-01.png'
+import benefit02 from '../assets/pdp/benefit-02.png'
+import benefit03 from '../assets/pdp/benefit-03.png'
+import benefit04 from '../assets/pdp/benefit-04.png'
 import marqueeMark from '../assets/pdp/marquee-ft.svg'
-import dreamerCutout from '../assets/products/dreamer.png'
+import dreamerCutout from '../assets/products/dreamer.webp'
 import { getProductById, products } from './products'
 
 /** PDP content keyed by product id — Figma node 1205:1646 (The Dreamer). */
@@ -60,6 +64,16 @@ export const pdpCatalog = {
         id: 'suitable-for',
         title: 'Suitable For',
         body: 'All skin types. Ideal for daily use and anyone seeking a calming, hydrating cleanse.',
+      },
+      {
+        id: 'state-of-mind',
+        title: 'THE DREAMER STATE OF MIND',
+        body: 'Visionary. Imaginative. Exact. Built for the mind that designs before it speaks.',
+      },
+      {
+        id: 'fragrance',
+        title: 'Fragrance Notes',
+        body: 'Cool depth with a visionary finish — fresh top notes that settle into a lasting dreamlike trail.',
       },
     ],
     marquee: {
@@ -115,6 +129,35 @@ export const pdpCatalog = {
         {
           title: 'Step 03 : Rinse & Drift Away',
           body: 'Rinse completely, leaving skin refreshed with a soothing, lasting dreamlike fragrance.',
+        },
+      ],
+    },
+    benefits: {
+      title: ['one daily wash,', 'visible glow over time'],
+      cards: [
+        {
+          id: '01',
+          title: 'Clean Formulation',
+          body: 'Skin-friendly ingredients for everyday cleansing.',
+          image: benefit01,
+        },
+        {
+          id: '02',
+          title: 'Rich Creamy Lather',
+          body: 'Dense foam that cleanses deeply without stripping moisture.',
+          image: benefit02,
+        },
+        {
+          id: '03',
+          title: 'Deep Hydration',
+          body: 'Locks in moisture for skin that feels soft and refreshed.',
+          image: benefit03,
+        },
+        {
+          id: '04',
+          title: 'Daily Ritual',
+          body: 'Turn every shower into a calming moment of self-care.',
+          image: benefit04,
         },
       ],
     },

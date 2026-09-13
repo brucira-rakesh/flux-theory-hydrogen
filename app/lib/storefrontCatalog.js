@@ -927,6 +927,96 @@ export const SHOP_CATALOG_QUERY = `#graphql
   }
 `;
 
+/**
+ * The 5 homepage persona cards (ProductV3, "Who Do You Want To Be Today?")
+ * — these ids are real Shopify product handles (verified against the store:
+ * the-sport/the-lover/the-sage/the-rebel/the-dreamer all exist), in the
+ * left-to-right order Figma node 2810-2496 shows.
+ */
+export const HOME_CARD_HANDLES = [
+  'the-sport',
+  'the-lover',
+  'the-sage',
+  'the-rebel',
+  'the-dreamer',
+];
+
+export const HOME_PRODUCT_CARD_QUERY = `#graphql
+  query HomeProductCard(
+    $country: CountryCode
+    $language: LanguageCode
+    $handle: String!
+  ) @inContext(country: $country, language: $language) {
+    product(handle: $handle) {
+      id
+      handle
+      title
+      productType
+      tags
+      featuredImage {
+        id
+        url
+        altText
+        width
+        height
+      }
+      priceRange {
+        minVariantPrice {
+          amount
+          currencyCode
+        }
+      }
+      options {
+        name
+        optionValues {
+          name
+        }
+      }
+      variants(first: 20) {
+        nodes {
+          id
+          availableForSale
+          price {
+            amount
+            currencyCode
+          }
+          selectedOptions {
+            name
+            value
+          }
+        }
+      }
+      shortDescription: metafield(namespace: "custom", key: "short_description") {
+        value
+      }
+      selectedOrFirstAvailableVariant {
+        id
+      }
+    }
+  }
+`;
+
+/**
+ * Fetches the 5 ProductV3 cards by handle, in `handles` order — same
+ * toListingCard() view-model the PLP grid (ProductCard/ProductFormPopup)
+ * consumes, so price/variant/add-to-cart logic stays identical, plus the
+ * short_description metafield ProductV3Card shows under the title.
+ */
+export async function fetchHomeProductCards(storefront, handles = HOME_CARD_HANDLES) {
+  const results = await Promise.all(
+    handles.map((handle) =>
+      storefront.query(HOME_PRODUCT_CARD_QUERY, {variables: {handle}}),
+    ),
+  );
+  return results.map(({product}, index) => {
+    if (!product) return null;
+    return {
+      ...toListingCard(product, index),
+      shortDescription: product.shortDescription?.value ?? '',
+    };
+  });
+}
+
 export const PRODUCT_SIMILAR_QUERY = `#graphql
   query ProductSimilar(
     $country: CountryCode

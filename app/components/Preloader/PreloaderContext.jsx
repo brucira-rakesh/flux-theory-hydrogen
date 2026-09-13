@@ -21,6 +21,13 @@ export const PreloaderContext = createContext({
   // this instead of preloading the same frames again elsewhere. It already
   // holds every decoded Image() by the time `assetsReady`/`handoff` flips.
   sequenceLoader: null,
+  // Same idea, for the `additionalSequence` prop — a second sequence that
+  // gates the boot the same way `sequence` does, but (unlike `sequence`)
+  // isn't shown as the boot plate's still image. Currently wired to the
+  // Seawave frames (see HomeV2Page's seawaveSequenceForBoot) so useSeawaveSeq
+  // can reuse this exact loader instead of preloading the same 899 frames a
+  // second time independently.
+  additionalSequenceLoader: null,
 })
 
 export function usePreloader() {

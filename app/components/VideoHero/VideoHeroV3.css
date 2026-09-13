@@ -1,0 +1,43 @@
+/* VideoHeroV3 — Figma node 2810-2736: full-bleed looping video, static
+   split caption, pinned inside its own scroll room before releasing into
+   FooterV3 (see HomeV3Page for the sticky-reveal composition). */
+
+/* Bottom-weighted darkening so the caption keeps contrast against the video
+   without flattening it — matches VideoHeroV2's overlay treatment. */
+.vh3-overlay {
+  background:
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.22) 0%, transparent 22%, transparent 55%, rgba(0, 0, 0, 0.72) 100%),
+    linear-gradient(to right, rgba(0, 0, 0, 0.32) 0%, transparent 45%),
+    linear-gradient(to left, rgba(0, 0, 0, 0.16) 0%, transparent 40%);
+}
+
+/* Font size and weight live as Tailwind utilities on each AnimatedTitle
+   instance (see VideoHeroV3.jsx) — Figma node 3013:3446 specs 56px/Bold for
+   mobile, `lg:` restores this desktop clamp/weight. */
+.vh3-word {
+  margin: 0;
+  font-family: var(--font-title, 'Oswald', sans-serif);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+
+/* Mobile only (below the `lg` breakpoint VideoHeroV3.jsx's `useIsDesktop`
+   switches on): the two caption words stack centered, on top of each other,
+   instead of sitting side-by-side — the slide-in transform driven from JS
+   (`.vh3-word-slide`) animates them in from off-canvas to this resting
+   layout. */
+@media (max-width: 1023.98px) {
+  .vh3-caption {
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.1em;
+  }
+
+  .vh3-word-slide {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+}

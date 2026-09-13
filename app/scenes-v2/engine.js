@@ -47,11 +47,16 @@ export const createSceneEngine = () => {
       return () => animated.delete(material);
     },
 
-    // Called once per frame (see PostFX.jsx) — advances uTime, then updates
-    // every registered water surface's planar reflection, frustum-culling
-    // any that are currently hidden/off-screen so a disabled scene's
-    // reflection pass is skipped entirely. Ported from Scene.jsx's animate().
-    update(renderer, scene, camera, elapsed) {
+    // Called once per frame (see PostFXV2 / PostFX) — advances uTime, then
+    // updates every registered water surface's planar reflection,
+    // frustum-culling any that are currently hidden/off-screen so a
+    // disabled scene's reflection pass is skipped entirely.
+    //
+    // `updateReflections: false` freezes the last RT (do NOT clear it —
+    // that is a black hole in the water). Mid-swing, both wipes, and the
+    // product handoff skip the extra scene render; the texture matrix still
+    // tracks the camera so the frozen image keeps projecting.
+    update(renderer, scene, camera, elapsed, { updateReflections = true } = {}) {
       for (const mat of animated) mat.uniforms.uTime.value = elapsed;
 
       scene.updateMatrixWorld();
@@ -66,7 +71,7 @@ export const createSceneEngine = () => {
       for (const { mesh, material, reflector } of water) {
         if (!reflector || !isWaterOnScreen(mesh)) continue;
 
-        if (frameParity === 0) {
+        if (updateReflections && frameParity === 0) {
           reflector.forceUpdate = true;
           const wasVisible = mesh.visible;
           mesh.visible = false;

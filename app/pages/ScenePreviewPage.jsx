@@ -16,7 +16,6 @@ import SceneThreeV2 from "../scenes-v2/scenes/SceneThreeV2";
 import SceneFourV2 from "../scenes-v2/scenes/SceneFourV2";
 import SceneFiveV2 from "../scenes-v2/scenes/SceneFiveV2";
 import BottleRigV2 from "../scenes-v2/scenes/BottleRigV2";
-import { BOTTLE_URLS } from "../scenes-v2/bottleUrls";
 import "./ScenePreviewPage.css";
 
 // Same 5 scenes as Scene.v2.jsx's carousel (see SCENES there), in plain
@@ -28,31 +27,31 @@ const SCENES = [
     id: "one",
     label: "Scene One",
     Component: SceneOneV2,
-    bottleUrl: BOTTLE_URLS.four,
+    bottlePersona: "sport",
   },
   {
     id: "two",
     label: "Scene Two",
     Component: SceneTwoV2,
-    bottleUrl: BOTTLE_URLS.two,
+    bottlePersona: "sage",
   },
   {
     id: "three",
     label: "Scene Three",
     Component: SceneThreeV2,
-    bottleUrl: BOTTLE_URLS.one,
+    bottlePersona: "dreamer",
   },
   {
     id: "four",
     label: "Scene Four",
     Component: SceneFourV2,
-    bottleUrl: BOTTLE_URLS.five,
+    bottlePersona: "lover",
   },
   {
     id: "five",
     label: "Scene Five",
     Component: SceneFiveV2,
-    bottleUrl: BOTTLE_URLS.three,
+    bottlePersona: "rebel",
   },
 ];
 

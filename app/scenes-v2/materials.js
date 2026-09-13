@@ -13,6 +13,21 @@ import glassEnvChunk from "../shaders/includes/glassEnv.glsl";
 // makeFogMaterial/glassMaterial factories — only the model+material half of
 // that file, none of the scroll-carousel logic.
 
+// makeFogMaterial's default uSceneDepth (soft-particle fade, see its own
+// comment) — a real 1x1 texture rather than `null`, so a fog instance that
+// never opts into the fade (uSoftFadeDistance stays 0, the dead branch in
+// fog.frag) never risks a "no texture bound to this unit" driver warning if
+// the GPU predicates rather than truly skips that branch. One shared
+// instance, not per-material, since every non-opted-in fog plane can safely
+// point at the same placeholder.
+const FOG_DEPTH_PLACEHOLDER = new THREE.DataTexture(
+  new Uint8Array([255, 255, 255, 255]),
+  1,
+  1,
+  THREE.RGBAFormat,
+);
+FOG_DEPTH_PLACEHOLDER.needsUpdate = true;
+
 export const makeDropletMaterial = () =>
   new THREE.ShaderMaterial({
     vertexShader: basicVert,
@@ -77,7 +92,7 @@ export const fogSharedDefaults = {
   color: 0xdedede,
   density: 1.84,
   edgeSoftness: 0.5,
-  opacity: 0.24,
+  opacity: 0.1,
   windSpeed: 0.15,
   wobbleSpeed: 0.5,
   pulseSpeed: 0.6,
@@ -91,6 +106,7 @@ export const makeFogMaterial = (noiseMap, defaults = fogSharedDefaults) => {
     fragmentShader: fogFrag,
     transparent: true,
     depthWrite: false,
+    side: THREE.DoubleSide,
     uniforms: {
       uTime: { value: 0 },
       uNoiseMap: { value: noiseMap },
@@ -114,6 +130,30 @@ export const makeFogMaterial = (noiseMap, defaults = fogSharedDefaults) => {
       uBobSpeed: { value: defaults.bobSpeed },
       uColor: { value: new THREE.Color(defaults.color) },
       uOpacity: { value: defaults.opacity },
+      // Soft-particle depth fade — off by default (uSoftFadeDistance <= 0
+      // skips the depth sample in fog.frag entirely, so every fog plane
+      // that doesn't opt in, e.g. SceneOneV2's fogone/fogtwo, is bit-for-bit
+      // unchanged). A caller that DOES opt in (see ProductSceneV2's shower
+      // fog) is expected to keep uSceneDepth/uCameraNear/uCameraFar/
+      // uResolution in sync with its own render pipeline every frame.
+      uSceneDepth: { value: FOG_DEPTH_PLACEHOLDER },
+      uCameraNear: { value: 0.1 },
+      uCameraFar: { value: 1000 },
+      uResolution: { value: new THREE.Vector2(1, 1) },
+      uSoftFadeDistance: { value: 0 },
+      // Camera-proximity fade — off by default (<= 0 disables), same
+      // opt-in shape as uSoftFadeDistance above.
+      uNearFadeDistance: { value: 0 },
+      // Reveal fade multiplier — defaults to fully visible (1), see
+      // fog.frag's own comment.
+      uRevealFade: { value: 1 },
+      // Cursor reactivity — off by default (uMouseStrength 0, see fog.frag's
+      // own comment); a caller that opts in (see ProductSceneV2's shower fog
+      // + useFogMouseInteraction) drives uVelocityField/uMouseStrength itself
+      // every frame. Placeholder texture for the same "always bound, never
+      // sampled when off" reason as uSceneDepth above.
+      uVelocityField: { value: FOG_DEPTH_PLACEHOLDER },
+      uMouseStrength: { value: 0 },
     },
   });
 };
@@ -299,6 +339,9 @@ export const setupWaterReflection = (waterMesh, waterMaterial, renderer) => {
   reflector.visible = false;
 
   waterMaterial.uniforms.uReflectionMap.value = reflector.getRenderTarget().texture;
+  // That RT is refreshed from engine.update, and SKIPPED (not cleared)
+  // mid-swing / under an opaque wipe — see restGate.js. Clearing it there
+  // would flash the water black on the first rest frame.
 
   waterMesh.geometry.computeBoundingBox();
   const localBox = waterMesh.geometry.boundingBox;

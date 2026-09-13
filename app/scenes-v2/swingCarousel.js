@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { isScrollLocked } from "../hooks/useScrollLock";
+import { overlayWipe } from "../overlayWipeState";
+import { getScrollY, scrollRootTo } from "../utils/scrollRoot";
 
 // ---------------------------------------------------------------------
 // Scroll-gesture-driven "swing" carousel for a FIXED camera.
@@ -22,76 +24,50 @@ import { isScrollLocked } from "../hooks/useScrollLock";
 // of a stair-step.
 // ---------------------------------------------------------------------
 
-const STEP_VH_FRACTION = 0.5; // one step = 50vh of scroll, per spec
-const COMMIT_THRESHOLD = 0.22; // fraction of a step's travel that auto-finishes the turn
-const IDLE_MS = 380; // no ticks for this long before threshold -> rubber-band cancel
-// Caps a single TRACKPAD event's contribution. A trackpad streams ~60
-// events/sec, so this reads as one smooth continuous gesture. It is NOT a
-// sane budget for a physical mouse wheel, which fires roughly one event per
-// physical notch: at 1% of a step per event, crossing COMMIT_THRESHOLD took
-// 22 separate notches to advance a single scene — the reported "very slow,
-// weird long threshold". Notch-based wheels take the discrete path instead
-// (see isNotchedWheel / stepOnce below), one notch = one scene.
-const MAX_TICK_FRACTION = 0.01;
-// Mouse wheels report large, quantized deltas (100/120 per notch in Chrome,
-// or deltaMode=DOM_DELTA_LINE in Firefox); trackpads report a stream of
-// small continuous ones. A hard trackpad flick can occasionally spike past
-// this, and that's fine — it lands on the discrete path and commits exactly
-// one step, which is what a hard flick should do anyway.
-const NOTCH_MIN_DELTA = 100;
-const isNotchedWheel = (event) =>
-  event.deltaMode !== 0 || Math.abs(event.deltaY) >= NOTCH_MIN_DELTA;
-// Trackpad/mouse "momentum" keeps firing wheel ticks for a bit after the
-// physical gesture ends. Those residual ticks used to land right after a
-// commit/cancel settles, get read as the start of a brand-new gesture, and
-// — since momentum alone rarely crosses COMMIT_THRESHOLD — auto-cancel back
-// to rest after IDLE_MS. That whole cycle is what read as "the scroll
-// overshoots, then snaps back, and the bottle wobbles" (its spin is scaled
-// by a full 2π per step, so even a few % of stray `t` is visible).
-//
-// This same guard also doubles as a deliberate "look at this scene" beat:
-// one long, continuous scroll gesture would otherwise chain into the very
-// next transition on literally the next wheel tick, giving no time to
-// actually see the scene it just arrived at. Every wheel/touch tick while
-// this guard is armed is swallowed (preventDefault, no motion) rather than
-// starting or continuing a gesture, so the resting scene always gets at
-// least this long on screen before scrolling can move past it again.
-//
-// Armed ONLY after a commit/cancel settles — never on entering the section.
-// An entry-side guard blocked the wheel (preventDefault + lenis.stop()) for
-// its full duration the instant you crossed into the section, with nothing
-// moving on screen to explain it: that dead, unresponsive beat right at the
-// hand-off from the hero (and from the product shelf coming back up) is
-// exactly the reported "screen freezes". Entry now starts tracking the
-// gesture immediately instead, which is what makes the section feel picked
-// up rather than stalled.
-const REST_GUARD_MS = 650;
+// Exported so callers outside this hook (Scene.v2.jsx's own scroll-section
+// height, and useProductPhase's "where does the carousel's owned range end"
+// math) can stay in lock-step with the actual per-step scroll distance
+// without duplicating the number.
+export const STEP_VH_FRACTION = 0.5; // one step = 50vh of scroll, per spec
+// Single-swipe-only model: no free/continuous scroll tracking, no
+// threshold-to-commit, no rubber-band cancel. Every wheel notch, every
+// trackpad tick, and every touch swipe is treated as ONE unit of intent —
+// it either starts a full commit to the next/prev step, or (while a commit
+// is already animating, or within COOLDOWN_MS of one finishing) is dropped
+// outright, never queued. That's what guarantees the user can only ever
+// advance one scene per gesture and can never land mid-transition: there is
+// no partial state to land in — `t` is either 0 (resting) or animating
+// straight to 1 (committed).
+const COOLDOWN_MS = 300; // input stays ignored for this long after a commit's animation ends
 // Tolerance on the ownership bounds below, absorbing sub-pixel/rounding
-// drift between window.scrollY and the computed step positions.
+// drift between the live scroll offset and the computed step positions.
 const RANGE_EPS_PX = 2;
-// Mirrors Scene.jsx's bottle flavor swap: the OUTGOING bottle stays on
-// screen through 3/4 of a transition (so its spin reads as one full 360°
-// sweep) before the incoming flavor takes over for the last quarter — see
-// progressRef below.
+// Minimum vertical travel (px) a touch drag needs before it counts as a
+// swipe — below this it's just finger jitter, not intent. Once crossed, the
+// rest of that same touch (until touchend) is inert: one drag = one step,
+// same as a single wheel notch.
+const SWIPE_THRESHOLD_PX = 12;
+// Gap (ms) of wheel silence that separates one physical trackpad gesture
+// (initial ticks + decaying momentum tail) from the next. See
+// wheelGestureLockedRef.
+const WHEEL_GESTURE_GAP_MS = 200;
+// A trackpad's post-flick momentum ticks decay in magnitude, while a finger
+// still physically driving the pad keeps producing deltas near the gesture's
+// own peak. Once a step's lock + cooldown has expired but the wheel stream
+// has NEVER gone silent, a tick may only take the next step if it's still at
+// least this fraction of the peak |deltaY| seen so far in that stream —
+// anything smaller is momentum, and momentum must not spend a second step.
+const WHEEL_TAIL_ACTIVE_RATIO = 0.5;
+// Mirrors Scene.jsx's bottle flavor swap: progressRef.frontIndex keeps
+// reporting the OUTGOING scene through 3/4 of a transition before flipping
+// to the incoming one for the last quarter — see progressRef below. This
+// governs only WHICH scene is called "current"; the bottle's own rotation is
+// a HALF turn (π) per step and is derived from progressRef.step, not from
+// this (see BottleRigV2's SPIN_SIGN block).
 const FLAVOR_SWAP_FRAC = 0.75;
 
 const EASE = "power2.out"; // fast start, long soft deceleration — the requested feel
-const COMMIT_DURATION_FULL = 1.5;
-const COMMIT_DURATION_MIN = 0.5;
-const CANCEL_DURATION_FULL = 0.55;
-const CANCEL_DURATION_MIN = 0.3;
-// Live tracking: short so it still feels 1:1 with the wheel, but every tick
-// smoothly eases toward its new target instead of snapping straight to it —
-// this is what actually fixes choppiness, since a fast wheel/trackpad fires
-// many ticks per second and each one used to hard-set the transform.
-const TRACK_DURATION = 0.28;
-const TRACK_EASE = "power2.out";
-// Commits are never interruptible — they must always run to completion so
-// every step gets a full, visible settle before the next gesture can begin
-// (see handleTick). Cancels can always be interrupted immediately: their
-// target never leaves the base step, so nothing can desync from cutting one
-// short.
-const CANCEL_UNLOCK_PROGRESS = 0;
+const COMMIT_DURATION = 0.77; // full step transition, always run start-to-finish (never interrupted) — 30% faster than 1.1
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -99,6 +75,13 @@ const lerp = (a, b, t) => a + (b - a) * t;
 // PostFX.jsx's own DEFAULT_BLOOM) — used only as a fallback until the
 // caller's per-scene `bloomTargets` (index-aligned with SCENES) are ready.
 const DEFAULT_BLOOM = { strength: 0.8, radius: 0.4, threshold: 0.85 };
+// Baked-light dim range (see applyBakedLightFactor) — near-dark at BACK,
+// full authored brightness at FRONT, per the requested "lights turning
+// on/off" feel as each scene enters/leaves. Not 0: a fully black room reads
+// as "the model vanished" rather than "the lights are off" once it's mid-
+// transition and still on screen.
+const BAKED_LIGHT_MIN = 0.12;
+const BAKED_LIGHT_MAX = 1;
 
 export function useSwingCarousel({
   sectionRef,
@@ -108,14 +91,38 @@ export function useSwingCarousel({
   sceneCount,
   camera,
   lightRefs,
+  bakedLightRefs,
   sweepAngle,
+  lightRevealAngle,
   baseFov,
   transitionFov,
   fovReturnAt,
   lenis,
   bloomTargets,
+  // Called when a forward gesture arrives while already resting at the last
+  // step (i.e. commitStep's own target > maxStep check just failed at that
+  // edge) — the scene-to-product handoff (see useSceneToProductHandoff)
+  // hooks in here instead of this hook trying to know anything about
+  // product. Returning true means "I'm handling this" (the tick is
+  // captured/prevented, same as a normal step); false falls through to the
+  // plain releaseScroll() this edge always used.
+  onForwardEdge,
+  // True for the whole life of the scene-to-product handoff — from the
+  // instant the forward flight takes off, through however long the bottle
+  // rests in product's room, until the reverse flight has fully landed it
+  // back. `commitStep` bails before touching ANYTHING (stepRef, progressRef,
+  // lockedRef) while this holds: the handoff's own
+  // gsap timeline owns the bottle/scroll for that whole span via its own
+  // input block, so this is a belt-and-suspenders guarantee that no stray
+  // event can nudge `progressRef.current.step` out from under it — which
+  // previously read as the carousel's own swing firing (and the bottle
+  // landing off-center, since BottleRigV2's resting math depends on `step`)
+  // right as the reverse handoff finished.
+  disabledRef,
 }) {
   const maxStep = sceneCount - 1;
+  const onForwardEdgeRef = useRef(onForwardEdge);
+  onForwardEdgeRef.current = onForwardEdge;
   const [visibleIndices, setVisibleIndices] = useState(() => new Set([0]));
 
   const sectionTopRef = useRef(0);
@@ -135,19 +142,36 @@ export function useSwingCarousel({
     bloom: { ...(bloomTargets?.[0] ?? DEFAULT_BLOOM) },
   });
   const tweenRef = useRef(null);
-  const lockedRef = useRef(false); // true while a commit/cancel settle tween owns input
-  const resolveMetaRef = useRef(null); // { base, dir, committed } — set only while lockedRef is true
-
-  const gestureActiveRef = useRef(false);
-  const gestureBaseRef = useRef(0);
-  const gestureDirRef = useRef(0);
-  const progressPxRef = useRef(0);
-  const idleTimerRef = useRef(null);
-  const restGuardUntilRef = useRef(0);
-  // Tracks inRange()'s own last value so handleTick can tell a genuine
+  const lockedRef = useRef(false); // true for the full duration of a commit's animation
+  // Timestamp (performance.now()) until which input stays ignored after a
+  // commit's animation completes — see COOLDOWN_MS.
+  const cooldownUntilRef = useRef(0);
+  // Tracks inRange()'s own last value so input handlers can tell a genuine
   // false->true crossing (just arrived at the section) apart from any other
-  // tick — that crossing is what arms the entry-side REST_GUARD_MS beat.
+  // tick — that crossing is what triggers adopting the on-screen step.
   const wasInRangeRef = useRef(false);
+  // A trackpad swipe keeps emitting decaying "momentum" wheel ticks for a
+  // while after the finger lifts — often longer than COMMIT_DURATION +
+  // COOLDOWN_MS. Without this, one physical swipe could commit its step,
+  // then a straggling momentum tick after cooldown expired would read as a
+  // brand-new gesture and commit a SECOND step — the reported "skips a scene
+  // forward/back" on trackpad. wheelGestureLockedRef latches true the moment
+  // any wheel tick commits (or lands mid-commit/cooldown for) a step, and
+  // stays up through the animation + COOLDOWN_MS. A 200ms silence still
+  // clears it early (finger lifted). If the user NEVER lifts — laptop
+  // two-finger scroll, cursor unmoved — silence never comes, so cooldown
+  // expiry alone used to clear the lock, which is exactly how a long momentum
+  // tail (they routinely outlive COMMIT_DURATION + COOLDOWN_MS) still bought
+  // itself a second step. Cooldown expiry now only OPENS the door: the tick
+  // that walks through it must also still be near the gesture's peak
+  // magnitude (WHEEL_TAIL_ACTIVE_RATIO), which a decaying tail never is and
+  // an un-lifted finger always is.
+  const wheelGestureLockedRef = useRef(false);
+  const lastWheelTsRef = useRef(0);
+  // Largest |deltaY| seen in the current uninterrupted wheel stream, reset on
+  // every WHEEL_GESTURE_GAP_MS silence (and re-baselined whenever a tick is
+  // allowed to start a fresh step). The yardstick for the tail test above.
+  const wheelPeakMagRef = useRef(0);
 
   const groupRefsRef = useRef(groupRefs);
   groupRefsRef.current = groupRefs;
@@ -157,8 +181,12 @@ export function useSwingCarousel({
   cameraRef.current = camera;
   const lightRefsRef = useRef(lightRefs);
   lightRefsRef.current = lightRefs;
+  const bakedLightRefsRef = useRef(bakedLightRefs);
+  bakedLightRefsRef.current = bakedLightRefs;
   const sweepAngleRef = useRef(sweepAngle);
   sweepAngleRef.current = sweepAngle;
+  const lightRevealAngleRef = useRef(lightRevealAngle);
+  lightRevealAngleRef.current = lightRevealAngle;
   const baseFovRef = useRef(baseFov);
   baseFovRef.current = baseFov;
   const transitionFovRef = useRef(transitionFov);
@@ -172,13 +200,13 @@ export function useSwingCarousel({
 
   // Every step position below is derived from this, and scrollWindowToStep()
   // teleports the page to one — so a stale value here is a mis-aimed jump.
-  // Re-run on entering the section (see handleTick), not just on resize:
+  // Re-run on entering the section (see updateRangeState), not just on resize:
   // fonts, images and ScrollTrigger's own pin/refresh all settle after mount
   // and can move the section without ever firing a resize event.
   const measureSection = () => {
     if (!sectionRef.current) return;
     const rect = sectionRef.current.getBoundingClientRect();
-    sectionTopRef.current = rect.top + window.scrollY;
+    sectionTopRef.current = rect.top + getScrollY();
   };
   useEffect(() => {
     // Only ever reads/writes refs, so the instance captured on first render
@@ -228,6 +256,42 @@ export function useSwingCarousel({
     light.intensity = light.userData.baseIntensity * factor;
   };
 
+  // Scenes carry no real lights of their own — every "light" (light strips,
+  // neon fixtures, the light-map bake itself) is baked straight into an
+  // unlit MeshBasicMaterial's texture (see e.g. SceneOneV2's Cylinder.002 /
+  // "Light Map"). There's nothing for a THREE.Light to dim, so instead this
+  // scales each such material's own `color` tint — the same trick already
+  // used to author their overbright glow (see materials.js's
+  // makeOverbrightMaterial) — between BAKED_LIGHT_MIN (dimmed, scene at
+  // BACK) and BAKED_LIGHT_MAX (its full authored brightness, scene at
+  // FRONT). Never fully off: a scene swinging past the camera mid-transition
+  // should read as "dimming down", not "someone cut the power".
+  const applyBakedLightFactor = (materials, factor) => {
+    if (!materials?.length) return;
+    const mix = lerp(BAKED_LIGHT_MIN, BAKED_LIGHT_MAX, factor);
+    for (const material of materials) {
+      if (!material) continue;
+      if (!material.userData.baseColor) {
+        material.userData.baseColor = material.color.clone();
+      }
+      material.color.copy(material.userData.baseColor).multiplyScalar(mix);
+    }
+  };
+
+  // Unlike the hemi/dir fade (driven straight off `t`, see setGroupFrame
+  // below), the baked-light reveal is driven off the scene's actual swing
+  // angle (`theta`, 0 at FRONT) rather than transition progress — `t` fades
+  // linearly across the WHOLE sweep, most of which has the scene off to the
+  // side where a subtle brightness change is never seen. This instead stays
+  // pinned at BAKED_LIGHT_MIN until the scene swings within
+  // lightRevealAngleRef of FRONT, then ramps to full over just that last
+  // stretch — GUI-tunable via "Light Reveal Angle" (Scene.v2.jsx), so it can
+  // be widened/narrowed to taste.
+  const bakedLightProximity = (theta) => {
+    const revealAngle = Math.max(lightRevealAngleRef.current ?? 0, 0.0001);
+    return clamp(1 - Math.abs(theta) / revealAngle, 0, 1);
+  };
+
   const setGroupFrame = (idx, theta, fadeFactor) => {
     const group = groupRefsRef.current[idx]?.current;
     if (!group) return;
@@ -237,12 +301,17 @@ export function useSwingCarousel({
     const cam = cameraRef.current;
     const camX = cam ? cam.position.x : 0;
     const camZ = cam ? cam.position.z : -radius + 6;
-    group.rotation.y = Math.atan2(camX - x, camZ - z) + faceRotationsRef.current[idx];
+    group.rotation.y =
+      Math.atan2(camX - x, camZ - z) + faceRotationsRef.current[idx];
 
     const lights = lightRefsRef.current?.[idx];
     if (lights) {
       lights.forEach((ref) => applyLightFactor(ref?.current, fadeFactor));
     }
+    applyBakedLightFactor(
+      bakedLightRefsRef.current?.[idx]?.current,
+      bakedLightProximity(theta),
+    );
   };
 
   const snapRest = (idx, atFront) => {
@@ -281,6 +350,10 @@ export function useSwingCarousel({
     // ...smoothstepped so both ends and the peak itself ease instead of
     // reading as two straight ramps meeting at a visible corner.
     const eased = k * k * (3 - 2 * k);
+    // Every slot — including product's — rests at this SAME shared fov. The
+    // camera's fov is never retargeted per-slot; the flythrough camera that
+    // takes over once product is active carries its own fov independently
+    // (see useCameraFlythrough), unrelated to this one.
     const base = baseFovRef.current;
     const fov = base + ((transitionFovRef.current ?? base) - base) * eased;
     if (Math.abs(cam.fov - fov) < 1e-3) return;
@@ -291,7 +364,7 @@ export function useSwingCarousel({
   // Cross-fades PostFX's bloom pass between the outgoing and incoming
   // scene's own target values (see Scene.v2.jsx's "Scene Bloom" GUI folder)
   // across the SAME t driving the groups/FOV above — a straight per-property
-  // lerp, since t itself already arrives eased (see EASE/TRACK_EASE), so a
+  // lerp, since t itself already arrives eased (see EASE), so a
   // second easing curve here would just double up. Written into
   // progressRef.current.bloom rather than a THREE object directly: PostFX
   // owns the actual UnrealBloomPass instance and reads this once per frame
@@ -338,14 +411,18 @@ export function useSwingCarousel({
 
   // --- scroll bookkeeping ---------------------------------------------------
   const getStepPx = () => window.innerHeight * STEP_VH_FRACTION;
+  // Goes through scrollRoot rather than window.scrollTo: on non-desktop
+  // viewports the document is frozen and the page scrolls an inner container
+  // instead (see utils/scrollRoot.js), where a window.scrollTo is a silent
+  // no-op — the transition tween then couldn't move the page at all.
   const scrollWindowToStep = (stepValue) => {
-    window.scrollTo(0, sectionTopRef.current + stepValue * getStepPx());
+    scrollRootTo(sectionTopRef.current + stepValue * getStepPx());
   };
 
-  // Single entry point for ALL transition motion (live tracking + settle) —
-  // kills whatever tween currently owns tProxy and retargets from wherever
-  // it actually is right now, so consecutive calls (one per wheel tick)
-  // chain into one continuous ease instead of restarting from scratch.
+  // Single entry point for the commit's transition tween — kills whatever
+  // tween currently owns tProxy (there should never be one in flight, since
+  // commitStep only calls this while unlocked) and always animates from 0 to
+  // targetT, once, start to finish.
   const animateTransitionTo = (
     base,
     dir,
@@ -359,76 +436,22 @@ export function useSwingCarousel({
       t: targetT,
       duration,
       ease,
+      // Deliberately does NOT scroll the page per frame. The transition used
+      // to scrub scroll along with itself (scrollWindowToStep on every tick),
+      // which meant a scene change WAS a 50vh page scroll — invisible under
+      // the sticky pin, but every scroll-driven thing on the page still saw
+      // it move. On HomeV3Page that is what fired the closing cloud wipe the
+      // instant the carousel landed on the last scene: the wipe arms one
+      // viewport above its boundary marker, which is exactly where the last
+      // step's rest position sits, and the tween's own scrolling supplied the
+      // `goingDown` the trigger needs. The page now holds dead still for the
+      // whole animation and moves only in one discrete hop, in
+      // commitStep's own onComplete, once the step has actually landed.
       onUpdate: () => {
         applyTransition(base, base + dir, dir, tProxyRef.current.t);
-        scrollWindowToStep(base + dir * tProxyRef.current.t);
       },
       onComplete,
     });
-  };
-
-  const finalizeResolve = () => {
-    const meta = resolveMetaRef.current;
-    tweenRef.current = null;
-    lockedRef.current = false;
-    if (!meta) return;
-    const { base, dir, committed } = meta;
-    const finalStep = committed ? base + dir : base;
-    applyTransition(base, base + dir, dir, committed ? 1 : 0);
-    tProxyRef.current.t = 0;
-    stepRef.current = finalStep;
-    scrollWindowToStep(finalStep);
-    setVisibleIndices(new Set([finalStep]));
-    resolveMetaRef.current = null;
-    // Only a COMMIT earns the rest beat — it's screen time for a scene you
-    // just arrived at. A cancel rubber-bands back to the scene already on
-    // screen, so guarding after one just billed 650ms of dead, unresponsive
-    // wheel for having scrolled a little and stopped. Worse, handleTick's
-    // "interrupt a cancel and fall through to open the next gesture" path
-    // called straight into here, so that fall-through was immediately
-    // swallowed by the guard it had itself just armed.
-    if (committed) {
-      restGuardUntilRef.current = performance.now() + REST_GUARD_MS;
-    }
-  };
-
-  const resolveGesture = (committed) => {
-    if (idleTimerRef.current) {
-      clearTimeout(idleTimerRef.current);
-      idleTimerRef.current = null;
-    }
-    gestureActiveRef.current = false;
-
-    const base = gestureBaseRef.current;
-    const dir = gestureDirRef.current;
-    lockedRef.current = true;
-    resolveMetaRef.current = { base, dir, committed };
-
-    const targetT = committed ? 1 : 0;
-    const remaining = Math.abs(targetT - tProxyRef.current.t);
-    const fullDuration = committed
-      ? COMMIT_DURATION_FULL
-      : CANCEL_DURATION_FULL;
-    const minDuration = committed ? COMMIT_DURATION_MIN : CANCEL_DURATION_MIN;
-    const duration = Math.max(
-      minDuration,
-      fullDuration * Math.max(remaining, 0.05),
-    );
-
-    animateTransitionTo(base, dir, targetT, duration, EASE, finalizeResolve);
-  };
-
-  const beginGesture = (direction) => {
-    const base = stepRef.current;
-    const target = base + direction;
-    if (target < 0 || target > maxStep) return false;
-    gestureActiveRef.current = true;
-    gestureBaseRef.current = base;
-    gestureDirRef.current = direction;
-    progressPxRef.current = 0;
-    tProxyRef.current.t = 0;
-    setVisibleIndices(new Set([base, target]));
-    return true;
   };
 
   // Ownership is EXACTLY the step-aligned zone — step N lives at
@@ -447,10 +470,12 @@ export function useSwingCarousel({
   // the entry rest guard freezing the wheel just before it, is the reported
   // "scroll suddenly stops and I jump directly to the scene".
   const inRange = () => {
-    const y = window.scrollY;
+    const y = getScrollY();
     const top = sectionTopRef.current;
     const stepPx = getStepPx();
-    return y >= top - RANGE_EPS_PX && y <= top + maxStep * stepPx + RANGE_EPS_PX;
+    return (
+      y >= top - RANGE_EPS_PX && y <= top + maxStep * stepPx + RANGE_EPS_PX
+    );
   };
 
   // Re-derives the resting step from where the page ACTUALLY is. stepRef is
@@ -463,7 +488,7 @@ export function useSwingCarousel({
   const syncStepToScroll = () => {
     const stepPx = getStepPx();
     if (stepPx <= 0) return;
-    const raw = (window.scrollY - sectionTopRef.current) / stepPx;
+    const raw = (getScrollY() - sectionTopRef.current) / stepPx;
     const step = clamp(Math.round(raw), 0, maxStep);
     tProxyRef.current.t = 0;
     applyTransitionFov(0); // rest pose includes the camera, not just the groups
@@ -489,7 +514,7 @@ export function useSwingCarousel({
   // every tick this hook decides to own (own = calls preventDefault(), i.e.
   // scrollWindowToStep() is the only thing allowed to move the page), and
   // start() it again at the exact two points below where a tick is instead
-  // let through natively (inRange() false, or beginGesture() failing at an
+  // let through natively (inRange() false, or the target step failing at an
   // edge) — mirrors the ownership boundary this hook already enforces via
   // preventDefault(), just extended to Lenis's own independent listener.
   // ...but this hook's "no tick of mine is in flight" is NOT the same as "the
@@ -512,7 +537,7 @@ export function useSwingCarousel({
     // Cheap and rare (only fires while actually near the section), and it
     // has to happen BEFORE inRange() so the boundary test itself is judged
     // against the section's real, current position.
-    const idle = !gestureActiveRef.current && !lockedRef.current;
+    const idle = !lockedRef.current;
     if (idle) measureSection();
 
     const currentlyInRange = inRange();
@@ -521,129 +546,150 @@ export function useSwingCarousel({
       // shelf (scrolling backward). Adopt whatever step the page is already
       // sitting at rather than trusting stepRef — with ownership now bounded
       // to the step-aligned zone this crossing lands within a step of a real
-      // rest position, so there's nothing to jump to. Deliberately does NOT
-      // arm restGuardUntilRef: blocking input the instant the section is
-      // entered is what read as the screen freezing on hand-off.
+      // rest position, so there's nothing to jump to.
       syncStepToScroll();
     }
     wasInRangeRef.current = currentlyInRange;
     return currentlyInRange;
   };
 
-  // Commits must always run to completion — interrupting one early (even
-  // near its tail) lets a fast flick chain straight into the next gesture
-  // before the settling scene ever gets a full frame on screen, which reads
-  // as skipping a step. Cancels are safe to interrupt immediately: their
-  // target never leaves the base step, so nothing can desync from cutting
-  // one short. Returns true when the caller should swallow this input.
-  const consumedByLock = () => {
-    if (!lockedRef.current) return false;
-    if (resolveMetaRef.current?.committed) return true;
-    const tween = tweenRef.current;
-    if (tween && tween.progress() >= CANCEL_UNLOCK_PROGRESS) {
-      tween.kill();
-      finalizeResolve();
-      return false; // this input opens the next gesture
-    }
-    return true;
-  };
-
-  // One discrete input = exactly one scene. Used by notched mouse wheels and
-  // the keyboard, both of which deliver intent in whole units rather than as
-  // a continuous stream, so there's nothing to live-track — begin the
-  // gesture and commit it straight to a full settle tween.
-  const stepOnce = (direction, preventDefault) => {
-    if (!updateRangeState()) {
-      releaseScroll();
-      return;
-    }
-    if (consumedByLock()) {
+  // The single entry point for every input source (wheel notch, trackpad
+  // tick, keyboard, swipe) — each one is exactly one unit of intent, so this
+  // either commits a full step transition or drops the input outright.
+  // Never queues, never live-tracks, never lets a second gesture interrupt
+  // one already animating: `lockedRef` covers the whole commit animation,
+  // and `cooldownUntilRef` extends that block for COOLDOWN_MS past the end
+  // of it, so the very next tick after landing can't immediately re-trigger.
+  // Returns whether this input belonged to a step this hook owns (mid-commit,
+  // cooling down, or just started one) — as opposed to being let through to
+  // native scroll (out of range, or a genuine edge). Callers that track
+  // gesture identity (the wheel handler's momentum-tail guard) use this to
+  // know whether the current physical gesture has now "used up" its one step.
+  const commitStep = (direction, preventDefault) => {
+    if (disabledRef?.current) return false;
+    // CloudTransition keeps autoActive true through the post-wipe gesture
+    // hold (see POST_WIPE_GESTURE_GAP_MS there). A hard scroll from the
+    // hero is the same physical gesture that just teleported us onto
+    // Scene One — do not spend it as a step to Scene Two.
+    if (overlayWipe.autoActive) {
       captureScroll();
       preventDefault();
-      return;
+      return true;
     }
-    if (
-      gestureActiveRef.current ||
-      performance.now() < restGuardUntilRef.current
-    ) {
-      captureScroll();
-      preventDefault(); // mid-gesture or resting — hold this scene
-      return;
-    }
-    if (!beginGesture(direction)) {
-      releaseScroll(); // at an edge — let native scroll continue
-      return;
-    }
-    captureScroll();
-    preventDefault();
-    resolveGesture(true);
-  };
-
-  const handleTick = (deltaY, preventDefault) => {
     if (!updateRangeState()) {
       releaseScroll();
-      return;
+      return false;
     }
-
-    if (consumedByLock()) {
+    if (lockedRef.current || performance.now() < cooldownUntilRef.current) {
+      // Mid-transition, or still cooling down from the last one — this
+      // input is dropped, not queued, and never reverses/interrupts the
+      // commit in flight.
       captureScroll();
       preventDefault();
-      return;
+      return true;
     }
 
-    const direction = deltaY > 0 ? 1 : deltaY < 0 ? -1 : 0;
-    if (!direction) return;
-
-    if (!gestureActiveRef.current) {
-      if (performance.now() < restGuardUntilRef.current) {
+    const base = stepRef.current;
+    const target = base + direction;
+    if (target < 0 || target > maxStep) {
+      if (
+        direction === 1 &&
+        base === maxStep &&
+        onForwardEdgeRef.current?.()
+      ) {
         captureScroll();
-        preventDefault(); // resting — let the current scene stay on screen
-        return;
+        preventDefault();
+        return true;
       }
-      if (!beginGesture(direction)) {
-        releaseScroll(); // at an edge — let native scroll continue
-        return;
-      }
+      releaseScroll(); // at an edge — let native scroll continue
+      return false;
     }
 
+    lockedRef.current = true;
+    tProxyRef.current.t = 0;
+    setVisibleIndices(new Set([base, target]));
     captureScroll();
     preventDefault();
 
-    const stepPx = getStepPx();
-    const maxTickPx = stepPx * MAX_TICK_FRACTION;
-    const tickPx = clamp(deltaY * gestureDirRef.current, -maxTickPx, maxTickPx);
-    progressPxRef.current = clamp(progressPxRef.current + tickPx, 0, stepPx);
-    const targetT = stepPx > 0 ? progressPxRef.current / stepPx : 0;
-
-    animateTransitionTo(
-      gestureBaseRef.current,
-      gestureDirRef.current,
-      targetT,
-      TRACK_DURATION,
-      TRACK_EASE,
-    );
-
-    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-
-    if (targetT >= COMMIT_THRESHOLD) {
-      resolveGesture(true);
-      return;
-    }
-    idleTimerRef.current = setTimeout(() => resolveGesture(false), IDLE_MS);
+    animateTransitionTo(base, direction, 1, COMMIT_DURATION, EASE, () => {
+      applyTransition(base, target, direction, 1);
+      tProxyRef.current.t = 0;
+      stepRef.current = target;
+      scrollWindowToStep(target);
+      setVisibleIndices(new Set([target]));
+      tweenRef.current = null;
+      lockedRef.current = false;
+      cooldownUntilRef.current = performance.now() + COOLDOWN_MS;
+    });
+    return true;
   };
 
   // --- DOM wiring: wheel + touch + keyboard parity --------------------------
   useEffect(() => {
+    // Every wheel event — one notch from a mouse, or one tick out of a
+    // trackpad's continuous stream — is treated as a single unit of intent.
+    // A trackpad still fires many of these per physical swipe, but only the
+    // very first one can ever land: it flips `lockedRef` immediately, so
+    // every tick behind it in the same gesture is dropped by commitStep's
+    // own lock/cooldown check above, not queued or accumulated. That's what
+    // collapses "many wheel events" into "exactly one step" without needing
+    // to special-case notched vs. continuous input.
     const onWheel = (event) => {
-      const prevent = () => event.preventDefault();
-      // Notched wheels deliver one discrete unit of intent per event, so
-      // they get one scene per notch rather than being fed through the
-      // trackpad's continuous accumulator (which needed ~22 of them).
-      if (isNotchedWheel(event)) {
-        stepOnce(event.deltaY > 0 ? 1 : -1, prevent);
+      const now = performance.now();
+      const mag = Math.abs(event.deltaY);
+      const isNewGesture = now - lastWheelTsRef.current > WHEEL_GESTURE_GAP_MS;
+      lastWheelTsRef.current = now;
+      if (isNewGesture) {
+        wheelGestureLockedRef.current = false;
+        wheelPeakMagRef.current = 0;
+      }
+      wheelPeakMagRef.current = Math.max(wheelPeakMagRef.current, mag);
+
+      if (overlayWipe.autoActive) {
+        // Same originating flick as the wipe. Latch the gesture lock so
+        // even a tick that arrives the frame autoActive drops is still
+        // treated as that swipe's tail, not a new step.
+        wheelGestureLockedRef.current = true;
+        if (inRange()) event.preventDefault();
         return;
       }
-      handleTick(event.deltaY, prevent);
+
+      if (overlayWipe.consumeGesture) {
+        overlayWipe.consumeGesture = false;
+        wheelGestureLockedRef.current = true;
+        if (inRange()) event.preventDefault();
+        return;
+      }
+
+      if (wheelGestureLockedRef.current) {
+        // Still mid-commit / cooling down: swallow. Once that window
+        // ends, a laptop trackpad that never lifted (cursor never moved,
+        // so no WHEEL_GESTURE_GAP silence) must be allowed to take the
+        // NEXT step — otherwise the carousel looks dead until the user
+        // wiggles the pointer to "end" the gesture.
+        if (lockedRef.current || now < cooldownUntilRef.current) {
+          if (inRange()) event.preventDefault();
+          return;
+        }
+        // ...but only if this tick is a finger still driving, not the
+        // decaying tail of the flick that already spent its step. A tail
+        // that keeps arriving also keeps refreshing lastWheelTsRef, so it
+        // never earns a "new gesture" either — it just stays swallowed
+        // until it dies out and real silence resets the stream.
+        if (mag < wheelPeakMagRef.current * WHEEL_TAIL_ACTIVE_RATIO) {
+          if (inRange()) event.preventDefault();
+          return;
+        }
+        wheelGestureLockedRef.current = false;
+        // Re-baseline: the next tail test belongs to THIS leg of the
+        // scroll, not to a peak set by some earlier, harder flick.
+        wheelPeakMagRef.current = mag;
+      }
+
+      const consumed = commitStep(event.deltaY > 0 ? 1 : -1, () =>
+        event.preventDefault()
+      );
+      if (consumed) wheelGestureLockedRef.current = true;
     };
     window.addEventListener("wheel", onWheel, { passive: false });
 
@@ -678,28 +724,43 @@ export function useSwingCarousel({
       }
       if (!direction) return;
 
-      stepOnce(direction, () => event.preventDefault());
+      commitStep(direction, () => event.preventDefault());
     };
     window.addEventListener("keydown", onKeyDown);
 
-    let touchLastY = null;
+    // Touch: one swipe = one step. Track total vertical travel from
+    // touchstart; the instant it crosses SWIPE_THRESHOLD_PX, fire exactly
+    // one commitStep and mark the gesture "consumed" so the rest of that
+    // same finger-down drag (however far it keeps moving) can't trigger a
+    // second one — matches the wheel/keyboard "one input, one scene" rule.
+    let touchStartY = null;
+    let touchConsumed = false;
     const onTouchStart = (event) => {
-      touchLastY = event.touches?.[0]?.clientY ?? null;
+      touchStartY = event.touches?.[0]?.clientY ?? null;
+      touchConsumed = false;
     };
     const onTouchMove = (event) => {
+      if (touchStartY == null) return;
       const y = event.touches?.[0]?.clientY;
       if (y == null) return;
-      if (touchLastY == null) {
-        touchLastY = y;
+
+      if (touchConsumed) {
+        // Same drag, already used — keep swallowing it while inside the
+        // carousel's range so the browser doesn't scroll the page natively
+        // underneath the still-animating transition.
+        if (inRange()) event.preventDefault();
         return;
       }
-      const deltaY = touchLastY - y;
-      touchLastY = y;
-      if (deltaY === 0) return;
-      handleTick(deltaY, () => event.preventDefault());
+
+      const delta = touchStartY - y; // positive = finger moving up = forward
+      if (Math.abs(delta) < SWIPE_THRESHOLD_PX) return;
+
+      touchConsumed = true;
+      commitStep(delta > 0 ? 1 : -1, () => event.preventDefault());
     };
     const onTouchEnd = () => {
-      touchLastY = null;
+      touchStartY = null;
+      touchConsumed = false;
     };
     window.addEventListener("touchstart", onTouchStart, { passive: true });
     window.addEventListener("touchmove", onTouchMove, { passive: false });
@@ -713,11 +774,25 @@ export function useSwingCarousel({
       window.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("touchcancel", onTouchEnd);
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
       tweenRef.current?.kill();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maxStep, radius, sceneCount]);
 
-  return { visibleIndices, progressRef };
+  // Re-adopt the resting step from wherever the page has just been PUT, for
+  // callers that move scroll without any wheel/touch event ever firing — i.e.
+  // a PageProgress rail jump (see utils/navSectionTargets.js). updateRangeState
+  // normally does this, but only on a false->true `inRange()` crossing observed
+  // from inside an input handler: a jump that starts and ends inside the
+  // section (Shop -> Worlds) never produces that edge, so `stepRef` would keep
+  // pointing at the step the page has just left and the next gesture would
+  // teleport back onto it. `wasInRangeRef` is refreshed too, so the next real
+  // input doesn't then re-sync off a stale edge.
+  const syncToScroll = () => {
+    measureSection();
+    syncStepToScroll();
+    wasInRangeRef.current = inRange();
+  };
+
+  return { visibleIndices, progressRef, syncToScroll };
 }

@@ -20,22 +20,17 @@ import {
 } from "../gui/guiHelpers";
 import { disposeObject } from "../disposeObject";
 import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl';
-import sceneFourUrl from '~/assets/ktx2/scenefourv4.ktx2?url';
-import starsUrl from '~/assets/ktx2/stars_etc1s.ktx2?url';
-import plantUrl from '~/assets/ktx2/plant_etc1s.ktx2?url';
-import birdsUrl from '~/assets/ktx2/birds_etc1s.ktx2?url';
-import backdropUrl from '~/assets/ktx2/background_etc1s.ktx2?url';
 
 const MODEL_FOUR_URL = oxygenPublicUrl("/models/scenefourv6.glb");
-const TEXTURE_FOUR_URL = sceneFourUrl;
-const TEXTURE_FOUR_STARS_URL = starsUrl;
-const TEXTURE_FOUR_PLANT_URL = plantUrl;
-const TEXTURE_FOUR_BIRDS_URL = birdsUrl;
-const TEXTURE_FOUR_BACKDROP_URL = backdropUrl;
+const TEXTURE_FOUR_URL = oxygenPublicUrl("/textures/scenefourv4.ktx2");
+const TEXTURE_FOUR_STARS_URL = oxygenPublicUrl("/textures/stars_etc1s.ktx2");
+const TEXTURE_FOUR_PLANT_URL = oxygenPublicUrl("/textures/plant_etc1s.ktx2");
+const TEXTURE_FOUR_BIRDS_URL = oxygenPublicUrl("/textures/birds_etc1s.ktx2");
+const TEXTURE_FOUR_BACKDROP_URL = oxygenPublicUrl("/textures/background_etc1s.ktx2");
 
 const WARM_WHITE = [3.929002201330844, 3.4854684767838267, 4];
 
-export default function SceneFourV2({ visible = true, sharedMaps }) {
+export default function SceneFourV2({ visible = true, sharedMaps, lightsRef }) {
   const groupRef = useRef(null);
   const { gl } = useThree();
   const { engine, gui, settings } = useSceneEngine();
@@ -106,6 +101,11 @@ export default function SceneFourV2({ visible = true, sharedMaps }) {
       let leftStripMesh = null;
       let rightStripMaterial = null;
       let rightStripMesh = null;
+      // Everything that falls into the generic "else" branch below is the
+      // room itself (walls/floor/props) — its baked texture IS this scene's
+      // lighting, same as the explicitly-named fixtures. Collected so the
+      // whole room can fade together (see the lightsRef assignment below).
+      const roomMaterials = [];
 
       model.traverse((child) => {
         if (!child.isMesh) return;
@@ -165,6 +165,7 @@ export default function SceneFourV2({ visible = true, sharedMaps }) {
           });
         } else {
           child.material = new THREE.MeshBasicMaterial({ map: texture });
+          roomMaterials.push(child.material);
         }
       });
 
@@ -216,6 +217,21 @@ export default function SceneFourV2({ visible = true, sharedMaps }) {
 
       group.add(model);
 
+      // The whole room (walls/floor/props + background) plus its four baked
+      // fixtures (neon sign, ceiling light, two glass light strips) — see
+      // swingCarousel.js's applyBakedLightFactor for how it all fades
+      // together as the scene swings toward/away from FRONT.
+      if (lightsRef) {
+        lightsRef.current = [
+          neonMaterial,
+          ceilingLightMaterial,
+          leftStripMaterial,
+          rightStripMaterial,
+          backgroundMaterial,
+          ...roomMaterials,
+        ].filter(Boolean);
+      }
+
       const range = Math.max(size.x, size.y, size.z) || 1;
       if (gui) {
         folder = gui.addFolder("Scene Four");
@@ -263,6 +279,7 @@ export default function SceneFourV2({ visible = true, sharedMaps }) {
       folder?.destroy();
       disposeObject(group);
       group.clear();
+      if (lightsRef) lightsRef.current = [];
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sharedMaps]);

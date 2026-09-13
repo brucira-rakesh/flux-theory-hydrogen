@@ -3,7 +3,8 @@ import gsap from 'gsap'
 import { SplitText } from 'gsap/SplitText'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { prefersReducedMotion } from '../../hooks/useSpotlight'
-import './AnimatedDescription.css'
+import { getScrollRoot } from '../../utils/scrollRoot'
+import './animDesc.css'
 
 gsap.registerPlugin(SplitText, ScrollTrigger)
 
@@ -30,7 +31,7 @@ function wordsFromText(text, keyPrefix) {
  *   Shift isn't about becoming someone else.
  * </AnimatedDescription>
  *
- * @example Forced line breaks
+ * @example Forced line breaks (array) or a single paragraph (string)
  * <AnimatedDescription
  *   lines={['Every situation reveals a', 'different side of you.']}
  * />
@@ -55,12 +56,17 @@ export default function AnimatedDescription({
   const reducedMotion = useMemo(() => prefersReducedMotion(), [])
 
   // Stabilize by content so new array identities from parents don't replay.
-  const linesKey = Array.isArray(lines) ? lines.map(String).join('\n') : ''
+  // A string is one line; a non-array used to produce an empty node.
+  const linesKey = Array.isArray(lines)
+    ? lines.map(String).join('\n')
+    : typeof lines === 'string' && lines.trim()
+      ? lines
+      : ''
 
   const resolvedLines = useMemo(() => {
     if (!linesKey) return null
     return linesKey.split('\n').map((line, lineIndex) => ({
-      key: `ad-line-${lineIndex}`,
+      key: `animDesc-line-${lineIndex}`,
       words: wordsFromText(line, `l${lineIndex}`),
     }))
   }, [linesKey])
@@ -74,11 +80,11 @@ export default function AnimatedDescription({
       let targets
 
       if (resolvedLines) {
-        targets = root.querySelectorAll('.ad-word')
+        targets = root.querySelectorAll('.animDesc-word')
       } else {
         split = SplitText.create(root, {
           type: 'words',
-          wordsClass: 'ad-word',
+          wordsClass: 'animDesc-word',
         })
         targets = split.words
       }
@@ -112,6 +118,7 @@ export default function AnimatedDescription({
           ...toVars,
           scrollTrigger: {
             start: 'top top',
+            scroller: getScrollRoot() ?? undefined,
             ...raw,
             trigger: triggerEl,
           },
@@ -139,15 +146,15 @@ export default function AnimatedDescription({
   return (
     <Tag
       ref={rootRef}
-      className={`ad-description${className ? ` ${className}` : ''}`}
+      className={`animDesc-description${className ? ` ${className}` : ''}`}
     >
       {resolvedLines
         ? resolvedLines.map((line) => (
-            <span key={line.key} className="ad-line">
+            <span key={line.key} className="animDesc-line">
               {line.words.map((item, index) => (
                 <Fragment key={item.key}>
                   {index > 0 ? ' ' : null}
-                  <span className="ad-word">{item.word}</span>
+                  <span className="animDesc-word">{item.word}</span>
                 </Fragment>
               ))}
             </span>

@@ -1,0 +1,37 @@
+.scenev2mweb {
+  position: relative;
+  width: 100%;
+  /* dvh, matching HomeV3Page's seam math (its -HANDOFF_HOLD_VH pull-up and
+     IntroHeroV3's own height calc are both dvh) — mixing svh in here would
+     misalign this section's top against that marker by the toolbar's
+     height. */
+  height: 100dvh;
+  overflow: hidden;
+  background: #05070a;
+  /* pan-y, not none: unpinned this is ordinary scrolling content and the
+     page has to be able to scroll through it (notably back UP into it from
+     ProductV3, which is what re-pins it). The horizontal axis stays ours
+     either way, so a jitter can't trigger the browser's back gesture.
+     `none` goes on while pinned — see --pinned below. */
+  touch-action: pan-y;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.scenev2mweb--ready {
+  opacity: 1;
+}
+
+/* Pinned: the section is stuck to the top of the viewport and every drag
+   is a scene change. The scroll lock (hooks/useScrollLock) is what actually
+   holds the page — this just stops the browser from starting a pan of its
+   own before that lock's listeners get the event. */
+.scenev2mweb--pinned {
+  touch-action: none;
+}
+
+.scenev2mweb__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

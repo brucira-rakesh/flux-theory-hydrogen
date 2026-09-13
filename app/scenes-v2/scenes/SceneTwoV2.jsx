@@ -13,16 +13,13 @@ import { useLoaderManager } from "../useLoaderManager";
 import { addSeaGui, addEmissiveGui, addTransformGui } from "../gui/guiHelpers";
 import { disposeObject } from "../disposeObject";
 import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl';
-import sageTextureUrl from '~/assets/ktx2/Sage-new_1_etc1s.ktx2?url';
-import sageBgUrl from '~/assets/ktx2/Sage_Bg_etc1s.ktx2?url';
-import loverTree1Url from '~/assets/ktx2/Lover_Tree1_etc1s.ktx2?url';
 
 const MODEL_TWO_URL = oxygenPublicUrl("/models/sage_new_9-v1.glb");
-const TEXTURE_TWO_URL = sageTextureUrl;
-const BG_TEXTURE_TWO_URL = sageBgUrl;
-const TREE_TEXTURE_TWO_URL = loverTree1Url;
+const TEXTURE_TWO_URL = oxygenPublicUrl("/textures/Sage-new_1_etc1s.ktx2");
+const BG_TEXTURE_TWO_URL = oxygenPublicUrl("/textures/Sage_Bg_etc1s.ktx2");
+const TREE_TEXTURE_TWO_URL = oxygenPublicUrl("/textures/Lover_Tree1_etc1s.ktx2");
 
-export default function SceneTwoV2({ visible = true, sharedMaps }) {
+export default function SceneTwoV2({ visible = true, sharedMaps, lightsRef }) {
   const groupRef = useRef(null);
   const { gl } = useThree();
   const { engine, gui, settings } = useSceneEngine();
@@ -67,6 +64,11 @@ export default function SceneTwoV2({ visible = true, sharedMaps }) {
       let neonMesh = null;
       let waterMesh = null;
       let waterMaterial = null;
+      // Everything that falls into the generic "else" branch below is the
+      // room itself (walls/floor/props) — its baked texture IS this scene's
+      // lighting, same as the explicitly-named fixtures. Collected so the
+      // whole room can fade together (see the lightsRef assignment below).
+      const roomMaterials = [];
 
       model.traverse((child) => {
         if (!child.isMesh) return;
@@ -98,6 +100,7 @@ export default function SceneTwoV2({ visible = true, sharedMaps }) {
           treeMesh = child;
         } else {
           child.material = new THREE.MeshBasicMaterial({ map: texture });
+          roomMaterials.push(child.material);
         }
       });
 
@@ -122,6 +125,19 @@ export default function SceneTwoV2({ visible = true, sharedMaps }) {
       model.position.z = 8.60567425749908;
 
       group.add(model);
+
+      // The whole room (walls/floor/props + background) is baked lighting,
+      // same as the neon fixture — see Scene.v2.jsx's SceneLights comment
+      // for why a real THREE.Light can't dim any of it, and
+      // swingCarousel.js's applyBakedLightFactor for how it all fades
+      // together as the scene swings toward/away from FRONT.
+      if (lightsRef) {
+        lightsRef.current = [
+          neonMaterial,
+          backgroundMaterial,
+          ...roomMaterials,
+        ].filter(Boolean);
+      }
 
       const range = Math.max(size.x, size.y, size.z) || 1;
       if (gui) {
@@ -152,6 +168,7 @@ export default function SceneTwoV2({ visible = true, sharedMaps }) {
       folder?.destroy();
       disposeObject(group);
       group.clear();
+      if (lightsRef) lightsRef.current = [];
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sharedMaps]);

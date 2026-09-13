@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import AnimatedTitle from "../components/AnimatedTitle/AnimatedTitle";
 import AnimatedDescription from "../components/AnimatedDescription/AnimatedDescription";
@@ -10,34 +10,97 @@ const EXIT_MS = 320;
 const EXIT_SEC = EXIT_MS / 1000;
 const ENTER_SEC = 0.2;
 
+// Overrides AnimatedDescription's defaults (0.5s / 0.06s stagger) — on a
+// multi-word caption those compound into a slow crawl before the last word
+// even starts moving. Tightened so the whole paragraph is done revealing
+// quickly instead of trickling in word by word.
+const DESCRIPTION_WORD_DURATION_SEC = 0.35;
+const DESCRIPTION_WORD_STAGGER_SEC = 0.025;
+
 // Real per-scene copy — ports Figma nodes 1089:267 (heading) / 1089:268
 // (paragraph), one pair per scene. Not sourced from products.js: this is
 // its own voice, not the PDP's.
-const SCENE_CAPTIONS = {
+export const SCENE_CAPTIONS = {
+  // Sport (SceneOneV2 — see Scene.v2.jsx's SCENES id 'one')
   one: {
-    title: "Own Every Moment",
-    description:
-      "Every room has an energy. Every entrance leaves an impression. Be the one they remember.",
+    // AnimatedTitle tokenizes strings into char spans — JSX here becomes
+    // String(element) === "[object Object]". Use `lines` for the <br>s.
+    title: "THE SPORT",
+    subtitle: ["For the Sport in You.", "Stay Charged.", "Be Ready To Play."],
+    description: (
+      <>
+        <span className="font-bold block mb-3 text-white">
+          The Sport Detanning Body Wash
+        </span>
+        A brightening burst of Niacinamide, Aloe Vera & Panthenol, leaving skin
+        radiant & fresh, touched by the lingering scent of icy mint & citrus.
+      </>
+    ),
   },
-  five: {
-    title: "Break the Expected",
-    description:
-      "Not every path is meant to be followed. Some are meant to be created.",
-  },
+
+  // Sage (SceneTwoV2 — id 'two')
   two: {
-    title: "The One Who Sees Beyond",
-    description:
-      "Every breakthrough begins as a thought. Every possibility starts with imagination.",
+    title: "THE SAGE",
+    subtitle: ["For the Sage in You.", "Calm The Chas.", "Lead With Wisdom."],
+    description: (
+      <>
+        <span className="font-bold block mb-3 text-white">
+          The Sage Deep Cleansing Body Wash
+        </span>
+        A purifying ritual of Blue Clay & Green Tea, leaving skin clear &
+        balanced, with the warm, evocative scent of Earthy Oud.
+      </>
+    ),
   },
+
+  // Dreamer (SceneThreeV2 — id 'three')
   three: {
-    title: "Find Your Center",
-    description:
-      "Silence sharpens instinct. Clarity shapes every decision before the world notices.",
+    title: "THE DREAMER",
+    subtitle: ["For the Dreamer in You.", "Wander Freely.", "Wonder Often."],
+    description: (
+      <>
+        {" "}
+        <span className="font-bold block mb-3 text-white">
+          The Dreamer Hydrating Foam Body Wash{" "}
+        </span>
+        A tender infusion of deep hydration & nourishment, wrapped in the
+        signature scent of Bergamot.{" "}
+      </>
+    ),
   },
+
+  // Lover (SceneFourV2 — id 'four')
   four: {
-    title: "Leave Them Wanting More",
-    description:
-      "Confidence isn’t always loud. Sometimes it’s remembered in the moments after you’ve gone.",
+    title: "THE LOVER",
+    subtitle: ["For the Lover in You.", "Command Desire.", "Emerge Irresistible."],
+    description: (
+      <>
+        <span className="font-bold block mb-3 text-white">
+          The Lover Glow Body Wash
+        </span>
+        A golden elixir of nourishment & radiance, wrapped in the warm scent of
+        Santal, leaving skin divinely soft & luminous.
+      </>
+    ),
+  },
+
+  // Rebel (SceneFiveV2 — id 'five')
+  five: {
+    title: "THE REBEL",
+    subtitle: [
+      "For the Rebel in You.",
+      "Rise Unbothered.",
+      "Emerge Unapologetic.",
+    ],
+    description: (
+      <>
+        <span className="font-bold block mb-3 text-white">
+          The Rebel Exfoliating Body Wash
+        </span>
+        A rebellious blend of clarifying actives, gritty exfoliants & Aloe Vera,
+        wrapped in the smoky scent of Spicy Leather.
+      </>
+    ),
   },
 };
 const SCENE_IDS = Object.keys(SCENE_CAPTIONS);
@@ -110,22 +173,43 @@ function CaptionPair({ id, caption, phase }) {
   return (
     <div
       ref={rootRef}
-      className="scene-v2__caption-pair"
+      className="absolute inset-0 bottom-0 p-8 flex items-end gap-6 "
       aria-hidden={!isEntering}
     >
-      <AnimatedTitle
-        as="h2"
-        className="scene-v2__caption-heading"
-        replayKey={replayKey}
-        play={isOnscreen}
-        blurSweep={isOnscreen}
-      >
-        {caption.title}
-      </AnimatedTitle>
+      <div className="flex flex-col gap-5">
+        <AnimatedTitle
+          as="h2"
+          className="scene-v2__caption-heading"
+          replayKey={replayKey}
+          play={isOnscreen}
+          blurSweep={isOnscreen}
+        >
+          {caption.title}
+        </AnimatedTitle>
+
+        <div className="flex flex-wrap gap-4 items-center justify-center">
+          {caption.subtitle.map((subtitle, index) => (
+            <Fragment key={subtitle}>
+              <AnimatedDescription
+                as="span"
+                className="text-white [font-family:var(--font-title)] text-[clamp(0.85rem,4vw,1.1rem)] uppercase font-medium"
+                replayKey={replayKey}
+                play={isOnscreen}
+                blurSweep={isOnscreen}
+              >
+                {subtitle}
+              </AnimatedDescription>
+              <span className="size-1 bg-white last:hidden"></span>
+            </Fragment>
+          ))}
+        </div>
+      </div>
       <AnimatedDescription
         as="p"
         className="scene-v2__caption-desc"
         replayKey={replayKey}
+        duration={DESCRIPTION_WORD_DURATION_SEC}
+        stagger={DESCRIPTION_WORD_STAGGER_SEC}
       >
         {caption.description}
       </AnimatedDescription>

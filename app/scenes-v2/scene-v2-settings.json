@@ -1,10 +1,10 @@
 {
   "controllers": {
     "Camera FOV": 45,
-    "Transition FOV": 48,
+    "Transition FOV": 42,
     "Debug Minimap": true,
     "Show FPS Stats": false,
-    "Sweep Angle": 120
+    "Sweep Angle": 80
   },
   "folders": {
     "Scenes": {
@@ -115,8 +115,8 @@
           "controllers": {
             "Position X": 0,
             "Position Y": 0,
-            "Position Z": 2.95230586992216,
-            "Scale": 7.95,
+            "Position Z": 2.6,
+            "Scale": 10,
             "Base Rotation Y": 0
           },
           "folders": {}

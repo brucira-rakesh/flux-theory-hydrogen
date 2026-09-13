@@ -36,6 +36,9 @@ export function createFrameCache(frameCount = FRAME_COUNT) {
 
     return new Promise((resolve) => {
       const img = new Image()
+      // See sequenceLoader.js's identical line — these frames feed a canvas
+      // that gets read back / uploaded to WebGL, which throws on a cross-
+      // origin (VITE_CDN_URL) image loaded without this, taint or not.
       img.crossOrigin = 'anonymous'
       img.decoding = 'async'
 
@@ -188,6 +191,40 @@ export function drawFrameContain(ctx, image, width, height, bgColor = '#d0d1db')
   }
 
   ctx.drawImage(image, drawX, drawY, drawW, drawH)
+  return true
+}
+
+/**
+ * Like drawFrameContain but crops instead of letterboxing — scales the
+ * image up to fill the full canvas (CSS background-size:cover behaviour),
+ * so no bgColor bars ever show. Used where the canvas itself is meant to
+ * cover the full screen (e.g. SeawaveSeq).
+ */
+export function drawFrameCover(ctx, image, width, height) {
+  const imgW = image.naturalWidth || image.width
+  const imgH = image.naturalHeight || image.height
+  if (!imgW || !imgH) return false
+
+  const imgAspect = imgW / imgH
+  const canvasAspect = width / height
+  let sx
+  let sy
+  let sw
+  let sh
+
+  if (imgAspect > canvasAspect) {
+    sh = imgH
+    sw = imgH * canvasAspect
+    sx = (imgW - sw) / 2
+    sy = 0
+  } else {
+    sw = imgW
+    sh = imgW / canvasAspect
+    sx = 0
+    sy = (imgH - sh) / 2
+  }
+
+  ctx.drawImage(image, sx, sy, sw, sh, 0, 0, width, height)
   return true
 }
 

@@ -1,0 +1,199 @@
+.intro-hero-v3__title {
+  position: relative;
+  /* Grid instead of the rotating group's normal flow: both the rotating
+     phrase group and the final line group sit in the same 1/1 cell, so the
+     h1's intrinsic height is the max of the two, not just whichever one
+     happens to be in normal flow. Without this, the final group (which is
+     taller when "shapes a new you." wraps to two lines) overflowed past a
+     box sized only for the rotating phrases, and the mobile scroll-down
+     label below the title collided with it. */
+  display: grid;
+  transform: translateZ(0);
+}
+
+.intro-hero-v3__group {
+  grid-area: 1 / 1;
+  position: relative;
+  background-clip: text;
+  mix-blend-mode: overlay;
+  filter: url(#intro-hero-v2-title-filter);
+  /* Keep this layer's filter surface warm from first paint. Safari builds
+     the feTurbulence/feDisplacementMap raster lazily, and if the element
+     is ever visibility:hidden it's dropped from the paint tree entirely —
+     so when JS reveals it, the turbulence visibly "pops in" a beat after
+     the opacity tween starts instead of being there from frame one. */
+  will-change: filter, opacity;
+}
+
+.intro-hero-v3__rotating {
+  position: relative;
+}
+
+.intro-hero-v3__static {
+  display: block;
+  /* Hidden until JS reveals it — without this it's plain static text
+     (the last phrase below is normal-flow, not absolutely positioned)
+     and flashes fully visible for a frame before the mount effect runs.
+     opacity-only (no visibility:hidden): see .intro-hero-v3__group above —
+     staying in the paint tree is what keeps the SVG filter warm on Safari. */
+  opacity: 0;
+  pointer-events: none;
+}
+
+.intro-hero-v3__phrase {
+  display: block;
+  /* Same FOUC guard as the static line above — the LAST phrase stays in
+     normal flow (sets the wrapper's height) so it isn't caught by the
+     :not(:last-child) rule below, but still needs hiding until its turn.
+     opacity-only, same Safari filter-warmth reasoning as the static line. */
+  opacity: 0;
+  pointer-events: none;
+}
+
+.intro-hero-v3__phrase:not(:last-child) {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+}
+
+.intro-hero-v3__final {
+  /* Stacked in the same grid cell as .intro-hero-v3__group (rotating
+     phrases) rather than absolutely filling the h1 — see .intro-hero-v3__title
+     above. Stretches to that cell's full size by default grid alignment. */
+  grid-area: 1 / 1;
+  /* Fill the h1 (already padded by .app-container) so long copy like
+     "shapes a new you." wraps at the title edge instead of painting
+     past the pin's overflow:hidden. */
+  width: auto;
+  max-width: 100%;
+  /* opacity-only (no visibility:hidden) — same Safari filter-warmth
+     reasoning as .intro-hero-v3__phrase above. */
+  opacity: 0;
+  pointer-events: none;
+  /* The cell's height can exceed 2 lines when the rotating phrase wraps
+     (e.g. "the fragrance uplift you." over 2 lines) — bottom-anchor this
+     block's own 2 lines instead of letting them sit flush at the top of
+     that taller cell. */
+  justify-content: flex-end;
+}
+
+.intro-hero-v3__final > span {
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 768px) {
+  /* Blend mode off on mobile: the h1's `mix-blend-overlay` (Tailwind
+     utility) and .intro-hero-v3__group's own mix-blend-mode (line 18
+     above) both target desktop's dark canvas backdrop; on mobile the
+     title needs to read as plain white text instead. mix-blend-mode
+     isn't inherited, so both the h1 and the group (and .intro-hero-v3__final,
+     which also carries the .intro-hero-v3__group class) need the override. */
+  .intro-hero-v3__title {
+    mix-blend-mode: normal;
+  }
+
+  .intro-hero-v3__final {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  /* .intro-hero-v3__final also carries .intro-hero-v3__group (see JSX), so
+     without this more specific compound selector the generic max-width
+     below would clamp it too. Tuned so "Every shower" / "shapes a new
+     you." each wrap into exactly 2 lines (4 total, matching the design):
+     needs to be narrower than "shapes a new" (337px) but wide enough for
+     "shapes a" (226px) — 320px sits safely in between.
+     This also happens to set the h1's actual rendered width: the h1 is
+     `display: grid` with .intro-hero-v3__group (rotating) and this final
+     block sharing the same implicit grid-area/track, so this max-width
+     drives the track's auto size and the rotating column inherits it too
+     (confirmed: h1 measured 280px wide when this was 280px). Keep it
+     comfortably above "fragrance" (277px, the rotating column's widest
+     word) so that column never gets squeezed back toward the overflow
+     case .intro-hero-v3__group's own comment below describes. */
+  .intro-hero-v3__final.intro-hero-v3__group {
+    max-width: 320px;
+  }
+
+  .intro-hero-v3__group {
+    /* Was 80% (240px, off the 300px h1 cap): "fragrance" alone renders at
+       ~277px as an unbreakable inline-block word (needed so GSAP can blur/
+       transform it per-word), and when an atomic inline-block overflows its
+       line box, WebKit/Blink pin it flush to the start edge instead of
+       centering it with symmetric overflow like plain text — hence it read
+       as left-aligned and clipped instead of centered. Widening the column
+       past the longest word's width (with margin) removes the overflow
+       case entirely, so text-align: center has nothing left to get wrong.
+       `width` (not just max-width): this is a grid item sharing its cell
+       with .intro-hero-v3__final, and once the words below become
+       block-level, this item's own intrinsic content shrinks to just its
+       widest single word — without an explicit width it sizes to that
+       (~277px) instead of stretching to the shared column, squeezing
+       "fragrance" right back to the edge it was widened to avoid. */
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    mix-blend-mode: normal;
+  }
+
+  /* Force one word per line for the cycling phrase — natural wrapping
+     can't guarantee this (e.g. "uplift you." fits on one line together at
+     this column width, but "fragrance" alone is already wider than that
+     pair, so no single width gets both "3 lines" and "no overflow" from
+     wrapping alone). Block-level sidesteps both problems: each word gets
+     its own line unconditionally, and centers within the full column
+     width instead of racing another word for line space.
+     !important: GSAP/SplitText sets `display: inline-block` as an inline
+     style on every .ih-word (part of its per-word blur/transform setup),
+     and an inline style always wins over a plain class rule regardless of
+     specificity — only !important in the stylesheet can still override it. */
+  .intro-hero-v3__title .intro-hero-v3__phrase .ih-word {
+    display: block !important;
+  }
+}
+
+.intro-hero-v3__title .ih-word {
+  display: inline-block;
+}
+
+.intro-hero-v3__scroll-down {
+  display: none;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .intro-hero-v3__scroll-down {
+    display: flex;
+  }
+}
+
+.intro-hero-v3__scroll-down-icon {
+  position: relative;
+  top: -4px;
+  animation: intro-hero-v3-scroll-down-icon 1.6s ease-in-out infinite;
+}
+
+@keyframes intro-hero-v3-scroll-down-icon {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+
+  50% {
+    transform: translateY(4px);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-hero-v3__scroll-down-icon {
+    animation: none;
+  }
+}

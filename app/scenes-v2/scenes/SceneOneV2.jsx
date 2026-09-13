@@ -9,6 +9,7 @@ import {
   makeDropletMaterial,
   setupWaterReflection,
   fogSharedDefaults,
+  makeOverbrightMaterial,
 } from "../materials";
 import { useSceneEngine, applyFolderSettings } from "../SceneEngineContext";
 import { useLoaderManager } from "../useLoaderManager";
@@ -21,14 +22,11 @@ import {
 } from "../gui/guiHelpers";
 import { disposeObject } from "../disposeObject";
 import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl';
-import playerLightMapUrl from '~/assets/ktx2/Player_Light_Map_7_etc1s.ktx2?url';
-import playerStonesUrl from '~/assets/ktx2/Player_Stones_etc1s.ktx2?url';
-import sceneOneBgUrl from '~/assets/ktx2/sceneonebg.ktx2?url';
 
-const MODEL_URL = oxygenPublicUrl("/models/Final-Player-Bake9-v1.glb");
-const LIGHT_MAP_URL = playerLightMapUrl;
-const STONES_URL = playerStonesUrl;
-const BG_TEXTURE_URL = sceneOneBgUrl;
+const MODEL_URL = oxygenPublicUrl("/models/Final-Player-Bake11-v1.glb");
+const LIGHT_MAP_URL = oxygenPublicUrl("/textures/Player_Light_Map_8_etc1s.ktx2");
+const STONES_URL = oxygenPublicUrl("/textures/Player_Stones2_etc1s.ktx2");
+const BG_TEXTURE_URL = oxygenPublicUrl("/images/sceneonebg.ktx2");
 
 // The Player bake ships geometry only (no glTF materials, no fog/droplet
 // planes), so fogone/fogtwo/shower water.001 still come out of the previous
@@ -41,7 +39,7 @@ const DROPLET_NAME = PropertyBinding.sanitizeNodeName("shower water.001");
 // material-by-node-name, water reflection, tuned transforms, GUI folder)
 // with none of the scroll-carousel/holder logic — this group just sits
 // wherever its parent <group> (see Scene.v2.jsx's circle layout) places it.
-export default function SceneOneV2({ visible = true, sharedMaps }) {
+export default function SceneOneV2({ visible = true, sharedMaps, lightsRef }) {
   const groupRef = useRef(null);
   const { gl } = useThree();
   const { engine, gui, settings } = useSceneEngine();
@@ -80,7 +78,12 @@ export default function SceneOneV2({ visible = true, sharedMaps }) {
         "Cylinder.005": () => new THREE.MeshBasicMaterial({ map: stonesMap }),
         "Cylinder.001": () =>
           new THREE.MeshBasicMaterial({ map: bgTexture, color: new THREE.Color(1.5, 1.5, 1.5) }),
-        "Cylinder.012": () => makeSeaWaveMaterialTwo(seaMaps),
+        "Cylinder.003": () => makeSeaWaveMaterialTwo(seaMaps),
+        // Renamed from "Mainbase.004" in the old export (Blender's
+        // auto-generated duplicate name, same as Scene Two's neon fixture) —
+        // overbright-white MeshBasicMaterial so UnrealBloomPass picks it up
+        // as a glow, same trick as the background wall above.
+        "Cylinder.004": () => makeOverbrightMaterial(2, 2, 2),
       };
       const factoryBySanitizedName = {};
       for (const [name, factory] of Object.entries(factoryByOriginalName)) {
@@ -90,7 +93,8 @@ export default function SceneOneV2({ visible = true, sharedMaps }) {
       const lightMapName = PropertyBinding.sanitizeNodeName("Cylinder.002");
       const stonesName = PropertyBinding.sanitizeNodeName("Cylinder.005");
       const bgName = PropertyBinding.sanitizeNodeName("Cylinder.001");
-      const seaName = PropertyBinding.sanitizeNodeName("Cylinder.012");
+      const seaName = PropertyBinding.sanitizeNodeName("Cylinder.003");
+      const glowName = PropertyBinding.sanitizeNodeName("Cylinder.004");
       const fogOneName = PropertyBinding.sanitizeNodeName("fogone");
       const fogTwoName = PropertyBinding.sanitizeNodeName("fogtwo");
 
@@ -102,6 +106,8 @@ export default function SceneOneV2({ visible = true, sharedMaps }) {
       let lightMapMaterial = null;
       let stonesMesh = null;
       let stonesMaterial = null;
+      let glowMesh = null;
+      let glowMaterial = null;
 
       model.traverse((child) => {
         if (!child.isMesh) return;
@@ -128,6 +134,10 @@ export default function SceneOneV2({ visible = true, sharedMaps }) {
         if (child.name === stonesName) {
           stonesMaterial = child.material;
           stonesMesh = child;
+        }
+        if (child.name === glowName) {
+          glowMaterial = child.material;
+          glowMesh = child;
         }
       });
 
@@ -200,6 +210,19 @@ export default function SceneOneV2({ visible = true, sharedMaps }) {
 
       group.add(model);
 
+      // The whole room — light map, background, stones, glow — is baked
+      // lighting, not a real THREE.Light (see Scene.v2.jsx's SceneLights
+      // comment), so all of it fades together as this scene swings
+      // toward/away from FRONT (see swingCarousel.js's applyBakedLightFactor).
+      if (lightsRef) {
+        lightsRef.current = [
+          lightMapMaterial,
+          backgroundMaterial,
+          stonesMaterial,
+          glowMaterial,
+        ].filter(Boolean);
+      }
+
       const range = Math.max(size.x, size.y, size.z) || 1;
       if (gui) {
         folder = gui.addFolder("Scene One");
@@ -207,6 +230,7 @@ export default function SceneOneV2({ visible = true, sharedMaps }) {
         addEmissiveGui(folder, { material: backgroundMaterial, mesh: backgroundMesh, range, label: "Background" });
         addEmissiveGui(folder, { material: lightMapMaterial, mesh: lightMapMesh, range, label: "Cylinder.002" });
         addEmissiveGui(folder, { material: stonesMaterial, mesh: stonesMesh, range, label: "Cylinder.005" });
+        addEmissiveGui(folder, { material: glowMaterial, mesh: glowMesh, range, label: "Cylinder.004" });
         addSeaGui(folder, { material: waterMaterial, mesh: waterMesh, range });
         addDropletGui(folder, { material: dropletMaterial, mesh: dropletMesh, range });
         const fog = folder.addFolder("Fog");
@@ -223,6 +247,7 @@ export default function SceneOneV2({ visible = true, sharedMaps }) {
       folder?.destroy();
       disposeObject(group);
       group.clear();
+      if (lightsRef) lightsRef.current = [];
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sharedMaps]);

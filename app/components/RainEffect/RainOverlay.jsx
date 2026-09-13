@@ -2,10 +2,34 @@ import { useEffect, useRef } from 'react'
 import createCanvas from './createCanvas'
 import Raindrops from './raindrops'
 import RainRenderer from './rainRenderer'
-import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl'
+import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl';
 
-const TEXTURE_BG = { width: 1280, height: 720 }
-const TEXTURE_FG = { width: 640, height: 360 }
+/** Longest-side budget for the two sample textures the droplet shader reads.
+ *  The SHAPE is derived per-mount from the overlay's own aspect ratio (see
+ *  textureSize) rather than hardcoded 16:9 — at 1280/640 with a 16:9 canvas
+ *  these still resolve to the original 1280x720 / 640x360.
+ *
+ *  Why it can't be a fixed landscape size: this overlay is opaque
+ *  (rainRenderer's GL context is `alpha: false`), so it does not tint the
+ *  layer underneath it — it REPLACES it, repainting the source through these
+ *  textures. A 16:9 texture put the source through two cover fits on a
+ *  portrait viewport: `drawVideoCover` cropped the tall source down to a
+ *  short landscape band, then the shader's own `scaledTexCoord()` blew that
+ *  band back up to fill the tall canvas. On a phone that reads as the hero
+ *  sequence being zoomed way in; on a ~16:9 desktop window both fits are
+ *  near-identity, which is why it only ever showed on mobile. */
+const TEXTURE_BG_MAX = 1280
+const TEXTURE_FG_MAX = 640
+
+/** Texture dimensions matching `ratio` (the overlay canvas's width/height),
+ *  with the longer side at `max`. Both cover fits above then collapse to
+ *  identity and the source is sampled 1:1. */
+function textureSize(max, ratio) {
+  if (!Number.isFinite(ratio) || ratio <= 0) return { width: max, height: max }
+  return ratio >= 1
+    ? { width: max, height: Math.max(2, Math.round(max / ratio)) }
+    : { width: Math.max(2, Math.round(max * ratio)), height: max }
+}
 
 /** Running drops only — sticky surface droplets disabled. */
 const DROP_OPTIONS = {
@@ -32,7 +56,20 @@ const RENDER_OPTIONS = {
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image()
+    // Drawn into a 2D canvas (raindrops.js) that later feeds a WebGL
+    // texture — without this, loading the image cross-origin (VITE_CDN_URL)
+    // taints that canvas and texImage2D throws a SecurityError.
     img.crossOrigin = 'anonymous'
+    // These two droplet textures are the only thing gating the effect from
+    // starting, and they are tiny — but by default they join the back of the
+    // request queue. Mounted over a boot screen that is simultaneously
+    // preloading a whole frame sequence (see PreloaderV2's `showStillRain`),
+    // that queue is hundreds of images deep, so the rain could not appear
+    // until the sequence had essentially finished — i.e. right as the
+    // progress bar hit 100% and the overlay was about to leave, which is
+    // exactly backwards. High priority puts them at the front instead, so
+    // the droplets are running while the bar is still filling.
+    img.fetchPriority = 'high'
     img.onload = () => resolve(img)
     img.onerror = () => reject(new Error(`Failed to load ${src}`))
     img.src = src
@@ -46,16 +83,30 @@ function isVideoSource(source) {
   return typeof HTMLVideoElement !== 'undefined' && source instanceof HTMLVideoElement
 }
 
+/** True for a plain <img> — its `.width`/`.height` IDL properties reflect the
+ *  CSS-RENDERED box size (whatever aspect ratio its container imposes), not
+ *  the pixel buffer `drawImage` actually samples from (the intrinsic
+ *  bitmap). A <canvas>/<video>'s `.width`/`.height` (or `videoWidth`/
+ *  `videoHeight`) always match their own pixel buffer 1:1, so only <img>
+ *  needs the natural-size branch below. */
+function isImageSource(source) {
+  return typeof HTMLImageElement !== 'undefined' && source instanceof HTMLImageElement
+}
+
 function isSourceSampleable(source) {
   if (!source) return false
   if (isVideoSource(source)) {
     return source.readyState >= 2 && source.videoWidth > 0 && !source.seeking
+  }
+  if (isImageSource(source)) {
+    return source.complete && (source.naturalWidth || 0) > 1 && (source.naturalHeight || 0) > 1
   }
   return (source.width || 0) > 1 && (source.height || 0) > 1
 }
 
 function sourceSize(source) {
   if (isVideoSource(source)) return { w: source.videoWidth, h: source.videoHeight }
+  if (isImageSource(source)) return { w: source.naturalWidth, h: source.naturalHeight }
   return { w: source.width, h: source.height }
 }
 
@@ -87,6 +138,10 @@ export default function RainOverlay({
     let textureFgCtx = null
     let textureBgCtx = null
     let textureRaf = 0
+    // Resolved from the canvas's aspect ratio in init(), before the two
+    // sample canvases are created — see textureSize.
+    let bgSize = textureSize(TEXTURE_BG_MAX, 16 / 9)
+    let fgSize = textureSize(TEXTURE_FG_MAX, 16 / 9)
 
     const sizeCanvas = () => {
       const parent = canvas.parentElement
@@ -122,20 +177,8 @@ export default function RainOverlay({
       // crop (bg at y=0, fg at y=textureBg.height), adapted to full-bleed video.
       const { h: sourceH } = sourceSize(source)
       const band = Math.min(sourceH * 0.08, 48)
-      drawVideoCover(
-        textureBgCtx,
-        source,
-        TEXTURE_BG.width,
-        TEXTURE_BG.height,
-        0,
-      )
-      drawVideoCover(
-        textureFgCtx,
-        source,
-        TEXTURE_FG.width,
-        TEXTURE_FG.height,
-        band,
-      )
+      drawVideoCover(textureBgCtx, source, bgSize.width, bgSize.height, 0)
+      drawVideoCover(textureFgCtx, source, fgSize.width, fgSize.height, band)
     }
 
     const updateTextures = () => {
@@ -193,9 +236,15 @@ export default function RainOverlay({
 
         raindrops = new Raindrops(w, h, dpi, dropAlpha, dropColor, DROP_OPTIONS)
 
-        textureFg = createCanvas(TEXTURE_FG.width, TEXTURE_FG.height)
+        // Must be computed from the SIZED canvas, and before the textures
+        // are created: RainRenderer reads `imageBg.width / imageBg.height`
+        // once, into the shader's `textureRatio` uniform.
+        bgSize = textureSize(TEXTURE_BG_MAX, w / h)
+        fgSize = textureSize(TEXTURE_FG_MAX, w / h)
+
+        textureFg = createCanvas(fgSize.width, fgSize.height)
         textureFgCtx = textureFg.getContext('2d')
-        textureBg = createCanvas(TEXTURE_BG.width, TEXTURE_BG.height)
+        textureBg = createCanvas(bgSize.width, bgSize.height)
         textureBgCtx = textureBg.getContext('2d')
 
         generateTextures(source)

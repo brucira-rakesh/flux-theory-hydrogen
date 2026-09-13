@@ -14,5 +14,14 @@
   z-index: 30;
   pointer-events: none;
   opacity: 0;
-  will-change: opacity;
+  visibility: hidden;
+  background-color: transparent;
+}
+
+/* NavCloudTransition's rail-triggered wipe — above PageProgress (z-35) so it
+   also covers the rail itself during a jump, still below the header
+   (z-40/50) so it stays reachable mid-transition. Opacity is driven inline by
+   its own render loop (see that component), not this stylesheet. */
+.nav-cloud-transition {
+  z-index: 36;
 }

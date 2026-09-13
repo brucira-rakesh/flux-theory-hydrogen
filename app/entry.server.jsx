@@ -58,6 +58,7 @@ export default async function handleRequest(
     ],
     mediaSrc: [
       "'self'",
+      'blob:',
       context.env.PUBLIC_STORE_DOMAIN,
       'https://cdn.shopify.com',
       'https://shopify.com',

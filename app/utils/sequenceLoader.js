@@ -1,4 +1,19 @@
-const PRELOAD_CONCURRENCY = 6
+const PRELOAD_CONCURRENCY = 8
+
+/**
+ * Ceiling on how long a single frame's `img.decode()` is allowed to gate that
+ * frame's load.
+ *
+ * decode() is only ever an optimisation here: `onload` has already fired, so
+ * the image IS usable and drawable — decode() just moves the decode cost off
+ * the first drawImage. But in Chrome it does not settle at all while the
+ * document is hidden, and it never rejects either, so a page loaded in a
+ * background tab (opened in a new tab, then switched to later) would sit on
+ * an unresolved promise forever: every frame stays 'loading', preloadSequence
+ * never resolves, and whatever is gated on it — PreloaderV2's boot overlay —
+ * hangs permanently with no way back, even once the tab is focused again.
+ */
+const DECODE_TIMEOUT_MS = 2000
 
 /**
  * Generic frame-sequence preloader — decoupled from any single sequence's
@@ -31,6 +46,10 @@ export function createSequenceLoader({ frameCount, getFramePath, concurrency = P
 
     return new Promise((resolve) => {
       const img = new Image()
+      // Frames are drawn into a 2D canvas that other code later reads back
+      // (getImageData) or feeds into WebGL (texImage2D) — loaded cross-origin
+      // (VITE_CDN_URL) without this, either throws a SecurityError on a
+      // "tainted" canvas even though the CDN sends CORS headers.
       img.crossOrigin = 'anonymous'
       img.decoding = 'async'
 
@@ -47,7 +66,17 @@ export function createSequenceLoader({ frameCount, getFramePath, concurrency = P
 
       img.onload = async () => {
         try {
-          if (img.decode) await img.decode()
+          // Raced, never awaited bare — see DECODE_TIMEOUT_MS. A hidden
+          // document leaves this pending indefinitely, and the frame is
+          // already fully usable without it.
+          if (img.decode) {
+            await Promise.race([
+              img.decode(),
+              new Promise((resolve) => {
+                setTimeout(resolve, DECODE_TIMEOUT_MS)
+              }),
+            ])
+          }
         } catch {
           // decode() can reject on some browsers — image is still usable
         }
@@ -64,21 +93,40 @@ export function createSequenceLoader({ frameCount, getFramePath, concurrency = P
   }
 
   /**
-   * Loads every frame with bounded concurrency. Resolves once all frames
-   * have settled (loaded or failed). onProgress fires as (index, ratio).
+   * Loads every frame with bounded concurrency.
+   *
+   * Resolves once `readyCount` frames have settled (loaded or failed) so a
+   * caller can un-gate (e.g. PreloaderV2's boot overlay) without waiting on
+   * the tail of the reel. Remaining frames keep loading in the background
+   * on this same instance. Omit `readyCount` (or pass >= frameCount) to
+   * wait for the full sequence, matching the original behaviour.
+   *
+   * onProgress fires as (index, ratio) against the FULL frameCount, so a
+   * progress bar still tracks the real download even after the gate trips.
    */
-  function preloadSequence(onProgress) {
+  function preloadSequence(onProgress, { readyCount } = {}) {
     if (frameCount <= 0) return Promise.resolve()
 
+    const gateAt = Math.min(
+      frameCount,
+      Math.max(1, readyCount ?? frameCount),
+    )
     let settledCount = 0
+    let gated = false
 
     return new Promise((resolve) => {
       let inFlight = 0
       let nextIndex = 0
 
+      const tripGate = () => {
+        if (gated || settledCount < gateAt) return
+        gated = true
+        resolve()
+      }
+
       const pump = () => {
         if (nextIndex >= frameCount && inFlight === 0) {
-          resolve()
+          tripGate()
           return
         }
 
@@ -91,6 +139,7 @@ export function createSequenceLoader({ frameCount, getFramePath, concurrency = P
             inFlight -= 1
             settledCount += 1
             onProgress?.(index, settledCount / frameCount, Boolean(img))
+            tripGate()
             pump()
           })
         }

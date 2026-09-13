@@ -10,13 +10,18 @@
 // screen-space radius + temporal denoise is built for exactly that case.
 // Kept light on purpose — this is a premium bottle site, not a moody one:
 // enough AO to seat geometry into itself, not enough to read as "dark."
+// aoSamples/denoiseSamples halved from their original 16/8 — N8AO is a
+// full screen-space pass and these two directly multiply its cost. halfRes
+// + screenSpaceRadius (already on) do most of the work hiding the resulting
+// extra noise; at this scale of geometry (large, gently curved unlit
+// surfaces, not fine detail) 8/4 reads the same in motion.
 export const DEFAULT_AO = {
   enabled: true,
   aoRadius: 1.5,
   distanceFalloff: 1,
   intensity: 1.5,
-  aoSamples: 16,
-  denoiseSamples: 8,
+  aoSamples: 8,
+  denoiseSamples: 4,
   halfRes: true,
   screenSpaceRadius: true,
 };

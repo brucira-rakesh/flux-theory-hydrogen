@@ -7,7 +7,7 @@
   z-index: 10000;
   overflow: hidden;
   opacity: 1;
-  transition: opacity 0.75s ease;
+  transition: opacity 0.4s ease;
   pointer-events: auto;
   background: #0e0e0e;
 }
@@ -31,6 +31,15 @@
   user-select: none;
 }
 
+.preloader__rain {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
 .preloader__tint {
   position: absolute;
   inset: 0;
@@ -40,9 +49,25 @@
   pointer-events: none;
 }
 
+/* The reveal layers, stacked ABOVE .preloader__rain — the droplet canvas is
+   opaque and repaints the still at full brightness, so anything that has to
+   read as "not revealed yet" must sit on top of it. See applyReveal in
+   Preloader.v2.jsx. */
+.preloader__veil {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: #0e0e0e;
+  pointer-events: none;
+}
+
+.preloader__tint--over-rain {
+  z-index: 2;
+}
+
 .preloader__center {
   position: absolute;
-  z-index: 2;
+  z-index: 3;
   left: 50%;
   top: 50%;
   display: flex;
@@ -69,6 +94,9 @@
 }
 
 .preloader__progress {
+  /* Hidden for now — the bar itself, its fill and its is-done fade are all
+     left wired up below, so dropping this line brings it straight back. */
+  display: none;
   width: clamp(96px, 14vw, 148px);
   height: 2px;
   background: rgba(255, 255, 255, 0.25);

@@ -1,0 +1,210 @@
+/* Ports Figma node 3013:3276 ("iPhone 16 - 3") — see the module comment in
+   Scenev2mwebOverlay.jsx for why only the layout (not that frame's own
+   placeholder copy) comes from Figma. */
+
+.scenev2mweb-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  /* The nav pill and Discover button need real clicks; everything else
+     (heading/desc/scrim) stays click-through so the canvas underneath can
+     still take the swipe gesture. */
+  pointer-events: none;
+}
+
+/* -- header --------------------------------------------------------------- */
+
+.scenev2mweb-overlay__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  pointer-events: auto;
+}
+
+.scenev2mweb-overlay__logo {
+  display: block;
+}
+
+.scenev2mweb-overlay__icons {
+  display: flex;
+  align-items: center;
+  backdrop-filter: blur(12.85px);
+  -webkit-backdrop-filter: blur(12.85px);
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+}
+
+.scenev2mweb-overlay__icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+}
+
+.scenev2mweb-overlay__icon-btn img {
+  display: block;
+  filter: brightness(0) invert(1);
+}
+
+/* -- bottom scrim + caption ------------------------------------------------ */
+
+.scenev2mweb-overlay__bottom {
+  position: relative;
+  margin-top: auto;
+  /* Extra clear of the home indicator / gesture bar on notched phones —
+     same env() fallback pattern MwebProductShowcase.css used for its own
+     bottom-anchored dots. */
+  padding: 0 24px calc(40px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Figma "Rectangle 54" — a transparent-to-dark gradient pinned under the
+   caption so the heading/description stay legible over whatever frame is
+   playing behind them, painted as ::before so it never intercepts pointer
+   events or sits above the text in paint order. */
+.scenev2mweb-overlay__bottom::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 46vh;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.75) 100%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Zero-height anchor: all 5 pairs are absolutely positioned inside it (they
+   have to stack on the same spot to cross-fade), so it contributes no height
+   of its own and the block ends exactly at the padding above the section's
+   bottom edge. */
+.scenev2mweb-overlay__captions {
+  position: relative;
+}
+
+/* Anchored by its BOTTOM edge, not `inset: 0` — the pair is taller than any
+   fixed box would be (heading + 3-4 lines of paragraph + the Discover cue),
+   and pinning all four sides to a fixed-height parent pushed that overflow
+   past the section's bottom edge, where .scenev2mweb's own overflow:hidden
+   clipped the Discover cue in half. Anchoring the bottom instead lets each
+   pair size to its own copy and grow UPWARD into the free canvas area, so
+   nothing is ever cut off no matter how long a scene's copy runs. */
+.scenev2mweb-overlay__caption-pair {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0;
+  visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.scenev2mweb-overlay__heading {
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.07em;
+  line-height: 0.94;
+  color: #fff;
+  font-size: clamp(2.2rem, 11vw, 3.2rem);
+}
+
+.scenev2mweb-overlay__desc {
+  margin: 0;
+  max-width: 22rem;
+  font-family: var(--font-body);
+  font-weight: 500;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: clamp(0.9rem, 3.6vw, 1rem);
+}
+
+.scenev2mweb-overlay__discover {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  /* Extra breathing room on top of the pair's own flex `gap` — Figma sits
+     this further from the paragraph than the heading/desc gap alone gives. */
+  margin-top: 12px;
+  width: fit-content;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.5);
+  text-underline-offset: 6px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.scenev2mweb-overlay__discover-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+/* Same downward-nudge chevron the intro hero's mobile "swipe down" cue uses
+   (.intro-hero-v3__scroll-down-icon), restated here rather than borrowed:
+   that class lives in IntroHeroV3.css, which this overlay must not depend on
+   being loaded.
+
+   Out of flow, pinned to the right edge of the caption block — the pair is
+   the containing block (see the JSX for why it is not the button). `bottom`
+   centres it on the Discover row, which is the pair's last child; the
+   loop's 8px nudge runs downward from there into the block's own bottom
+   padding, so it never collides with the copy above. */
+.scenev2mweb-overlay__discover-chevron {
+  position: absolute;
+  right: 0;
+  bottom: 6px;
+  display: block;
+  width: 12px;
+  height: 13px;
+  animation: scenev2mweb-overlay-discover-chevron 1.6s ease-in-out infinite;
+}
+
+@keyframes scenev2mweb-overlay-discover-chevron {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+
+  50% {
+    transform: translateY(4px);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scenev2mweb-overlay__discover-chevron {
+    animation: none;
+  }
+}

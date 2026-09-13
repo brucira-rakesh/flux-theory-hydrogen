@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useLenis } from 'lenis/react'
+import { getScrollLockTargets } from '../utils/scrollRoot'
 
 /**
  * Freezes page scroll for as long as `locked` is true, then hands control back.
@@ -17,10 +18,14 @@ import { useLenis } from 'lenis/react'
  *    one (a plain `window.scrollTo(0, 0)` doesn't touch it), so without this a
  *    tick that did get through would advance Lenis, and with it every
  *    ScrollTrigger reading off Lenis's tick.
- *  - `overflow: hidden` on html/body — stops native scrollbar drag, which
- *    reaches neither of the layers above. Note it does NOT stop Lenis: Lenis
- *    scrolls programmatically, and an overflow:hidden document still scrolls
- *    programmatically.
+ *  - `overflow: hidden` on whatever is actually scrolling — stops native
+ *    scrollbar drag, which reaches neither of the layers above. Note it does
+ *    NOT stop Lenis: Lenis scrolls programmatically, and an overflow:hidden
+ *    scroller still scrolls programmatically. The target comes from
+ *    getScrollLockTargets(): html+body when the document scrolls (desktop),
+ *    the inner scroll container when it doesn't (mobile — see
+ *    utils/scrollRoot.js). Freezing html/body in that mode would be a no-op,
+ *    since they are already frozen and are not the thing that moves.
  *
  * Ref-counted at module scope: several components can hold the lock over
  * overlapping windows (e.g. a preloader's boot and an intro reel that outlasts
@@ -29,8 +34,10 @@ import { useLenis } from 'lenis/react'
  * Lenis resumed — only once the last holder lets go.
  */
 let holders = 0
-let savedHtmlOverflow = ''
-let savedBodyOverflow = ''
+/** [element, savedInlineOverflow] for each element frozen by the first
+ *  acquire — captured at acquire time rather than recomputed on release, so
+ *  a scroll-root swap mid-lock can never restore the wrong element. */
+let lockedTargets = []
 
 /** Whether anything currently holds the scroll lock. Anyone who calls
  *  `lenis.start()` off its own bookkeeping has to check this first, or it will
@@ -75,12 +82,10 @@ const BLOCKED_EVENTS = ['wheel', 'touchmove', 'keydown']
 function acquire() {
   holders += 1
   if (holders > 1) return
-  const html = document.documentElement
-  const { body } = document
-  savedHtmlOverflow = html.style.overflow
-  savedBodyOverflow = body.style.overflow
-  html.style.overflow = 'hidden'
-  body.style.overflow = 'hidden'
+  lockedTargets = getScrollLockTargets().map((el) => [el, el.style.overflow])
+  for (const [el] of lockedTargets) {
+    el.style.overflow = 'hidden'
+  }
   for (const type of BLOCKED_EVENTS) {
     window.addEventListener(type, blockInput, { capture: true, passive: false })
   }
@@ -89,8 +94,10 @@ function acquire() {
 function release() {
   holders = Math.max(0, holders - 1)
   if (holders > 0) return
-  document.documentElement.style.overflow = savedHtmlOverflow
-  document.body.style.overflow = savedBodyOverflow
+  for (const [el, savedOverflow] of lockedTargets) {
+    el.style.overflow = savedOverflow
+  }
+  lockedTargets = []
   for (const type of BLOCKED_EVENTS) {
     window.removeEventListener(type, blockInput, { capture: true })
   }
@@ -102,6 +109,25 @@ function syncLenis(lenis) {
   if (!lenis) return
   if (holders > 0) lenis.stop()
   else lenis.start()
+}
+
+/**
+ * Imperative twin of useScrollLock, for holders whose lifetime isn't a React
+ * render — e.g. SeawaveSeq, which decides to freeze from inside a scroll probe.
+ * Deferring the acquire to an effect is not good enough there: CloudTransition
+ * drives its own rAF loop and can run in between, see `isScrollLocked()` still
+ * false, and start a competing wipe that fights for Lenis.
+ *
+ * Every acquire must be paired with exactly one release.
+ */
+export function acquireScrollLock(lenis) {
+  acquire()
+  syncLenis(lenis)
+}
+
+export function releaseScrollLock(lenis) {
+  release()
+  syncLenis(lenis)
 }
 
 export function useScrollLock(locked) {

@@ -1,0 +1,110 @@
+.hero__scroll-cue {
+  transform: translateY(0);
+  opacity: 0.85;
+  transition: opacity 0.2s linear;
+  animation: hero-scroll-cue-fade 0.9s ease 0.6s both;
+}
+
+/* Positioning context for the dot, which is a plain div rather than the
+   SVG's own <circle>: the wheel animation morphs it between a dot and a
+   vertical pill, and animating `height` + `border-radius` on a box is far
+   cheaper and steadier than animating an SVG circle's geometry. */
+.hero__scroll-cue-track {
+  position: relative;
+  display: block;
+  width: 26px;
+  height: 42px;
+}
+
+.hero__scroll-cue-svg {
+  display: block;
+}
+
+.hero__scroll-cue-dot {
+  position: absolute;
+  /* Centred on the 26px-wide capsule, starting just below its inner top. */
+  left: 10px;
+  top: 9px;
+  /* Width must match the wheel keyframes' resting height so the dot reads as
+     a true circle at rest; the radius stays large enough to keep both ends
+     fully rounded once it stretches into the pill. */
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background-color: white;
+  animation: hero-scroll-cue-wheel 2.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes hero-scroll-cue-fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Dot -> stretched pill -> dot -> fade out -> fade back in at the top.
+   The pill grows downward (the box's top edge is its layout anchor) while
+   translateY nudges it along, so the leading edge reaches the bottom of the
+   travel first and the trailing edge catches up. */
+@keyframes hero-scroll-cue-wheel {
+  0% {
+    height: 6px;
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  15% {
+    height: 6px;
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  45% {
+    height: 22px;
+    transform: translateY(2px);
+    opacity: 1;
+  }
+
+  70% {
+    height: 6px;
+    transform: translateY(18px);
+    opacity: 1;
+  }
+
+  85% {
+    height: 6px;
+    transform: translateY(18px);
+    opacity: 0;
+  }
+
+  /* Snap back to the start while fully transparent, then fade in. */
+  86% {
+    height: 6px;
+    transform: translateY(0);
+    opacity: 0;
+  }
+
+  100% {
+    height: 6px;
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__scroll-cue,
+  .hero__scroll-cue-dot {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero__scroll-cue {
+    display: none;
+  }
+}

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { prefersReducedMotion } from '../../hooks/useSpotlight'
+import { getScrollRoot } from '../../utils/scrollRoot'
 import './AnimatedTitle.css'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -82,8 +83,18 @@ function tokenizeLine(text, className, keyPrefix) {
 
 const BLUR_SWEEP_DEFAULTS = {
   visible: true,
-  /** Seconds for a full cycle (letter wave + pause). */
-  loop: 12,
+  /**
+   * Seconds for a full cycle (letter wave + pause) — lower means the wave
+   * repeats more often. The wave itself already takes
+   * `(charCount - 1) * step + letter` seconds to sweep across the title (see
+   * `used` in buildWave below); anything left over after that becomes idle
+   * pause before the next repeat (floored at 0.4s so it never reads as
+   * fully continuous). 12s left most titles sitting idle for 7-8s between
+   * repeats, which read as the wave barely playing at all — lowered
+   * globally so it repeats noticeably more often everywhere blurSweep is
+   * used, not just one caller.
+   */
+  loop: 5,
   /** Seconds for one letter's blur pulse (rise + long fall trail). */
   letter: 2.1,
   /** Delay between consecutive letter starts (smaller = denser trail). */
@@ -323,21 +334,14 @@ export default function AnimatedTitle({
           { opacity: 0, filter: 'blur(20px)', y: 0 },
           {
             ...reveal,
-            // fromTo defaults to immediateRender:true which fights ScrollTrigger
-            // and can leave mid-page titles stuck at the from state.
-            immediateRender: false,
             scrollTrigger: {
-              start: 'top 80%',
-              end: 'bottom top',
-              toggleActions: 'play none none none',
+              start: 'top top',
+              scroller: getScrollRoot() ?? undefined,
               ...raw,
               trigger: triggerEl,
             },
           },
         )
-
-        // Lenis / late layout: re-measure so in-view titles fire onEnter.
-        requestAnimationFrame(() => ScrollTrigger.refresh())
       } else {
         gsap.fromTo(
           targets,

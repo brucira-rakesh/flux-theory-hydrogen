@@ -1,0 +1,279 @@
+/* FooterV3 — Figma node 2810-2767: five-column nav band on dark, rain-beaded
+   glass, wordmark in the middle column. */
+
+.ftv3 {
+  --ftv3-heading: #ffffff;
+  --ftv3-ink: #cfe4f5;
+  --ftv3-ink-soft: rgba(255, 255, 255, 1);
+  --ftv3-deep: #102734;
+  --ftv3-title: var(--font-title, "Oswald", sans-serif);
+  --ftv3-body: var(--font-body, "Geist", sans-serif);
+
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  overflow: hidden;
+  background: var(--ftv3-deep);
+  color: var(--ftv3-ink);
+}
+
+/* The real artwork from the frame, cover-fit. Anchored `center top` rather
+   than centred: the plate's lit, beaded upper band is the part the frame
+   crops to, and the band is far shorter than the source's 2160x1350, so a
+   centred fit would push that lighting off-screen and leave the flat middle. */
+.ftv3__surface {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("../../assets/footer/footer-bg.webp");
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
+/* Scrim. The plate's top-left glow is light enough to eat the nav's contrast
+   on its own, so the band is darkened from the bottom up and the whole thing
+   pulled down a touch — the text keeps its ~7:1 against the lit corner. */
+.ftv3__surface::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(9, 24, 33, 0.28) 0%,
+    rgba(9, 24, 33, 0.34) 45%,
+    rgba(7, 19, 27, 0.62) 100%
+  );
+}
+
+/* The WebGL surface (FooterWaterGlass) reproduces the photo's own tones, then
+   adds its own beading on top — contact shading, rims and specular. That
+   shading darkens the plate on its own, so the full scrim over it lands
+   considerably darker than the source footer-bg.webp. Same shape, roughly
+   half the opacity. */
+.ftv3__surface--webgl::after {
+  background: linear-gradient(
+    180deg,
+    rgba(9, 24, 33, 0.12) 0%,
+    rgba(9, 24, 33, 0.16) 45%,
+    rgba(7, 19, 27, 0.32) 100%
+  );
+}
+
+/* `position: relative` with NO z-index on purpose. A z-index here would make
+   this a stacking context, which is an isolation boundary for blending — the
+   wordmark's mix-blend-mode would then composite against the empty inside of
+   this box instead of the plate behind it. Paint order is still correct
+   without it: .ftv3__surface is positioned and earlier in the DOM, so it
+   paints first. */
+.ftv3__inner {
+  position: relative;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: clamp(2.5rem, 4.5vw, 4rem) clamp(1.5rem, 4.5vw, 4.5rem) 18px;
+}
+
+/* Five equal columns — the wordmark sits in the middle one rather than being
+   absolutely centred, so it stays put as the nav columns reflow. */
+.ftv3__grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(1rem, 2.5vw, 2.5rem);
+  align-items: start;
+}
+
+.ftv3__title {
+  margin: 0 0 clamp(0.9rem, 1.4vw, 1.35rem);
+  font-family: var(--ftv3-title);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.8px;
+  text-transform: uppercase;
+  color: var(--ftv3-heading);
+}
+
+.ftv3__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.45rem, 0.7vw, 0.7rem);
+}
+
+.ftv3__link {
+  display: block;
+  font-family: var(--ftv3-body);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--ftv3-ink-soft);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.ftv3__link:hover {
+  color: #ffffff;
+}
+
+.ftv3__link:focus-visible {
+  outline: 2px solid var(--ftv3-ink);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.ftv3__brand {
+  display: flex;
+  justify-content: center;
+}
+
+/* The mark, not type — see FluxWordmark. Sized by width so the two stacked
+   lines keep the artwork's own proportions at every breakpoint.
+   
+   White, blended into the plate rather than tinted to a fixed blue: `overlay`
+   lifts the backdrop's luminance while keeping its hue, so the mark picks up
+   whatever the glass is doing behind it — the beading and the top-left glow
+   read straight through the letterforms. `.ftv3`'s `isolation: isolate` keeps
+   the blend from reaching the page behind the footer. */
+.ftv3__wordmark {
+  display: block;
+  width: clamp(76px, 8vw, 118px);
+  height: auto;
+  color: #ffffff;
+  mix-blend-mode: overlay;
+  user-select: none;
+}
+
+/* Bottom row from the frame (node 3013:3676 / 3013:3675) — © line and "Pay
+   Using:" sit at opposite ends of the same row on desktop, well below the
+   nav since the grid's own bottom padding is reserved for the glass
+   surface to fade out under. Below `lg` there's no room for two ends, so
+   they stack centred instead. */
+.ftv3__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 196px 0 0;
+}
+
+.ftv3__copyright {
+  font-family: var(--ftv3-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: #ffffff;
+  opacity: 0.7;
+}
+
+/* "Pay using" strip — same trademark-line font styling as .ftv3__copyright,
+   just laid out inline with the payment icons. */
+.ftv3__pay {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: var(--ftv3-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: #ffffff;
+  opacity: 0.7;
+}
+
+.ftv3__pay span {
+  white-space: nowrap;
+}
+
+.ftv3__pay img {
+  display: block;
+  height: 22px;
+  width: auto;
+}
+
+/* Below `lg` the five-across band can't hold — the wordmark leads, the four
+   nav columns fall to a two-up block underneath it. */
+@media (max-width: 1024px) {
+  /* Mobile gets its own plate crop straight from the frame (portrait,
+     393x852) rather than the desktop 2160x1350 photo cover-fit down —
+     the desktop crop loses too much of the beading at narrow widths. */
+  .ftv3__surface {
+    background-image: url("../../assets/footer/footer-bg-mb.png");
+  }
+
+  .ftv3__bottom {
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .ftv3__pay {
+    flex-wrap: nowrap;
+    padding: 0 8px;
+  }
+
+  .ftv3__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 30px 4px;
+  }
+
+  .ftv3__brand {
+    grid-column: 1 / -1;
+    order: -1;
+    justify-content: flex-center;
+    margin-bottom: 22px;
+  }
+
+  .ftv3__wordmark {
+    width: 176px;
+    height: 138px;
+  }
+
+  /* Titles pick up the wordmark's own glass-blend treatment on mobile
+     (Figma node 3013:3898) rather than the desktop's plain caption: a
+     blurred, blend-mode layer with a second blurred/dimmed layer stacked
+     on top, so the letters read as embossed into the plate rather than
+     printed over it. Reproduced from one heading via `::after` reading
+     `data-title` — same text twice without duplicating it in the DOM. */
+  .ftv3__title {
+    position: relative;
+    font-size: 28px;
+    line-height: 1.2;
+    letter-spacing: -1.12px;
+    filter: blur(0.3px);
+    mix-blend-mode: overlay;
+  }
+
+  .ftv3__title::after {
+    content: attr(data-title);
+    position: absolute;
+    inset: 0;
+    filter: blur(0.3px);
+    opacity: 0.46;
+  }
+
+  .ftv3__inner {
+    padding: 36px;
+  }
+}
+
+@media (max-width: 640px) {
+  .ftv3__list {
+    display: flex;
+    /* width: 84px; */
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .ftv3__copyright {
+    margin-top: 64px;
+  }
+
+  .ftv3__bottom {
+    margin-top: 0;
+  }
+}

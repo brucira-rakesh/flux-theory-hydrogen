@@ -34,6 +34,18 @@
   pointer-events: none;
 }
 
+/* Zero-height marker PageProgress reads for its "Shop" label — positioned
+   absolutely against .scene-v2__scroll-section's own (relative) box, at a
+   `top` set inline in Scene.v2.jsx from the same carouselOwnedVh formula
+   useProductPhase uses. Never affects layout or intercepts input. */
+.scene-v2__shop-marker {
+  position: absolute;
+  left: 0;
+  width: 1px;
+  height: 0;
+  pointer-events: none;
+}
+
 /* Lines up with MINIMAP_SIZE/MINIMAP_PAD in PostFX.jsx — the actual pixels
    come from a scissored gl.render() straight into the canvas, this is just
    a cosmetic border + label drawn on top of that rect. */
@@ -72,6 +84,26 @@
   pointer-events: none;
 }
 
+/* Bottom scrim behind the caption text — Figma node 2810:3331 ("Rectangle
+   54"): a transparent-to-black gradient pinned to the bottom edge, so the
+   heading/description stay legible over whatever's playing in the scene
+   behind them. Painted as ::before (not a sibling) so it lands behind the
+   caption pairs in document/paint order without needing an explicit
+   z-index on them. */
+.scene-v2__caption::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 24vh;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.85) 100%
+  );
+  pointer-events: none;
+}
+
 /* One per scene, permanently mounted and stacked directly on top of one
    another (inset: 0, not a flex row) — only opacity ever changes here, never
    a position, so the heading/desc below always land at the exact same spot no
@@ -94,9 +126,7 @@
    values, never flex-computed, so they can't drift depending on how long
    this scene's copy happens to be. */
 .scene-v2__caption-heading {
-  position: absolute;
-  left: clamp(1.5rem, 4vw, 4.5rem);
-  bottom: clamp(1.5rem, 6vh, 4.5rem);
+  position: static;
   margin: 0;
   max-width: 42vw;
   font-family: var(--font-title);
@@ -109,28 +139,23 @@
 }
 
 .scene-v2__caption-desc {
-  position: absolute;
-  right: clamp(1.5rem, 4vw, 4.5rem);
-  bottom: clamp(1.5rem, 6vh, 4.5rem);
-  margin: 0;
+
+  margin-left: auto;
   max-width: min(24rem, 30vw);
   font-family: var(--font-body);
-  font-weight: 500;
+  font-weight: 400;
   line-height: 1.35;
-  color: #fff;
-  text-align: right;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: left;
   font-size: clamp(0.9rem, 1.1vw, 1.15rem);
 }
 
 @media (max-width: 720px) {
+
   .scene-v2__caption-heading,
   .scene-v2__caption-desc {
     max-width: calc(100% - 3rem);
     text-align: left;
-  }
-
-  .scene-v2__caption-heading {
-    bottom: clamp(4.75rem, 16vh, 7.5rem);
   }
 
   .scene-v2__caption-desc {

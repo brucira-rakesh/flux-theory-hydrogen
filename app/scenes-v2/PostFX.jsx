@@ -12,6 +12,7 @@ import {
 import { N8AOPostPass } from "n8ao";
 import { useSceneEngine } from "./SceneEngineContext";
 import { DEFAULT_AO, DEFAULT_GRADE } from "./postFxDefaults";
+import { shouldRunHeavyPasses } from "./restGate";
 
 const MINIMAP_SIZE = 400;
 const MINIMAP_PAD = 20;
@@ -88,7 +89,9 @@ export default function PostFX({
     bloom.luminanceMaterial.threshold = target.threshold;
 
     const aoParams = ao ?? DEFAULT_AO;
-    aoPass.enabled = aoParams.enabled;
+    // Disable the pass, do not delete it — first rest frame after a swing
+    // must still have N8AO allocated. Motion and both wipes don't need AO.
+    aoPass.enabled = aoParams.enabled && shouldRunHeavyPasses({ progressRef });
     Object.assign(aoPass.configuration, {
       aoRadius: aoParams.aoRadius,
       distanceFalloff: aoParams.distanceFalloff,
@@ -104,7 +107,9 @@ export default function PostFX({
     vignette.offset = gradeParams.vignetteOffset;
     vignette.darkness = gradeParams.vignetteDarkness;
 
-    engine.update(gl, scene, camera, clock.getElapsedTime());
+    engine.update(gl, scene, camera, clock.getElapsedTime(), {
+      updateReflections: shouldRunHeavyPasses({ progressRef }),
+    });
     composer.render();
 
     // Debug picture-in-picture: composer.render() above already filled the
