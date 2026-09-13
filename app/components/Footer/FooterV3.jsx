@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
-import FluxWordmark from '../brand/FluxWordmark';
+import FluxWordmark from '../Brand/FluxWordmark';
 import { footerNavV3 } from '../../data/footerLinks';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
 import FooterWaterGlass from './FooterWaterGlass';
