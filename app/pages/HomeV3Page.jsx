@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef } from 'react';
 import { ReactLenis, useLenis } from 'lenis/react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -13,7 +13,6 @@ import HeaderV2 from '../components/Header/HeaderV2';
 import FooterV3 from '../components/Footer/FooterV3';
 import VideoHeroV3 from '../components/VideoHero/VideoHeroV3';
 import ProductV3 from '../components/ProductV3/ProductV3';
-import SceneV2 from '../Scene.v2';
 import Scenev2mweb from '../scenes-v2/mobile/Scenev2mweb';
 import { useDebugGui } from '../scenes-v2/useDebugGui';
 import { useIsDesktop } from '../hooks/useIsDesktop';
@@ -23,6 +22,9 @@ import {
   scrollRootTo,
   setElementScrollRoot,
 } from '../utils/scrollRoot';
+
+// Desktop-only carousel — keep Three/R3F out of the mobile HomeV3 chunk.
+const SceneV2 = lazy(() => import('../Scene.v2'));
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
 
@@ -238,15 +240,17 @@ export const HomeV3Page = ({productCards} = {}) => {
                     the last scene is switched off here, so scrolling on from
                     it hands straight to the cloud transition below
                     instead. */}
-                <SceneV2
-                  gui={gui}
-                  productEnabled={false}
-                  trailingHoldVh={HANDOFF_HOLD_VH + LAST_SCENE_EXIT_VH}
-                  // Centered scroll cue, drawn inside SceneV2's own pinned
-                  // overlay (see there) — the hero's cue lives in
-                  // IntroHeroV3's pin the same way.
-                  scrollCue
-                />
+                <Suspense fallback={null}>
+                  <SceneV2
+                    gui={gui}
+                    productEnabled={false}
+                    trailingHoldVh={HANDOFF_HOLD_VH + LAST_SCENE_EXIT_VH}
+                    // Centered scroll cue, drawn inside SceneV2's own pinned
+                    // overlay (see there) — the hero's cue lives in
+                    // IntroHeroV3's pin the same way.
+                    scrollCue
+                  />
+                </Suspense>
                 <div
                   ref={carouselToEndRef}
                   className="absolute left-0 w-px h-0"

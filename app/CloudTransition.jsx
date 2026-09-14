@@ -3,6 +3,7 @@ import { useLenis } from "lenis/react";
 import { prefersReducedMotion } from "./hooks/useSpotlight";
 import { isScrollLocked } from "./hooks/useScrollLock";
 import { getScrollY, scrollRootTo } from "./utils/scrollRoot";
+import { isDesktopViewport } from "./utils/breakpoint";
 import { overlayWipe } from "./overlayWipeState";
 import { scrollNavState } from "./utils/scrollNavState";
 import "./CloudTransition.css";
@@ -515,7 +516,8 @@ export default function CloudTransition({
     const start = performance.now();
 
     const syncSize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      const dprCap = isDesktopViewport() ? 1.5 : 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, dprCap);
       const w = Math.max(1, Math.floor(window.innerWidth * dpr));
       const h = Math.max(1, Math.floor(window.innerHeight * dpr));
       if (w !== state.width || h !== state.height) {

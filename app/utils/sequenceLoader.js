@@ -93,6 +93,29 @@ export function createSequenceLoader({ frameCount, getFramePath, concurrency = P
   }
 
   /**
+   * Builds a 0..frameCount-1 index list, optionally starting with `order`
+   * (deduped) so priority ranges load before the rest of the reel.
+   */
+  function resolveLoadOrder(order) {
+    if (!order?.length) {
+      return Array.from({ length: frameCount }, (_, i) => i)
+    }
+    const seen = new Set()
+    const indices = []
+    for (const raw of order) {
+      const index = Math.round(raw)
+      if (index < 0 || index >= frameCount || seen.has(index)) continue
+      seen.add(index)
+      indices.push(index)
+    }
+    for (let i = 0; i < frameCount; i += 1) {
+      if (seen.has(i)) continue
+      indices.push(i)
+    }
+    return indices
+  }
+
+  /**
    * Loads every frame with bounded concurrency.
    *
    * Resolves once `readyCount` frames have settled (loaded or failed) so a
@@ -101,22 +124,26 @@ export function createSequenceLoader({ frameCount, getFramePath, concurrency = P
    * on this same instance. Omit `readyCount` (or pass >= frameCount) to
    * wait for the full sequence, matching the original behaviour.
    *
+   * Pass `order` to prioritize specific indices (e.g. current + next scene
+   * ranges) before filling the rest of the sequence in ascending order.
+   *
    * onProgress fires as (index, ratio) against the FULL frameCount, so a
    * progress bar still tracks the real download even after the gate trips.
    */
-  function preloadSequence(onProgress, { readyCount } = {}) {
+  function preloadSequence(onProgress, { readyCount, order } = {}) {
     if (frameCount <= 0) return Promise.resolve()
 
+    const indices = resolveLoadOrder(order)
     const gateAt = Math.min(
-      frameCount,
-      Math.max(1, readyCount ?? frameCount),
+      indices.length,
+      Math.max(1, readyCount ?? indices.length),
     )
     let settledCount = 0
     let gated = false
 
     return new Promise((resolve) => {
       let inFlight = 0
-      let nextIndex = 0
+      let cursor = 0
 
       const tripGate = () => {
         if (gated || settledCount < gateAt) return
@@ -125,14 +152,14 @@ export function createSequenceLoader({ frameCount, getFramePath, concurrency = P
       }
 
       const pump = () => {
-        if (nextIndex >= frameCount && inFlight === 0) {
+        if (cursor >= indices.length && inFlight === 0) {
           tripGate()
           return
         }
 
-        while (inFlight < concurrency && nextIndex < frameCount) {
-          const index = nextIndex
-          nextIndex += 1
+        while (inFlight < concurrency && cursor < indices.length) {
+          const index = indices[cursor]
+          cursor += 1
           inFlight += 1
 
           loadFrame(index).then((img) => {

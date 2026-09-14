@@ -35,10 +35,10 @@ export default function ProductV3Card({
   return (
     <article
       ref={ref}
-      className={`relative flex w-full flex-col overflow-hidden will-change-transform ${className}`}
+      className={`relative flex w-full flex-col overflow-hidden lg:will-change-transform ${className}`}
     >
       <div
-        className="absolute inset-0 border border-white/[0.16] bg-white/[0.16] backdrop-blur-[12.85px] sm:border-0 sm:bg-[rgba(140,174,191,0.5)] sm:backdrop-blur-[57.5px]"
+        className="absolute inset-0 border border-white/[0.16] bg-white/[0.22] sm:border-0 sm:bg-[rgba(140,174,191,0.55)] lg:bg-[rgba(140,174,191,0.5)] lg:backdrop-blur-[57.5px]"
         aria-hidden="true"
       />
 
@@ -47,6 +47,8 @@ export default function ProductV3Card({
           src={product.image}
           alt={product.name}
           draggable={false}
+          loading="lazy"
+          decoding="async"
           className="relative z-10 h-[142px] w-auto object-contain sm:h-[82%]"
         />
       </div>

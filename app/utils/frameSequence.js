@@ -1,6 +1,10 @@
 import { FRAME_COUNT, getFramePath } from '../data/highlights'
+import { isDesktopViewport } from './breakpoint'
 
 const MAX_DPR = 1.5
+/** Phones paint full-bleed sequences every frame — 1× DPR keeps drawImage
+ *  cheaper without a visible quality hit at arm's length. */
+const MAX_DPR_MOBILE = 1
 const PRELOAD_CONCURRENCY = 6
 
 export function prefersReducedMotion() {
@@ -133,7 +137,8 @@ export function createFrameCache(frameCount = FRAME_COUNT) {
 }
 
 export function setupCanvas(canvas, container, ctxRef) {
-  const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR)
+  const dprCap = isDesktopViewport() ? MAX_DPR : MAX_DPR_MOBILE
+  const dpr = Math.min(window.devicePixelRatio || 1, dprCap)
   const width = container.clientWidth
   const height = container.clientHeight
   // Not laid out yet — caller should retry on resize / next frame.

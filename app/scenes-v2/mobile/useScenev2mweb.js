@@ -7,6 +7,8 @@ import {
   SWIPE_DEAD_ZONE_PX,
   TRANSITION_DURATION_SEC,
   getMwebHeroFramePath,
+  getMwebPreloadOrder,
+  getMwebReadyCount,
 } from "../../data/mwebHeroSequence";
 import {
   drawFrameCover,
@@ -81,6 +83,15 @@ const PIN_LOOKAHEAD_FRAMES = 2;
  *  should land on the line exactly rather than jump the last few pixels. */
 const PIN_LOOKAHEAD_MIN_VELOCITY_PX = 12;
 
+/** Start downloading frames once the section is within this many viewports
+ *  of the screen — not at first paint of the whole HomeV3 tree, so intro
+ *  decode work is not competing with 383 mweb webps from boot. */
+const PRELOAD_ROOT_MARGIN = "150% 0px";
+
+/** Keep the idle loop alive only while the section is actually near the
+ *  viewport. Offscreen (Product / Video / Footer) cancels rAF entirely. */
+const PAINT_ROOT_MARGIN = "25% 0px";
+
 /** Decelerating ease — the commit lands softly on the target frame instead
  *  of snapping to a stop at a constant rate. */
 function easeOutCubic(t) {
@@ -138,6 +149,14 @@ export function useScenev2mweb() {
   const [ready, setReady] = useState(false);
   const [activeSceneIndex, setActiveSceneIndex] = useState(0);
   const isReducedMotion = prefersReducedMotion();
+  /** True once the section has approached the viewport — starts the
+   *  deferred frame preload. Sticky once tripped so a brief scroll past
+   *  does not cancel an in-flight download. */
+  const [preloadArmed, setPreloadArmed] = useState(false);
+  /** Section intersects (with PAINT_ROOT_MARGIN). Drives whether the idle
+   *  rAF loop is allowed to run at all. */
+  const [nearViewport, setNearViewport] = useState(true);
+  const nearViewportRef = useRef(true);
 
   // -- pin bookkeeping -----------------------------------------------------
   // `pinned` is the state copy for rendering (it drives touch-action, see
@@ -171,6 +190,14 @@ export function useScenev2mweb() {
    * user never reaches ProductV3.
    */
   const forwardExitRef = useRef(null);
+  /**
+   * Last-scene forward exit (window touchmove / wheel) must not fire on the
+   * same gesture that just re-pinned us from ProductV3. That scroll-up is
+   * also an upward finger move; without this latch it called unpin(1) on the
+   * next touchmove and snapped the grid back into view.
+   * Armed only by a touchstart/wheel that begins while already pinned.
+   */
+  const lastSceneExitArmedRef = useRef(false);
   /** Scroll offset at which the section's top sits on the viewport top —
    *  the position the pin snaps to and holds. */
   const lockYRef = useRef(0);
@@ -192,9 +219,57 @@ export function useScenev2mweb() {
     lenisRef.current = lenis ?? null;
   }, [ready, lenis]);
 
+  // -- approach / visibility -----------------------------------------------
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setPreloadArmed(true);
+      return undefined;
+    }
+    // HomeV3 mobile scrolls `[data-scroll-root]`, not the document. A null
+    // root + rootMargin does not see "upcoming" content inside that
+    // overflow port — observe the scroller itself so 150% margin works.
+    const scrollRoot = getScrollRoot();
+    const root = scrollRoot instanceof Element ? scrollRoot : null;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setPreloadArmed(true);
+        io.disconnect();
+      },
+      { root, rootMargin: PRELOAD_ROOT_MARGIN },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      nearViewportRef.current = true;
+      setNearViewport(true);
+      return undefined;
+    }
+    const scrollRoot = getScrollRoot();
+    const root = scrollRoot instanceof Element ? scrollRoot : null;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        const near = Boolean(entry?.isIntersecting);
+        nearViewportRef.current = near;
+        setNearViewport(near);
+      },
+      { root, rootMargin: PAINT_ROOT_MARGIN },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   // -- preload ---------------------------------------------------------------
 
   useEffect(() => {
+    if (!preloadArmed) return undefined;
+
     const loader = createSequenceLoader({
       frameCount: FRAME_COUNT,
       getFramePath: getMwebHeroFramePath,
@@ -202,19 +277,23 @@ export function useScenev2mweb() {
     loaderRef.current = loader;
     let cancelled = false;
 
-    // Gate on the first 20 frames only — enough to cover the first scene's
-    // idle loop range — so the canvas paints something as soon as it can
-    // instead of sitting blank until all 383 frames finish downloading.
-    // The rest keep loading in the background on this same loader instance.
-    loader.preloadSequence(undefined, { readyCount: 20 }).then(() => {
-      if (!cancelled) setReady(true);
-    });
+    // Gate on the first scene's idle loop only — canvas paints ASAP. Load
+    // order prefers every scene's loop, then whip ranges, so a forward
+    // swipe finds frames without waiting on the whole 383-frame download.
+    loader
+      .preloadSequence(undefined, {
+        readyCount: getMwebReadyCount(),
+        order: getMwebPreloadOrder(),
+      })
+      .then(() => {
+        if (!cancelled) setReady(true);
+      });
 
     return () => {
       cancelled = true;
       loaderRef.current = null;
     };
-  }, []);
+  }, [preloadArmed]);
 
   // -- paint -------------------------------------------------------------
 
@@ -294,7 +373,45 @@ export function useScenev2mweb() {
   useEffect(() => {
     if (isReducedMotion) return undefined;
 
+    // Offscreen and not holding the pin: do not keep a 24fps canvas alive
+    // while the user scrolls Product / Video / Footer.
+    if (!nearViewport && !pinned) {
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      lastTsRef.current = 0;
+      return undefined;
+    }
+
+    // Near the viewport but unpinned and idle: freeze on the last painted
+    // frame. Only the pin / an in-flight commit needs the continuous loop.
+    const loopActive = () =>
+      pinnedRef.current || phaseRef.current === "committing";
+
+    if (!loopActive()) {
+      paint();
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      lastTsRef.current = 0;
+      return undefined;
+    }
+
     const tick = (timestamp) => {
+      if (!nearViewportRef.current && !pinnedRef.current) {
+        rafRef.current = null;
+        lastTsRef.current = 0;
+        return;
+      }
+      if (!loopActive()) {
+        paint();
+        rafRef.current = null;
+        lastTsRef.current = 0;
+        return;
+      }
+
       const dtMs = lastTsRef.current
         ? Math.min(timestamp - lastTsRef.current, 64)
         : 16.67;
@@ -314,8 +431,17 @@ export function useScenev2mweb() {
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
+      lastTsRef.current = 0;
     };
-  }, [ready, isReducedMotion, stepIdle, stepCommitting, paint]);
+  }, [
+    ready,
+    isReducedMotion,
+    nearViewport,
+    pinned,
+    stepIdle,
+    stepCommitting,
+    paint,
+  ]);
 
   // -- pin -----------------------------------------------------------------
 
@@ -424,6 +550,10 @@ export function useScenev2mweb() {
         pinY ?? Math.round(getScrollY() + el.getBoundingClientRect().top);
       pinnedRef.current = true;
       setPinned(true);
+      // The scroll/fling that carried us onto this pin must not also count
+      // as "swipe up to leave the last scene" — that was snapping ProductV3
+      // back into view the moment the user scrolled up into the sequence.
+      lastSceneExitArmedRef.current = false;
       // The reading that got us here must not survive into the next
       // approach, or a stale projection could re-pin off it — see the probe.
       velocityRef.current = 0;
@@ -479,6 +609,7 @@ export function useScenev2mweb() {
       setPinned(false);
       velocityRef.current = 0;
       armedDownRef.current = false;
+      lastSceneExitArmedRef.current = false;
 
       const el = containerRef.current;
       const height = el?.offsetHeight ?? window.innerHeight;
@@ -830,16 +961,31 @@ export function useScenev2mweb() {
     // iOS often cancels pointerup so the element handler never sees it.
     let windowTouchStartY = null;
     const onWindowTouchStart = (event) => {
+      // Only a gesture that BEGINS while pinned can exit the last scene.
+      // A scroll-up from ProductV3 starts unpinned, then re-pins mid-touch —
+      // that same finger move must not be read as "swipe up for next".
+      if (!pinnedRef.current) {
+        windowTouchStartY = null;
+        lastSceneExitArmedRef.current = false;
+        return;
+      }
       windowTouchStartY = event.touches?.[0]?.clientY ?? null;
+      lastSceneExitArmedRef.current = true;
     };
     const exitIfLastScene = (forward) => {
       if (!forward || !pinnedRef.current || !ready) return false;
+      if (!lastSceneExitArmedRef.current) return false;
       if (phaseRef.current !== "idle") return false;
       if (sceneIndexRef.current < SCENES.length - 1) return false;
+      lastSceneExitArmedRef.current = false;
       unpin(1);
       return true;
     };
     const onWindowTouchMove = (event) => {
+      if (!pinnedRef.current) {
+        windowTouchStartY = null;
+        return;
+      }
       const y = event.touches?.[0]?.clientY;
       if (y == null || windowTouchStartY == null) return;
       const movedUp = windowTouchStartY - y;
@@ -850,7 +996,12 @@ export function useScenev2mweb() {
       event.stopImmediatePropagation();
     };
     const onWindowWheel = (event) => {
+      // Wheel gestures don't share a touchstart — arm on the first downward
+      // tick while pinned so a scroll-up into the pin cannot exit, but a
+      // deliberate scroll-down on the last scene still can.
       if (event.deltaY <= 0) return;
+      if (!pinnedRef.current) return;
+      lastSceneExitArmedRef.current = true;
       if (!exitIfLastScene(true)) return;
       if (event.cancelable) event.preventDefault();
       event.stopImmediatePropagation();
