@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import SiteHeader from '~/components/ProductShelf/SiteHeader'
-import Footer from '~/components/Footer/Footer'
+import FooterV3 from '~/components/Footer/FooterV3'
 import PdpHero from '~/components/PDP/PdpHero'
 import PdpDescription from '~/components/PDP/PdpDescription'
 import PdpAccordion from '~/components/PDP/PdpAccordion'
@@ -238,7 +238,7 @@ export default function ProductPage({
         className="pdp-footer-sentinel"
         aria-hidden="true"
       />
-      <Footer />
+      <FooterV3 />
       <p className="visually-hidden">
         <a href={HOME_URL} className="visually-hidden">
           Back to home

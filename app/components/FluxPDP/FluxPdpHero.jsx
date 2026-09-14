@@ -146,11 +146,22 @@ export default function FluxPdpHero({
    * the sticky buy-box's own overflow, so both sides move together while the
    * hero is sticky. Wheel on the buy box is forwarded to the window so the
    * left column advances too.
+   *
+   * The gallery slider (left side) needs the same forwarding the other way:
+   * it's `overflow-x: auto` with scroll-snap and `data-lenis-prevent`, which
+   * stops Lenis from touching it so its own horizontal scroll/swipe works —
+   * but that also means a vertical wheel/trackpad gesture that starts over it
+   * never reaches the page (browsers commonly claim the whole gesture for a
+   * horizontally-scrollable element under the cursor, not just its X axis),
+   * so scrolling the page was only possible from the right column. Only a
+   * mostly-vertical gesture is forwarded — a mostly-horizontal one still
+   * drives the gallery's own scroll-snap natively.
    */
   useEffect(() => {
     const hero = heroRef.current;
     const info = infoRef.current;
-    if (!hero || !info || typeof window === 'undefined') return undefined;
+    const slider = sliderRef.current;
+    if (!hero || !info || !slider || typeof window === 'undefined') return undefined;
 
     const STICKY_TOP = 88;
     const mq = window.matchMedia('(max-width: 900px)');
@@ -178,16 +189,26 @@ export default function FluxPdpHero({
       window.scrollBy({top: event.deltaY, left: 0, behavior: 'auto'});
     };
 
+    const onWheelSlider = (event) => {
+      if (mq.matches) return;
+      // A mostly-horizontal gesture keeps driving the gallery's own scroll.
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      event.preventDefault();
+      window.scrollBy({top: event.deltaY, left: 0, behavior: 'auto'});
+    };
+
     syncInfoToPage();
     window.addEventListener('scroll', syncInfoToPage, {passive: true});
     window.addEventListener('resize', syncInfoToPage);
     info.addEventListener('wheel', onWheelInfo, {passive: false});
+    slider.addEventListener('wheel', onWheelSlider, {passive: false});
     mq.addEventListener?.('change', syncInfoToPage);
 
     return () => {
       window.removeEventListener('scroll', syncInfoToPage);
       window.removeEventListener('resize', syncInfoToPage);
       info.removeEventListener('wheel', onWheelInfo);
+      slider.removeEventListener('wheel', onWheelSlider);
       mq.removeEventListener?.('change', syncInfoToPage);
     };
   }, [product.id, details, activeOffers?.length, relatedProducts?.length]);

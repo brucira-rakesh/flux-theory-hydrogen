@@ -39,7 +39,7 @@
   /* Equals --pdp-fluid above 1440; below that, full width of the viewport. */
   width: min(100%, var(--pdp-fluid));
   margin: 0 auto;
-  padding: 88px 22px 44px;
+  padding: 80px 22px 40px;
   box-sizing: border-box;
 }
 

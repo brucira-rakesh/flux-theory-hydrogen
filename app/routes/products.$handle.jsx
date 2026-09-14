@@ -11,7 +11,7 @@ import FluxPdpGiftBanner from '~/components/FluxPDP/FluxPdpGiftBanner';
 import FluxPdpHero from '~/components/FluxPDP/FluxPdpHero';
 import FluxPdpReviewCta from '~/components/FluxPDP/FluxPdpReviewCta';
 import FluxPdpTestimonial from '~/components/FluxPDP/FluxPdpTestimonial';
-import Footer from '~/components/Footer/Footer';
+import FooterV3 from '~/components/Footer/FooterV3';
 import SmoothScroll from '~/components/SmoothScroll/SmoothScroll';
 import PdpAccordion from '~/components/PDP/PdpAccordion';
 import PdpLifestyle from '~/components/PDP/PdpLifestyle';
@@ -443,7 +443,7 @@ export default function FluxPdp() {
           className="pdp-footer-sentinel"
           aria-hidden="true"
         />
-        <Footer />
+        <FooterV3 />
       </div>
     </SmoothScroll>
   );

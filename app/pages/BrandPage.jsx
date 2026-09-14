@@ -1,6 +1,6 @@
 import {useRef} from 'react';
 import SiteHeader from '~/components/ProductShelf/SiteHeader';
-import Footer from '~/components/Footer/Footer';
+import FooterV3 from '~/components/Footer/FooterV3';
 import AnimatedTitle from '~/components/AnimatedTitle/AnimatedTitle';
 import BrandShiftLockup from '~/components/Brand/BrandShiftLockup';
 import {
@@ -127,7 +127,7 @@ export default function BrandPage() {
         </section>
       </main>
 
-      <Footer />
+      <FooterV3 />
     </div>
   );
 }

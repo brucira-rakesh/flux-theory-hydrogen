@@ -9,7 +9,12 @@ import {
   useRouteLoaderData,
 } from 'react-router';
 import favicon from '~/assets/favicon.svg';
-import {FOOTER_QUERY, HEADER_QUERY, MENU_QUERY} from '~/lib/fragments';
+import {
+  FOOTER_MENUS_QUERY,
+  FOOTER_QUERY,
+  HEADER_QUERY,
+  MENU_QUERY,
+} from '~/lib/fragments';
 import resetStyles from '~/styles/reset.css?url';
 import appStyles from '~/styles/app.css?url';
 import tailwindCss from './styles/tailwind.css?url';
@@ -42,6 +47,19 @@ function isBrandedPath(pathname) {
   if (pathname === '/account' || pathname.startsWith('/account/')) return true;
   return false;
 }
+
+/**
+ * FooterV3's four columns each read from their own Shopify menu, by handle,
+ * so merchants can edit each column from Admin. A handle with no menu
+ * created yet resolves to `null` in the query — FooterV3 falls back to its
+ * static column for that slot.
+ */
+const FOOTER_MENU_HANDLES = {
+  shopAllHandle: 'footer_shop_all',
+  knowMoreHandle: 'footer_know_more',
+  supportHandle: 'footer_support',
+  getInTouchHandle: 'footer_get_in_touch',
+};
 
 /**
  * This is important to avoid re-fetching root queries on sub-navigations
@@ -110,17 +128,26 @@ export async function loader(args) {
     const {storefront} = args.context;
     // Nav menus change in Admin — CacheShort so removals/additions show up
     // quickly instead of sticking for weeks under CacheLong.
-    const navMenu = await storefront
-      .query(MENU_QUERY, {
-        cache: storefront.CacheShort(),
-        variables: {menuHandle: 'main-menu'},
-      })
-      .catch(() => null);
+    const [navMenu, footerMenus] = await Promise.all([
+      storefront
+        .query(MENU_QUERY, {
+          cache: storefront.CacheShort(),
+          variables: {menuHandle: 'main-menu'},
+        })
+        .catch(() => null),
+      storefront
+        .query(FOOTER_MENUS_QUERY, {
+          cache: storefront.CacheShort(),
+          variables: FOOTER_MENU_HANDLES,
+        })
+        .catch(() => null),
+    ]);
 
     return {
       branded: true,
       header: navMenu?.menu ? {menu: navMenu.menu} : null,
       footer: null,
+      footerMenus: footerMenus ?? null,
       // Shop + PDP cart drawer needs the Hydrogen cart even without PageLayout.
       cart: args.context.cart.get(),
       isLoggedIn: args.context.customerAccount.isLoggedIn(),

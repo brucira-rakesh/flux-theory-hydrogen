@@ -1,29 +1,21 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { IconBag, IconClose, IconMenu, IconUser, Logo } from "./icons";
+import { Link, useLocation, useRouteLoaderData } from "react-router-dom";
+import { IconBag, IconClose, IconMenu, IconSearch, IconUser, Logo } from "./icons";
+import { LoggedInState } from "./LoggedInState";
+import { HeaderSearch } from "./HeaderSearch";
+import { useCartDrawer } from "../Cart/CartProvider";
+import { useNavLinks, resolveActiveId } from "../../lib/navMenu";
 
-const NAV_LINKS = [
-  {
-    id: "shop",
-    label: "Shop All",
-    href: "https://flux-theory-d2c63d2ddaa74f662da3.o2.myshopify.dev/shop",
-  },
+/** Fallback links used when the Shopify menu hasn't been configured yet. */
+const FALLBACK_NAV_LINKS = [
+  { id: "shop", label: "Shop All", to: "/shop" },
   { id: "gifting", label: "Gifting", href: "#gifting" },
-  { id: "about", label: "About Us", href: "#about" },
+  { id: "about", label: "About Us", to: "/about-us" },
 ];
 
 const ICON_BTN =
   "grid size-8 place-items-center appearance-none border-0 bg-transparent p-0 text-inherit " +
   "cursor-pointer transition-opacity duration-200 hover:opacity-75 focus-visible:opacity-75 sm:size-6";
-
-function resolveActiveId(pathname, hash) {
-  if (pathname.startsWith("/shop/body")) return "body";
-  if (pathname.startsWith("/shop/face")) return "face";
-  if (pathname === "/shop") return "shop";
-  const id = (hash || "").replace(/^#/, "");
-  if (id && NAV_LINKS.some((link) => link.id === id)) return id;
-  return null;
-}
 
 /**
  * Header V2 — floating logo + glass/solid nav cluster. Always visible once
@@ -46,13 +38,17 @@ export default function HeaderV2({
   mode = "light",
   visible = true,
 }) {
+  const rootData = useRouteLoaderData("root");
+  const navLinks = useNavLinks(rootData, FALLBACK_NAV_LINKS);
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const [, setSearching] = useState(false);
   const drawerId = useId();
   const closeBtnRef = useRef(null);
   const menuBtnRef = useRef(null);
-  const activeId = resolveActiveId(location.pathname, location.hash);
+  const activeId = resolveActiveId(location.pathname, location.hash, navLinks);
   const isGlass = mode === "light";
+  const { openCart } = useCartDrawer();
 
   useEffect(() => {
     if (!open) return undefined;
@@ -111,7 +107,7 @@ export default function HeaderV2({
               aria-label="Primary"
               className="hidden items-center gap-8 min-[961px]:flex"
             >
-              {NAV_LINKS.map((link) => {
+              {navLinks.map((link) => {
                 const isActive = link.id === activeId;
                 const linkClassName = `inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-normal uppercase text-inherit no-underline transition-opacity duration-200 [font-family:var(--font-body)] ${
                   isActive
@@ -142,13 +138,30 @@ export default function HeaderV2({
             </nav>
 
             <div className="flex items-center gap-4 sm:gap-6">
-              <button type="button" aria-label="Account" className={ICON_BTN}>
-                <IconUser className="size-5 sm:h-3 sm:w-[13px]" />
-              </button>
+              <HeaderSearch
+                toggleClassName={ICON_BTN}
+                toggle={<IconSearch className="size-5 sm:h-3 sm:w-[13px]" />}
+                onOpenChange={(next) => {
+                  setSearching(next);
+                  if (next) setOpen(false);
+                }}
+              />
+              <LoggedInState>
+                {(isLoggedIn) => (
+                  <Link
+                    to="/account"
+                    aria-label={isLoggedIn ? "Account" : "Sign in"}
+                    className={ICON_BTN}
+                  >
+                    <IconUser className="size-5 sm:h-3 sm:w-[13px]" />
+                  </Link>
+                )}
+              </LoggedInState>
               <button
                 type="button"
                 aria-label="Shopping bag"
                 className={ICON_BTN}
+                onClick={openCart}
               >
                 <IconBag className="size-5 sm:h-3 sm:w-3.5" />
               </button>
@@ -211,7 +224,7 @@ export default function HeaderV2({
           </div>
 
           <ul className="m-0 flex list-none flex-col gap-1 p-0">
-            {NAV_LINKS.map((link) => {
+            {navLinks.map((link) => {
               const linkClassName =
                 `flex items-center justify-between py-3.5 text-2xl font-semibold uppercase ` +
                 `tracking-wide no-underline transition-opacity duration-200 [font-family:var(--font-title)] hover:opacity-70 sm:text-3xl ` +
@@ -242,6 +255,26 @@ export default function HeaderV2({
                 </li>
               );
             })}
+            <li>
+              <LoggedInState>
+                {(isLoggedIn) => (
+                  <Link
+                    to="/account"
+                    tabIndex={open ? 0 : -1}
+                    onClick={closeDrawer}
+                    className={
+                      `flex items-center justify-between py-3.5 text-2xl font-semibold uppercase ` +
+                      `tracking-wide no-underline transition-opacity duration-200 [font-family:var(--font-title)] hover:opacity-70 sm:text-3xl ` +
+                      (isGlass
+                        ? "border-b border-white/10 text-white"
+                        : "border-b border-black/10 text-black")
+                    }
+                  >
+                    {isLoggedIn ? "Account" : "Sign In"}
+                  </Link>
+                )}
+              </LoggedInState>
+            </li>
           </ul>
         </nav>
       </div>

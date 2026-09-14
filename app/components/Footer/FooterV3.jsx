@@ -1,10 +1,10 @@
 import clsx from 'clsx';
-import { useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useRouteLoaderData } from 'react-router-dom';
 import FluxWordmark from '../Brand/FluxWordmark';
 import { footerNavV3 } from '../../data/footerLinks';
 import { useIsDesktop } from '../../hooks/useIsDesktop';
-import FooterWaterGlass from './FooterWaterGlass';
+import { footerLinksFromMenu } from '../../lib/navMenu';
 import paymentsImg from '../../assets/footer/payments.svg';
 import './FooterV3.css';
 
@@ -45,11 +45,42 @@ function FooterLink({ href, className, children }) {
  */
 export default function FooterV3({ className = '' }) {
   const [shopAll, knowMore, support, getInTouch] = footerNavV3;
-  const leftNav = [shopAll, knowMore];
-  const rightNav = [support, getInTouch];
+  const rootData = useRouteLoaderData('root');
+  const footerMenus = rootData?.footerMenus;
+
+  // Each column pulls from its own Shopify menu by handle (see
+  // FOOTER_MENU_HANDLES in root.jsx) and falls back to the static column
+  // above when that menu hasn't been created in Admin yet.
+  const withMenu = (column, menu) => ({
+    ...column,
+    links: footerLinksFromMenu(menu) ?? column.links,
+  });
+  const leftNav = [
+    withMenu(shopAll, footerMenus?.shopAll),
+    withMenu(knowMore, footerMenus?.knowMore),
+  ];
+  const rightNav = [
+    withMenu(support, footerMenus?.support),
+    withMenu(getInTouch, footerMenus?.getInTouch),
+  ];
   const isDesktop = useIsDesktop();
   const showWebglSurface = USE_WEBGL_SURFACE && isDesktop;
   const footerRef = useRef(null);
+
+  // Dynamic import (not a static one) so `@react-three/fiber`/`three-stdlib`
+  // never enter the SSR module graph for the many non-homepage routes that
+  // render this footer statically — only the browser ever needs this chunk.
+  const [FooterWaterGlass, setFooterWaterGlass] = useState(null);
+  useEffect(() => {
+    if (!showWebglSurface || FooterWaterGlass) return;
+    let cancelled = false;
+    import('./FooterWaterGlass').then((mod) => {
+      if (!cancelled) setFooterWaterGlass(() => mod.default);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showWebglSurface, FooterWaterGlass]);
 
   return (
     <footer ref={footerRef} className={clsx('ftv3', className)} aria-label="Site footer">
@@ -68,7 +99,7 @@ export default function FooterV3({ className = '' }) {
           only ever see moves in the empty margins around it. pointermove
           bubbles, so a listener on the ancestor footer still fires no
           matter which descendant was actually hit. */}
-      {showWebglSurface ? (
+      {showWebglSurface && FooterWaterGlass ? (
         <FooterWaterGlass
           className="ftv3__surface ftv3__surface--webgl"
           pointerTargetRef={footerRef}

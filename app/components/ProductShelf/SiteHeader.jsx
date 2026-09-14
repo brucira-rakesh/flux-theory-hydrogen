@@ -10,6 +10,7 @@ import { useSmoothScrollLock } from '../SmoothScroll/SmoothScroll'
 import { FACE_FILTER_ENABLED } from '../../data/shop'
 import { HOME_URL, isExternalUrl } from '../../data/site'
 import { useCartDrawer } from '../Cart/CartProvider'
+import { useNavLinks, resolveActiveId } from '../../lib/navMenu'
 import './ProductShelf.css'
 
 /** Fallback links used when the Shopify menu hasn't been configured yet. */
@@ -19,49 +20,6 @@ const FALLBACK_NAV_LINKS = [
   ...(FACE_FILTER_ENABLED ? [{ id: 'face', label: 'Face', to: '/shop/face' }] : []),
   { id: 'brand', label: 'The Brand', to: '/the-brand' },
 ]
-
-/**
- * Convert a Shopify menu item to the internal nav link shape.
- * Shopify URLs are absolute (https://store.myshopify.com/...) — strip the
- * origin so React Router's <Link to> receives a relative path.
- * Items that resolve to an external domain keep their full URL and use <a>.
- */
-function menuItemToNavLink(item) {
-  let to = null
-  let href = null
-
-  try {
-    const parsed = new URL(item.url)
-    const isInternal =
-      parsed.hostname.endsWith('.myshopify.com') ||
-      parsed.hostname === window?.location?.hostname
-    if (isInternal) {
-      to = parsed.pathname + parsed.search + parsed.hash
-    } else {
-      href = item.url
-    }
-  } catch {
-    // Relative or hash-only URLs (e.g. "#brand") — use as-is
-    if (item.url.startsWith('#') || item.url.startsWith('/')) {
-      to = item.url.startsWith('#') ? undefined : item.url
-      href = item.url.startsWith('#') ? item.url : undefined
-    }
-  }
-
-  return {
-    id: item.id,
-    label: item.title,
-    ...(to ? { to } : {}),
-    ...(href ? { href } : {}),
-  }
-}
-
-/** Derive nav links from the Shopify menu, falling back to hardcoded list. */
-function useNavLinks(rootData) {
-  const menuItems = rootData?.header?.menu?.items
-  if (menuItems?.length) return menuItems.map(menuItemToNavLink)
-  return FALLBACK_NAV_LINKS
-}
 
 function IconMenu() {
   return (
@@ -105,64 +63,6 @@ function HeaderIcon({ src, label, width, height, onClick, to, loggedIn }) {
   )
 }
 
-function navPath(to) {
-  const raw = String(to || '').split('#')[0].split('?')[0]
-  if (raw === '/collections/shop-all' || raw === '/collections/all') return '/shop'
-  const collection = raw.match(/^\/collections\/([^/]+)\/?$/)
-  if (collection) return `/shop/${collection[1]}`
-  return raw.replace(/\/$/, '') || '/'
-}
-
-/** Shopify menu items often share a collection URL — prefer branded paths by label. */
-const LABEL_PATHS = [
-  [/^shop\s*all$/i, '/shop'],
-  [/^body$/i, '/shop/body'],
-  [/^face$/i, '/shop/face'],
-  [/^about\s*us$/i, '/about-us'],
-  [/^the\s*brand$/i, '/the-brand'],
-]
-
-function linkPath(link) {
-  const label = String(link.label || '').trim()
-  const branded = LABEL_PATHS.find(([re]) => re.test(label))
-  if (branded) return branded[1]
-  if (typeof link.to === 'string' && link.to.length) return navPath(link.to)
-  return ''
-}
-
-function resolveActiveId(pathname, hash, links) {
-  const current = navPath(pathname)
-
-  // Match by URL path (longest prefix wins) so Shopify menu GIDs still highlight.
-  const pathLinks = links
-    .map((link) => ({ link, path: linkPath(link) }))
-    .filter(({ path }) => path && path !== '/')
-    .sort((a, b) => b.path.length - a.path.length)
-
-  for (const { link, path } of pathLinks) {
-    if (current === path || current.startsWith(`${path}/`)) return link.id
-  }
-
-  // PDP lives under shop — highlight Shop All.
-  if (current.startsWith('/products')) {
-    const shopAll = pathLinks.find(({ path }) => path === '/shop')
-    if (shopAll) return shopAll.link.id
-  }
-
-  const hashName = (hash || '').replace(/^#/, '')
-  if (hashName) {
-    const byHash = links.find(
-      (link) =>
-        link.id === hashName ||
-        link.href === `#${hashName}` ||
-        (typeof link.href === 'string' && link.href.endsWith(`#${hashName}`)),
-    )
-    if (byHash) return byHash.id
-  }
-
-  return null
-}
-
 function isLightSurfacePath(pathname) {
   return (
     pathname.startsWith('/shop') ||
@@ -183,7 +83,7 @@ function isFluxPdpPath(pathname) {
 
 export default function SiteHeader({ logoTo = HOME_URL }) {
   const rootData = useRouteLoaderData('root')
-  const navLinks = useNavLinks(rootData)
+  const navLinks = useNavLinks(rootData, FALLBACK_NAV_LINKS)
   const location = useLocation()
   const [open, setOpen] = useState(false)
   const [searching, setSearching] = useState(false)

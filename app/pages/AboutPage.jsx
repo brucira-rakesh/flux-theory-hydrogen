@@ -1,7 +1,7 @@
 import {useRef} from 'react';
 import {Link} from 'react-router';
 import SiteHeader from '~/components/ProductShelf/SiteHeader';
-import Footer from '~/components/Footer/Footer';
+import FooterV3 from '~/components/Footer/FooterV3';
 import AnimatedTitle from '~/components/AnimatedTitle/AnimatedTitle';
 import PdpMarquee from '~/components/PDP/PdpMarquee';
 import AboutBento from '~/components/About/AboutBento';
@@ -190,7 +190,7 @@ export default function AboutPage() {
         </section>
       </main>
 
-      <Footer />
+      <FooterV3 />
     </div>
   );
 }

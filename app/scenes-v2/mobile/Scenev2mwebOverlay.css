@@ -134,6 +134,54 @@
   font-size: clamp(0.9rem, 3.6vw, 1rem);
 }
 
+/* Swipe direction hint — one physical gesture (finger up) reads as
+   "continue" everywhere else on the page too, so this only has to name it,
+   not teach a new one. Sits between the description and Discover, in the
+   same flow so it fades with the rest of the pair. */
+.scenev2mweb-overlay__swipe-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.scenev2mweb-overlay__swipe-hint-icon {
+  display: block;
+  width: 12px;
+  height: 13px;
+  transform: rotate(180deg);
+  animation: scenev2mweb-overlay-swipe-hint-icon 1.6s ease-in-out infinite;
+}
+
+@keyframes scenev2mweb-overlay-swipe-hint-icon {
+  0% {
+    transform: rotate(180deg) translateY(0);
+    opacity: 0;
+  }
+
+  50% {
+    transform: rotate(180deg) translateY(4px);
+    opacity: 1;
+  }
+
+  100% {
+    transform: rotate(180deg) translateY(8px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scenev2mweb-overlay__swipe-hint-icon {
+    animation: none;
+  }
+}
+
 .scenev2mweb-overlay__discover {
   display: inline-flex;
   align-items: center;

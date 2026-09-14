@@ -189,7 +189,7 @@
   justify-content: flex-start;
   gap: calc(16 * var(--pdp-fluid) / 1440) calc(20 * var(--pdp-fluid) / 1440);
   width: 100%;
-  padding: calc(24 * var(--pdp-fluid) / 1440) 0;
+  padding: calc(20 * var(--pdp-fluid) / 1440) 0;
   border-bottom: 1px solid rgba(0, 0, 0, 0.12);
 }
 
@@ -675,10 +675,10 @@
     order: 1;
   }
 
+  /* Figma 3110:3446 — mobile hero gallery navigates by swipe only, no
+     visible thumbnail strip. */
   .flux-pdp-thumbs {
-    flex-direction: row;
-    order: 2;
-    overflow-x: auto;
+    display: none;
   }
 
   .flux-pdp-hero__slider {
@@ -702,10 +702,31 @@
     order: 3;
   }
 
-  .flux-pdp-thumbs__btn {
-    flex: 0 0 88px;
-    width: 88px;
-    height: 96px;
+  /* Figma 3110:3446 — Add to Cart sits right after price/benefits, above
+     SELECT VARIANT/OFFERS/pincode (desktop keeps document order). */
+  .flux-pdp-hero__heading {
+    order: 1;
+  }
+
+  .flux-pdp-chips {
+    order: 2;
+  }
+
+  .flux-pdp-hero__cart {
+    order: 3;
+  }
+
+  .flux-pdp-related,
+  .flux-pdp-hero__info > .flux-pdp-option {
+    order: 4;
+  }
+
+  .flux-pdp-offers-block {
+    order: 5;
+  }
+
+  .flux-pdp-pincode {
+    order: 6;
   }
 }
 

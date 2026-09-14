@@ -77,7 +77,11 @@ function oxygenPublicAssets() {
     },
     async writeBundle(options) {
       const outDir = options.dir;
-      if (!outDir || outDir.includes(`${join('dist', 'server')}`) || /[/\\]server$/.test(outDir)) {
+      if (
+        !outDir ||
+        outDir.includes(`${join('dist', 'server')}`) ||
+        /[/\\]server$/.test(outDir)
+      ) {
         return;
       }
       await Promise.all(
@@ -139,6 +143,9 @@ export default defineConfig({
        * @see https://vitejs.dev/config/dep-optimization-options
        */
       include: [
+        'react-dom/client',
+        'scheduler',
+        'use-sync-external-store/shim/with-selector.js',
         'react-router > set-cookie-parser',
         'react-router > cookie',
         'react-router',

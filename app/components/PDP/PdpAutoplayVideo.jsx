@@ -31,14 +31,24 @@ function isHlsSource(src) {
 /**
  * Full-bleed heroes: drop HLS so Chromium cannot ABR-settle on 480p, then
  * order progressive mp4 highest-quality first.
+ *
+ * Ties (two renditions at the same resolution) break on `url` — Shopify's
+ * API doesn't guarantee a stable order for `media.nodes[].sources` across
+ * requests, and an order-dependent tie left the first (and therefore
+ * `poster`/leading `<source>`) pick non-deterministic, which showed up as a
+ * hydration mismatch when the SSR and client renders picked different
+ * same-quality renditions. Sorting the tie itself by url makes the result
+ * identical no matter what order the API happens to return it in.
  */
 export function preferProgressiveMaxSources(sources = []) {
   const progressive = sources.filter((src) => src?.url && !isHlsSource(src))
   if (!progressive.length) return sources.filter((src) => src?.url)
 
-  return [...progressive].sort(
-    (a, b) => progressiveQualityScore(b) - progressiveQualityScore(a),
-  )
+  return [...progressive].sort((a, b) => {
+    const scoreDiff = progressiveQualityScore(b) - progressiveQualityScore(a)
+    if (scoreDiff !== 0) return scoreDiff
+    return String(a.url).localeCompare(String(b.url))
+  })
 }
 
 /**

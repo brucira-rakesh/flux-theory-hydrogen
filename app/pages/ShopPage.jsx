@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import gsap from 'gsap'
 import SiteHeader from '../components/ProductShelf/SiteHeader'
-import Footer from '../components/Footer/Footer'
+import FooterV3 from '../components/Footer/FooterV3'
 import ProductCard from '../components/Shop/ProductCard'
 import ProductFormPopup from '../components/Shop/ProductFormPopup'
 import ShopFilterDrawer from '../components/Shop/ShopFilterDrawer'
@@ -345,7 +345,7 @@ export default function ShopPage({ catalog = [] }) {
         </div>
       </main>
 
-      <Footer />
+      <FooterV3 />
 
       <ShopFilterDrawer
         open={filterOpen}

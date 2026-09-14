@@ -7,7 +7,7 @@ import {
 } from 'react-router';
 import {CUSTOMER_DETAILS_QUERY} from '~/graphql/customer-account/CustomerDetailsQuery';
 import SiteHeader from '~/components/ProductShelf/SiteHeader';
-import Footer from '~/components/Footer/Footer';
+import FooterV3 from '~/components/Footer/FooterV3';
 import '~/styles/account.css';
 
 export function shouldRevalidate() {
@@ -65,7 +65,7 @@ export default function AccountLayout() {
         <AccountMenu />
         <Outlet context={{customer}} />
       </div>
-      <Footer />
+      <FooterV3 />
     </div>
   );
 }

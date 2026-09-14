@@ -40,17 +40,9 @@ function StarRow({size = 12, count = 5, className = ''}) {
   );
 }
 
-function ReviewerBlock({name, avatar, rating}) {
+function ReviewerBlock({name, rating}) {
   return (
     <div className="flux-pdp-review-wall__reviewer">
-      <img
-        className="flux-pdp-review-wall__avatar"
-        src={avatar}
-        alt=""
-        width={61}
-        height={61}
-        draggable={false}
-      />
       <div className="flux-pdp-review-wall__reviewer-meta">
         <p className="flux-pdp-review-wall__name">{name}</p>
         <StarRow
@@ -72,7 +64,6 @@ function ReviewColumn({column}) {
             <ReviewerBlock
               key={`${column.id}-reviewer`}
               name={column.reviewer.name}
-              avatar={column.reviewer.avatar}
               rating={column.reviewer.rating}
             />
           );
@@ -150,18 +141,6 @@ export default function FluxPdpReviewWall({summary, cards, onWriteReview}) {
     ...(summary.avatars ?? []),
     ...FALLBACK_AVATARS,
   ].slice(0, 5);
-
-  const columns = cards.map((card, index) => ({
-    ...card,
-    reviewer: {
-      ...card.reviewer,
-      // Prefer Judge.me avatar; never use the review photo as a face avatar
-      // (that caused a second broken/mis-cropped image in the header).
-      avatar:
-        card.reviewer.avatar ||
-        FALLBACK_AVATARS[index % FALLBACK_AVATARS.length],
-    },
-  }));
 
   const cardKey = cards.map((card) => card.id).join('|');
 
@@ -302,7 +281,7 @@ export default function FluxPdpReviewWall({summary, cards, onWriteReview}) {
           </aside>
 
           <div className="flux-pdp-review-wall__grid" ref={gridRef}>
-            {columns.map((column) => (
+            {cards.map((column) => (
               <ReviewColumn key={column.id} column={column} />
             ))}
           </div>

@@ -259,3 +259,35 @@ export const FOOTER_QUERY = `#graphql
   }
   ${MENU_FRAGMENT}
 `;
+
+/**
+ * FooterV3's four columns, each backed by its own Shopify menu handle so
+ * merchants can edit each column's links from Admin without a deploy.
+ * A handle with no menu created yet resolves to `null` — FooterV3 falls
+ * back to its static column for that slot, so this query is safe to run
+ * before every menu exists.
+ */
+export const FOOTER_MENUS_QUERY = `#graphql
+  query FooterMenus(
+    $country: CountryCode
+    $shopAllHandle: String!
+    $knowMoreHandle: String!
+    $supportHandle: String!
+    $getInTouchHandle: String!
+    $language: LanguageCode
+  ) @inContext(language: $language, country: $country) {
+    shopAll: menu(handle: $shopAllHandle) {
+      ...Menu
+    }
+    knowMore: menu(handle: $knowMoreHandle) {
+      ...Menu
+    }
+    support: menu(handle: $supportHandle) {
+      ...Menu
+    }
+    getInTouch: menu(handle: $getInTouchHandle) {
+      ...Menu
+    }
+  }
+  ${MENU_FRAGMENT}
+`;
