@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import GUI from "lil-gui";
 
+// Live/production builds hide the panel. Local `vite`/`hydrogen` DEV keeps
+// it. Append `?debug` to reopen it on a deployed URL when tuning.
+function isDebugGuiEnabled() {
+  if (import.meta.env.DEV) return true;
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).has("debug");
+}
+
 // Extracted from Scene.v2.jsx's own GUI-creation effect so more than one
 // section (SceneV2, ProductV2) can share a single lil-gui panel instead of
 // each spawning its own floating one. Built fresh inside the effect (not a
@@ -19,7 +27,7 @@ export function useDebugGui(title) {
   const [gui, setGui] = useState(null);
 
   useEffect(() => {
-    if (!title) return undefined;
+    if (!title || !isDebugGuiEnabled()) return undefined;
     const panel = new GUI({ title, closeFolders: true });
     panel.open();
     // eslint-disable-next-line react-hooks/set-state-in-effect
