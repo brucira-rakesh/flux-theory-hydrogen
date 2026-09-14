@@ -56,7 +56,7 @@ function splitStickyProductTitle(name) {
  * IntersectionObserver on the footer-top sentinel is the gate: we only attach
  * the scroll listener while the sentinel is in or above the viewport.
  */
-function useStickyFooterDock(barRef, sentinelRef, visible) {
+export function useStickyFooterDock(barRef, sentinelRef, visible) {
   useEffect(() => {
     const bar = barRef.current
     const sentinel = sentinelRef?.current

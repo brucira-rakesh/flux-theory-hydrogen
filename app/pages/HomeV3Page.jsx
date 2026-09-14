@@ -178,7 +178,7 @@ export const HomeV3Page = ({productCards} = {}) => {
           ...(USE_ELEMENT_SCROLLER ? { syncTouch: true } : null),
         }}
       >
-        <HeaderV2 logoTo="/home" mode="light" visible />
+        <HeaderV2 logoTo="/" mode="light" visible />
         <main ref={rootRef}>
           {/* Each seam below follows the same shape, and it is deliberate:
               the boundary marker is placed HANDOFF_HOLD_VH ABOVE the end of

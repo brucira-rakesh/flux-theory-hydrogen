@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useSyncExternalStore } from 'react'
 import AnimatedTitle from '../AnimatedTitle/AnimatedTitle'
 import AnimatedDescription from '../AnimatedDescription/AnimatedDescription'
 import PdpAutoplayVideo from './PdpAutoplayVideo'
@@ -84,21 +84,31 @@ function resolveLifestyleBackground(lifestyle, isMobile) {
   }
 }
 
+function subscribeMobileLifestyle(onStoreChange) {
+  const mq = window.matchMedia(MOBILE_LIFESTYLE_MQ)
+  mq.addEventListener('change', onStoreChange)
+  return () => mq.removeEventListener('change', onStoreChange)
+}
+
+function getMobileLifestyleSnapshot() {
+  return window.matchMedia(MOBILE_LIFESTYLE_MQ).matches
+}
+
+/** SSR + hydration must match — always desktop until after mount. */
+function getMobileLifestyleServerSnapshot() {
+  return false
+}
+
 export default function PdpLifestyle({ lifestyle, sectionRef: sectionRefProp }) {
   const sectionRef = useRef(null)
-  const [isMobile, setIsMobile] = useState(
-    () =>
-      typeof window !== 'undefined' &&
-      window.matchMedia(MOBILE_LIFESTYLE_MQ).matches,
+  // useSyncExternalStore: server snapshot is always `false` so hydration
+  // matches SSR desktop media; client then switches to mobile when ≤640px.
+  // Reading matchMedia in useState() caused poster/source mismatches.
+  const isMobile = useSyncExternalStore(
+    subscribeMobileLifestyle,
+    getMobileLifestyleSnapshot,
+    getMobileLifestyleServerSnapshot,
   )
-
-  useEffect(() => {
-    const mq = window.matchMedia(MOBILE_LIFESTYLE_MQ)
-    const sync = () => setIsMobile(mq.matches)
-    sync()
-    mq.addEventListener('change', sync)
-    return () => mq.removeEventListener('change', sync)
-  }, [])
 
   const background = useMemo(
     () => resolveLifestyleBackground(lifestyle, isMobile),

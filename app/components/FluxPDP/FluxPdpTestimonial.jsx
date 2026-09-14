@@ -3,6 +3,7 @@ import gsap from 'gsap';
 import {ScrollTrigger} from 'gsap/ScrollTrigger';
 import {SplitText} from 'gsap/SplitText';
 import founderPhoto from '~/assets/pdp/founder-testimonial.png';
+import {getScrollRoot} from '~/utils/scrollRoot';
 
 gsap.registerPlugin(SplitText, ScrollTrigger);
 
@@ -14,8 +15,13 @@ const QUOTE_COLOR_FULL = '#b8dce8';
 /**
  * Contained founder card — Figma 3101:2354.
  *
- * Pins the whole section at the viewport top while the quote color-fills.
- * Photo is static (no parallax).
+ * Scroll sequence while pinned:
+ * 1) Card zooms to fill the section
+ * 2) Quote color-fills word by word
+ * 3) Card zooms back to the inset frame
+ *
+ * Must NOT sit under a transformed ancestor (e.g. data-pdp-reveal) — that
+ * breaks ScrollTrigger pin (fixed positioning escapes to the transformed parent).
  */
 const FOUNDER_QUOTE_P1 =
   'Flux was born from a desire to rethink the everyday. We bring together thoughtful design, intelligent innovation, and uncompromising performance to create products that elevate the modern home.';
@@ -26,14 +32,31 @@ const FOUNDER_QUOTE_P2 =
 const FOUNDER_NAME = 'Ranbir Kapoor';
 const FOUNDER_ROLE = 'CEO & CO-FOUNDER';
 
-export default function FluxPdpTestimonial() {
+/** Scale needed for the card to cover the full section (incl. white padding).
+ * Uses layout sizes (offset*) so mid-scrub transforms don't skew the measure.
+ * Slight overshoot hides subpixel gaps (header sliver / white edges). */
+function fillScaleFor(section, card) {
+  const sw = section.offsetWidth;
+  const sh = section.offsetHeight;
+  const cw = card.offsetWidth;
+  const ch = card.offsetHeight;
+  if (cw <= 0 || ch <= 0) return 1;
+  return Math.max(sw / cw, sh / ch) * 1.02;
+}
+
+export default function FluxPdpTestimonial({onPinActiveChange}) {
   const sectionRef = useRef(null);
+  const cardRef = useRef(null);
   const quoteRef = useRef(null);
+  const photoRef = useRef(null);
+  const onPinActiveChangeRef = useRef(onPinActiveChange);
+  onPinActiveChangeRef.current = onPinActiveChange;
 
   useLayoutEffect(() => {
     const section = sectionRef.current;
+    const card = cardRef.current;
     const quote = quoteRef.current;
-    if (!section || !quote) return undefined;
+    if (!section || !card || !quote) return undefined;
 
     const reduceMotion = window.matchMedia(
       '(prefers-reduced-motion: reduce)',
@@ -41,6 +64,7 @@ export default function FluxPdpTestimonial() {
 
     if (reduceMotion) {
       // No SplitText — CSS full color on `.flux-pdp-quote__text`, no pin.
+      onPinActiveChangeRef.current?.(false);
       return undefined;
     }
 
@@ -56,34 +80,95 @@ export default function FluxPdpTestimonial() {
       if (!words?.length) return;
 
       gsap.set(words, {color: QUOTE_COLOR_DIM});
+      gsap.set(card, {transformOrigin: '50% 50%', scale: 1, force3D: true});
 
-      gsap
-        .timeline({
-          scrollTrigger: {
-            trigger: section,
-            start: 'top top',
-            end: '+=150%',
-            pin: true,
-            scrub: true,
-            anticipatePin: 1,
-            invalidateOnRefresh: true,
-          },
-        })
-        .to(
-          words,
-          {
-            color: QUOTE_COLOR_FULL,
-            stagger: 0.08,
-            ease: 'none',
-            duration: 0.05,
-          },
-          0,
-        );
+      const reportPin = (active) => {
+        section.classList.toggle('is-pinned', Boolean(active));
+        onPinActiveChangeRef.current?.(Boolean(active));
+      };
+
+      const mobileMq = window.matchMedia('(max-width: 640px)');
+      const isMobile = mobileMq.matches;
+      // Mobile has no zoom legs — keep the pin short so reverse scroll to
+      // top isn't stuck scrubbing an empty 2.2× viewport range.
+      const pinEnd = isMobile ? '+=100%' : '+=220%';
+
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: section,
+          start: 'top top',
+          end: pinEnd,
+          pin: true,
+          // Soft scrub syncs better with Lenis than scrub:true (less fight
+          // when scrolling back through the pin).
+          scrub: 0.45,
+          anticipatePin: 1,
+          fastScrollEnd: true,
+          invalidateOnRefresh: true,
+          scroller: getScrollRoot() ?? undefined,
+          onToggle: (self) => reportPin(self.isActive),
+        },
+      });
+
+      // Desktop: zoom card to fill the section. Mobile card is already
+      // full-bleed (see CSS) so scaling it would blow up type and clip.
+      if (!isMobile) {
+        tl.to(card, {
+          scale: () => fillScaleFor(section, card),
+          ease: 'none',
+          duration: 0.35,
+        });
+      }
+
+      // Word fill: step colors only when the filled count changes — avoids
+      // interpolating `color` on ~40 nodes every scroll frame (jank on reverse).
+      const fill = {t: 0};
+      let filledCount = 0;
+      tl.to(fill, {
+        t: 1,
+        ease: 'none',
+        duration: isMobile ? 1 : 0.5,
+        onUpdate: () => {
+          const next = Math.round(fill.t * words.length);
+          if (next === filledCount) return;
+          if (next > filledCount) {
+            for (let i = filledCount; i < next; i += 1) {
+              words[i].style.color = QUOTE_COLOR_FULL;
+            }
+          } else {
+            for (let i = next; i < filledCount; i += 1) {
+              words[i].style.color = QUOTE_COLOR_DIM;
+            }
+          }
+          filledCount = next;
+        },
+      });
+
+      if (!isMobile) {
+        tl.to(card, {
+          scale: 1,
+          ease: 'none',
+          duration: 0.35,
+        });
+      }
     }, section);
 
-    requestAnimationFrame(() => ScrollTrigger.refresh());
+    const refresh = () => ScrollTrigger.refresh();
+    requestAnimationFrame(refresh);
+
+    // Card height is aspect-ratio based; refresh after the photo loads so
+    // pin distance / fill scale aren't measured against an empty box.
+    const photo = photoRef.current;
+    if (photo && !photo.complete) {
+      photo.addEventListener('load', refresh, {once: true});
+    } else {
+      requestAnimationFrame(refresh);
+    }
 
     return () => {
+      photo?.removeEventListener('load', refresh);
+      section.classList.remove('is-pinned');
+      onPinActiveChangeRef.current?.(false);
       ctx.revert();
       split?.revert?.();
     };
@@ -96,9 +181,10 @@ export default function FluxPdpTestimonial() {
       aria-label="Founder note"
     >
       <div className="flux-pdp-quote__pin">
-        <div className="flux-pdp-quote__card">
+        <div ref={cardRef} className="flux-pdp-quote__card">
           <div className="flux-pdp-quote__media" aria-hidden="true">
             <img
+              ref={photoRef}
               className="flux-pdp-quote__photo"
               src={founderPhoto}
               alt=""
@@ -107,14 +193,16 @@ export default function FluxPdpTestimonial() {
           </div>
           <blockquote className="flux-pdp-quote__copy">
             <div ref={quoteRef} className="flux-pdp-quote__text">
-              <p>
+              {/* Divs (not <p>) so SplitText word wrappers stay valid HTML —
+                  browsers hoist <div> out of <p> and break the scrub fill. */}
+              <div>
                 <span aria-hidden="true">“</span>
                 {FOUNDER_QUOTE_P1}
-              </p>
-              <p>
+              </div>
+              <div>
                 {FOUNDER_QUOTE_P2}
                 <span aria-hidden="true">”</span>
-              </p>
+              </div>
             </div>
             <footer className="flux-pdp-quote__byline">
               <cite className="flux-pdp-quote__name">{FOUNDER_NAME}</cite>

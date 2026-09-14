@@ -711,11 +711,6 @@
   animation: none;
 }
 
-/* Flux PDP has no usePdpMotion — self-drive the infinite strip via CSS. */
-.pdp-page.flux-pdp:not(.pdp-page--reduce-motion) .pdp-marquee__track {
-  animation: pdp-marquee 32s linear infinite;
-}
-
 .pdp-marquee__item {
   display: inline-flex;
   align-items: center;
@@ -1209,6 +1204,8 @@
   --pdp-similar-gap: calc(14 * var(--pdp-fluid) / 1440);
   position: relative;
   margin: 0;
+  /* Clip the slide-in travel so cards don't widen the page. */
+  overflow-x: clip;
 }
 
 /* Hidden probe: resolves fixed card width for fit-vs-scroll measurement. */
@@ -1232,6 +1229,12 @@
   text-transform: uppercase;
   line-height: 1;
   opacity: 0.9;
+}
+
+/* Entry shell — GSAP slides this; overflow stays on the inner rail. */
+.pdp-similar__rail-shell {
+  min-width: 0;
+  will-change: transform;
 }
 
 .pdp-similar__rail {
@@ -1897,6 +1900,8 @@
     /* Role A — section heading */
     font-size: 28px;
     letter-spacing: -1.4px;
+    /* Section breaks out of .pdp-main — keep the title on the content grid. */
+    padding-inline: 16px;
   }
 
   .pdp-similar .product-card__name {
@@ -1904,9 +1909,38 @@
     font-size: 14px;
   }
 
+  /* Section itself goes full-bleed. overflow-x: clip on .pdp-similar was
+     clipping any child breakout inside padded .pdp-main (right strip). */
+  .pdp-similar {
+    width: calc(100% + 32px);
+    max-width: none;
+    margin-inline: -16px;
+  }
+
+  .pdp-similar__rail-shell {
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+  }
+
   .pdp-similar__rail {
-    margin: 0 -16px 0 0;
-    padding: 0 16px 0 0;
+    margin: 0;
+    padding: 0;
+    scroll-padding-inline: 16px;
+  }
+
+  .pdp-similar__item:first-child {
+    padding-inline-start: 16px;
+    box-sizing: content-box;
+  }
+
+  .pdp-similar__item:last-child {
+    padding-inline-end: 16px;
+    box-sizing: content-box;
+  }
+
+  .pdp-similar__item:first-child:last-child {
+    padding-inline: 16px;
   }
 
   .pdp-sticky__thumb {

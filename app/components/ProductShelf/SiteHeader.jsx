@@ -8,7 +8,7 @@ import iconUserUrl from '../../assets/brand/header/icon-user.svg'
 import iconBagUrl from '../../assets/brand/header/icon-bag.svg'
 import { useSmoothScrollLock } from '../SmoothScroll/SmoothScroll'
 import { FACE_FILTER_ENABLED } from '../../data/shop'
-import { HOME_URL, isExternalUrl } from '../../data/site'
+import { isExternalUrl } from '../../data/site'
 import { useCartDrawer } from '../Cart/CartProvider'
 import { useNavLinks, resolveActiveId } from '../../lib/navMenu'
 import './ProductShelf.css'
@@ -81,7 +81,7 @@ function isFluxPdpPath(pathname) {
   return pathname.startsWith('/products')
 }
 
-export default function SiteHeader({ logoTo = HOME_URL }) {
+export default function SiteHeader({ logoTo = '/' }) {
   const rootData = useRouteLoaderData('root')
   const navLinks = useNavLinks(rootData, FALLBACK_NAV_LINKS)
   const location = useLocation()

@@ -198,8 +198,8 @@ export default function ProductFormPopup({
           {showSizeSelect ? (
             <CustomSelect
               className="product-form-popup__size-select"
-              label="Size"
-              ariaLabel={`Select size for ${product.name}`}
+              label={product.variantOptionLabel ?? 'Size'}
+              ariaLabel={`Select ${String(product.variantOptionLabel ?? 'size').toLowerCase()} for ${product.name}`}
               options={sizeOptions}
               value={size}
               onChange={handleSizeChange}

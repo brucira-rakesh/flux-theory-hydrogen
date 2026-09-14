@@ -1,4 +1,5 @@
 import {getPdpBySlug} from '~/data/pdp';
+import {getProductById} from '~/data/products';
 
 const FILTER_TAG_RE = /^filter:([^:]+):(.+)$/i;
 /** Hardcoded stats chrome (eyebrow/title/footnote) — shared across all products. */
@@ -235,15 +236,54 @@ export function withoutShopifyDefaultTitleOptions(selectedOptions) {
 }
 
 /**
- * Real shopper-facing Size values. Shopify's auto "Title / Default Title"
+ * Shopify option used for the shopper-facing variant picker (Size or Pack).
+ * Prefers Size; falls back to Pack. Ignores Title/Default Title.
+ * @returns {{name: string, values: string[]} | null}
+ */
+export function variantPickerOptionFromProduct(product) {
+  const options = product?.options ?? [];
+  const byName = (pred) => options.find((option) => pred(option.name ?? ''));
+  const option =
+    byName((name) => name.toLowerCase() === 'size') ||
+    byName((name) => name.toLowerCase().includes('pack'));
+  if (!option) return null;
+
+  const values = (option.optionValues ?? [])
+    .map((value) => value.name)
+    .filter(Boolean)
+    .filter(
+      (name) =>
+        !isShopifyDefaultTitleOption({name: option.name, value: name}),
+    );
+  if (values.length <= 1) return null;
+  return {name: option.name, values};
+}
+
+/**
+ * Real shopper-facing Size/Pack values. Shopify's auto "Title / Default Title"
  * option (products without configured variants) is ignored.
  */
 export function sizesFromProduct(product) {
-  const options = product?.options ?? [];
-  const sizeOption = options.find((option) => option.name?.toLowerCase() === 'size');
-  const values = sizeOption?.optionValues?.map((value) => value.name).filter(Boolean) ?? [];
-  if (values.length > 1) return values;
-  return [];
+  return variantPickerOptionFromProduct(product)?.values ?? [];
+}
+
+/** Label for the listing/quick-add select (e.g. "Size", "Pack"). */
+export function variantPickerLabelFromProduct(product) {
+  return variantPickerOptionFromProduct(product)?.name ?? 'Size';
+}
+
+/**
+ * Size or Pack value on a variant's selectedOptions.
+ * @param {Array<{name?: string | null, value?: string | null}> | null | undefined} selectedOptions
+ */
+export function variantPickerValueFromSelectedOptions(selectedOptions) {
+  const opts = selectedOptions ?? [];
+  return (
+    opts.find((option) => option?.name?.toLowerCase() === 'size')?.value ??
+    opts.find((option) =>
+      (option?.name?.toLowerCase() ?? '').includes('pack'),
+    )?.value
+  );
 }
 
 /** Show size UI only when sizesFromProduct returned 2+ real Size values. */
@@ -254,14 +294,12 @@ export function shouldShowSizeSelect(sizes) {
 export function toListingCard(product, featuredOrder = 0) {
   const money = product?.priceRange?.minVariantPrice;
   const sizes = sizesFromProduct(product);
-
-  const sizeValueFromSelectedOptions = (selectedOptions) =>
-    (selectedOptions ?? []).find((o) => o?.name?.toLowerCase() === 'size')?.value;
+  const variantOptionLabel = variantPickerLabelFromProduct(product);
 
   const variantNodes = product?.variants?.nodes ?? [];
   const variants = variantNodes
     .map((v) => {
-      const sizeValue = sizeValueFromSelectedOptions(v?.selectedOptions);
+      const sizeValue = variantPickerValueFromSelectedOptions(v?.selectedOptions);
       return {
         id: v?.id,
         availableForSale: v?.availableForSale !== false,
@@ -300,6 +338,7 @@ export function toListingCard(product, featuredOrder = 0) {
     href: `/products/${product.handle}`,
     sizes,
     defaultSize,
+    variantOptionLabel,
     categories: categoryTagsFromProduct(product),
     tags: moodTagsFromProduct(product),
     featuredOrder,
@@ -712,13 +751,12 @@ export function toPdpViewModel(product) {
   const money = variant?.price ?? product.priceRange?.minVariantPrice;
   const shopifySizes = sizesFromProduct(product);
   const sizes = shopifySizes;
+  const variantOptionLabel = variantPickerLabelFromProduct(product);
 
   // Build variantBySize for ProductFormPopup (same logic as toListingCard)
-  const sizeValueFromOptions = (opts) =>
-    (opts ?? []).find((o) => o?.name?.toLowerCase() === 'size')?.value;
   const variantNodes = product?.variants?.nodes ?? [];
   const variantBySize = variantNodes.reduce((acc, v) => {
-    const sv = sizeValueFromOptions(v?.selectedOptions);
+    const sv = variantPickerValueFromSelectedOptions(v?.selectedOptions);
     if (sv && v?.id) {
       acc[String(sv)] = {
         id: v.id,
@@ -736,12 +774,15 @@ export function toPdpViewModel(product) {
   const lastMedia =
     mediaNodes.length > 1 ? mediaNodes[mediaNodes.length - 1] : undefined;
 
+  const shelfProduct = getProductById(product.handle);
   return {
     id: product.handle,
     slug: product.handle,
     gid: product.id,
     name: product.title,
-    focusTitle: overlay?.focusTitle ?? product.title,
+    // Figma mobile/desktop hero uses the short archetype title (THE LOVER).
+    focusTitle:
+      overlay?.focusTitle ?? shelfProduct?.focusTitle ?? product.title,
     breadcrumb: overlay?.breadcrumb ?? ['Home', 'Shop All', product.title],
     // Shopify primary; overlay only when metafield/native field is empty.
     shortDescription:
@@ -753,6 +794,7 @@ export function toPdpViewModel(product) {
     money,
     sizes,
     defaultSize: sizes[0],
+    variantOptionLabel,
     availableForSale: variant?.availableForSale !== false,
     selectedVariant: variant,
     gallery: galleryFromProduct(product, overlay),

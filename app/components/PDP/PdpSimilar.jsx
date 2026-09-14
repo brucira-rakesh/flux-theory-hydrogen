@@ -1,8 +1,14 @@
 import {useLayoutEffect, useRef, useState} from 'react'
+import gsap from 'gsap'
+import {ScrollTrigger} from 'gsap/ScrollTrigger'
 import ProductCard from '../Shop/ProductCard'
 import ProductFormPopup from '../Shop/ProductFormPopup'
 import {useSmoothScrollLock} from '../SmoothScroll/SmoothScroll'
+import {prefersReducedMotion} from '~/hooks/useSpotlight'
+import {getScrollRoot} from '~/utils/scrollRoot'
 import '../Shop/Shop.css'
+
+gsap.registerPlugin(ScrollTrigger)
 
 /**
  * Similar products rail. Uses fixed Figma card width + horizontal scroll when
@@ -13,9 +19,11 @@ export default function PdpSimilar({products, onAdd}) {
   const [activeId, setActiveId] = useState(null)
   const [fillsRow, setFillsRow] = useState(false)
   const sectionRef = useRef(null)
+  const railShellRef = useRef(null)
   const railRef = useRef(null)
   const measureRef = useRef(null)
   const activeProduct = products.find((p) => p.id === activeId) ?? null
+  const productKey = products.map((p) => p.id).join('|')
 
   useSmoothScrollLock('pdp-similar-popup', Boolean(activeProduct))
 
@@ -46,6 +54,42 @@ export default function PdpSimilar({products, onAdd}) {
     return () => ro.disconnect()
   }, [products.length])
 
+  // One-shot entry: slide the rail shell from the right (desktop + mobile).
+  // Animate a wrapper — not the overflow scroller — so touch browsers don't
+  // drop the transform on `overflow-x: auto` rails.
+  useLayoutEffect(() => {
+    const section = sectionRef.current
+    const shell = railShellRef.current
+    if (!section || !shell || products.length === 0) return undefined
+    if (prefersReducedMotion()) return undefined
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        shell,
+        {
+          x: () => Math.max(shell.offsetWidth * 0.85, window.innerWidth * 0.45),
+          opacity: 0.2,
+        },
+        {
+          x: 0,
+          opacity: 1,
+          duration: 1.2,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: section,
+            start: 'top 78%',
+            once: true,
+            scroller: getScrollRoot() ?? undefined,
+          },
+        },
+      )
+    }, section)
+
+    requestAnimationFrame(() => ScrollTrigger.refresh())
+
+    return () => ctx.revert()
+  }, [productKey, products.length])
+
   return (
     <section
       ref={sectionRef}
@@ -62,20 +106,22 @@ export default function PdpSimilar({products, onAdd}) {
         Similar Products
       </h2>
 
-      <ul
-        ref={railRef}
-        className={`pdp-similar__rail${fillsRow ? ' is-fill' : ''}`}
-      >
-        {products.map((product) => (
-          <li key={product.id} className="pdp-similar__item">
-            <ProductCard
-              product={product}
-              quickAddOpen={activeId === product.id}
-              onQuickAdd={(item) => setActiveId(item.id)}
-            />
-          </li>
-        ))}
-      </ul>
+      <div className="pdp-similar__rail-shell" ref={railShellRef}>
+        <ul
+          ref={railRef}
+          className={`pdp-similar__rail${fillsRow ? ' is-fill' : ''}`}
+        >
+          {products.map((product) => (
+            <li key={product.id} className="pdp-similar__item">
+              <ProductCard
+                product={product}
+                quickAddOpen={activeId === product.id}
+                onQuickAdd={(item) => setActiveId(item.id)}
+              />
+            </li>
+          ))}
+        </ul>
+      </div>
 
       {activeProduct && (
         <ProductFormPopup

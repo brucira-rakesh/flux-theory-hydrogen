@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import GUI from "lil-gui";
 
-// Live/production builds hide the panel. Local `vite`/`hydrogen` DEV keeps
-// it. Append `?debug` to reopen it on a deployed URL when tuning.
+// Hidden by default (dev + production). Append `?debug` to the URL to open
+// the panel when tuning — never ship a visible tweaks UI.
 function isDebugGuiEnabled() {
-  if (import.meta.env.DEV) return true;
   if (typeof window === "undefined") return false;
   return new URLSearchParams(window.location.search).has("debug");
 }

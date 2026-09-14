@@ -33,10 +33,16 @@ const SmoothScrollContext = createContext({
  * Site-wide Lenis smooth scroll, driven from GSAP's ticker and synced to
  * ScrollTrigger. Named locks (intro, carousel, drawers) pause Lenis without
  * tearing down the instance.
+ *
+ * @param {{ children: import('react').ReactNode, lenisOptions?: Record<string, unknown> }} props
+ * `lenisOptions` merges over defaults — use a shorter `duration` on pin-heavy
+ * pages (PDP) so reverse scroll doesn't feel like rubber-banding.
  */
-export default function SmoothScroll({ children }) {
+export default function SmoothScroll({ children, lenisOptions = null }) {
   const location = useLocation()
   const lenisRef = useRef(null)
+  const lenisOptionsRef = useRef(lenisOptions)
+  lenisOptionsRef.current = lenisOptions
 
   useEffect(() => {
     if (prefersReducedMotion()) {
@@ -56,6 +62,7 @@ export default function SmoothScroll({ children }) {
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       // Avoid micro-updates that fight ScrollTrigger pins.
       touchMultiplier: 1.5,
+      ...(lenisOptionsRef.current || {}),
     })
 
     lenisRef.current = lenis

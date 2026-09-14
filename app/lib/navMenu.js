@@ -16,10 +16,11 @@ export function menuItemToNavLink(item) {
 
   try {
     const parsed = new URL(item.url);
+    const host = parsed.hostname;
     const isInternal =
-      parsed.hostname.endsWith('.myshopify.com') ||
-      (typeof window !== 'undefined' &&
-        parsed.hostname === window.location.hostname);
+      host.endsWith('.myshopify.com') ||
+      host.endsWith('flux-theory.pages.dev') ||
+      (typeof window !== 'undefined' && host === window.location.hostname);
     if (isInternal) {
       to = parsed.pathname + parsed.search + parsed.hash;
     } else {
@@ -55,6 +56,7 @@ export function useNavLinks(rootData, fallbackLinks) {
 
 export function navPath(to) {
   const raw = String(to || '').split('#')[0].split('?')[0];
+  if (raw === '/home' || raw === '/') return '/';
   if (raw === '/collections/shop-all' || raw === '/collections/all') return '/shop';
   const collection = raw.match(/^\/collections\/([^/]+)\/?$/);
   if (collection) return `/shop/${collection[1]}`;
@@ -63,6 +65,7 @@ export function navPath(to) {
 
 /** Shopify menu items often share a collection URL — prefer branded paths by label. */
 const LABEL_PATHS = [
+  [/^home$/i, '/'],
   [/^shop\s*all$/i, '/shop'],
   [/^body$/i, '/shop/body'],
   [/^face$/i, '/shop/face'],

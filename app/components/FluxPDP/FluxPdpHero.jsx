@@ -12,6 +12,8 @@ import {
   shouldShowSizeSelect,
 } from '~/lib/storefrontCatalog';
 import iconOfferCopy from '~/assets/pdp/offers/icon-copy.svg';
+import arrowLeft from '~/assets/pdp/reviews/arrow-left.svg';
+import arrowRight from '~/assets/pdp/reviews/arrow-right.svg';
 
 export function mediaItemsFromProduct(product, max = 5) {
   const items = [];
@@ -76,6 +78,14 @@ function optionRowLabel(option) {
   return `SELECT ${option.name}`.toUpperCase();
 }
 
+/** One-liner under SELECT PACK — mirrors offer card detail typography. */
+function packShippingMessage(selectedValueName) {
+  const name = selectedValueName?.trim().toLowerCase() ?? '';
+  if (name.includes('pack of 2')) return 'Free Shipping';
+  if (name.includes('pack of 1')) return '+₹49 Shipping Fee';
+  return null;
+}
+
 const SHOPIFY_CDN_ORIGIN = 'https://cdn.shopify.com';
 
 /**
@@ -123,6 +133,8 @@ export default function FluxPdpHero({
   const navigate = useNavigate();
   const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
   const [copiedCode, setCopiedCode] = useState('');
+  /** Desktop gallery cursor arrow — follows pointer in the 30%/70% hit zones. */
+  const [galleryCursor, setGalleryCursor] = useState(null);
   const sliderRef = useRef(null);
   const heroRef = useRef(null);
   const infoRef = useRef(null);
@@ -142,76 +154,32 @@ export default function FluxPdpHero({
   }, [product.id]);
 
   /**
-   * Top-section scroll sync: page scroll (usually from the left column) drives
-   * the sticky buy-box's own overflow, so both sides move together while the
-   * hero is sticky. Wheel on the buy box is forwarded to the window so the
-   * left column advances too.
+   * Gallery slider is `overflow-x: auto` with `data-lenis-prevent`, so a
+   * vertical wheel/trackpad gesture over it never reaches the page. Forward
+   * mostly-vertical wheels to window scroll; keep mostly-horizontal for snap.
    *
-   * The gallery slider (left side) needs the same forwarding the other way:
-   * it's `overflow-x: auto` with scroll-snap and `data-lenis-prevent`, which
-   * stops Lenis from touching it so its own horizontal scroll/swipe works —
-   * but that also means a vertical wheel/trackpad gesture that starts over it
-   * never reaches the page (browsers commonly claim the whole gesture for a
-   * horizontally-scrollable element under the cursor, not just its X axis),
-   * so scrolling the page was only possible from the right column. Only a
-   * mostly-vertical gesture is forwarded — a mostly-horizontal one still
-   * drives the gallery's own scroll-snap natively.
+   * The sticky buy box no longer has its own overflow — it stays pinned at
+   * top: 64px while the left column scrolls (no scrollTop sync).
    */
   useEffect(() => {
-    const hero = heroRef.current;
-    const info = infoRef.current;
     const slider = sliderRef.current;
-    if (!hero || !info || !slider || typeof window === 'undefined') return undefined;
+    if (!slider || typeof window === 'undefined') return undefined;
 
-    const STICKY_TOP = 88;
     const mq = window.matchMedia('(max-width: 900px)');
-
-    const syncInfoToPage = () => {
-      if (mq.matches) return;
-      const overflow = info.scrollHeight - info.clientHeight;
-      if (overflow <= 0) {
-        info.scrollTop = 0;
-        return;
-      }
-
-      const heroRect = hero.getBoundingClientRect();
-      const stickyTravel = Math.max(1, hero.offsetHeight - info.clientHeight);
-      const scrolled = STICKY_TOP - heroRect.top;
-      const progress = Math.min(1, Math.max(0, scrolled / stickyTravel));
-      info.scrollTop = progress * overflow;
-    };
-
-    const onWheelInfo = (event) => {
-      if (mq.matches) return;
-      if (info.scrollHeight <= info.clientHeight) return;
-      // Drive the page instead of trapping the wheel inside the sticky panel.
-      event.preventDefault();
-      window.scrollBy({top: event.deltaY, left: 0, behavior: 'auto'});
-    };
 
     const onWheelSlider = (event) => {
       if (mq.matches) return;
-      // A mostly-horizontal gesture keeps driving the gallery's own scroll.
       if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
       event.preventDefault();
       window.scrollBy({top: event.deltaY, left: 0, behavior: 'auto'});
     };
 
-    syncInfoToPage();
-    window.addEventListener('scroll', syncInfoToPage, {passive: true});
-    window.addEventListener('resize', syncInfoToPage);
-    info.addEventListener('wheel', onWheelInfo, {passive: false});
     slider.addEventListener('wheel', onWheelSlider, {passive: false});
-    mq.addEventListener?.('change', syncInfoToPage);
 
     return () => {
-      window.removeEventListener('scroll', syncInfoToPage);
-      window.removeEventListener('resize', syncInfoToPage);
-      info.removeEventListener('wheel', onWheelInfo);
       slider.removeEventListener('wheel', onWheelSlider);
-      mq.removeEventListener?.('change', syncInfoToPage);
     };
-  }, [product.id, details, activeOffers?.length, relatedProducts?.length]);
+  }, [product.id]);
 
   useEffect(() => {
     const slider = sliderRef.current;
@@ -281,6 +249,34 @@ export default function FluxPdpHero({
     });
   };
 
+  const onGalleryHotspotMove = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    const side = x / rect.width < 0.3 ? 'prev' : 'next';
+    setGalleryCursor({side, x, y});
+  };
+
+  const onGalleryHotspotLeave = () => {
+    setGalleryCursor(null);
+  };
+
+  const onGalleryHotspotClick = (event) => {
+    if (thumbs.length < 2) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const side =
+      (event.clientX - rect.left) / rect.width < 0.3 ? 'prev' : 'next';
+    if (side === 'prev') {
+      setSelectedMediaIndex(
+        (index) => (index - 1 + thumbs.length) % thumbs.length,
+      );
+      return;
+    }
+    setSelectedMediaIndex((index) => (index + 1) % thumbs.length);
+  };
+
   const onSliderScroll = () => {
     if (ignoreScrollSyncRef.current) return;
     const slider = sliderRef.current;
@@ -334,55 +330,96 @@ export default function FluxPdpHero({
           </div>
         ) : null}
 
-        <div
-          ref={sliderRef}
-          className="flux-pdp-hero__slider"
-          onScroll={onSliderScroll}
-          aria-label="Product image gallery"
-          data-lenis-prevent
-          data-lenis-prevent-wheel
-        >
-          {thumbs.length ? (
-            thumbs.map((item, index) => {
-              const shopifyImage = item.image
-                ? {
-                    ...item.image,
-                    url: item.src,
-                    altText: item.alt,
-                  }
-                : null;
-              return (
-                <figure
-                  key={item.id}
-                  className="flux-pdp-hero__media"
-                  aria-hidden={index !== selectedMediaIndex}
+        <div className="flux-pdp-gallery__stage">
+          <div
+            ref={sliderRef}
+            className="flux-pdp-hero__slider"
+            onScroll={onSliderScroll}
+            aria-label="Product image gallery"
+            data-lenis-prevent
+            data-lenis-prevent-wheel
+          >
+            {thumbs.length ? (
+              thumbs.map((item, index) => {
+                const shopifyImage = item.image
+                  ? {
+                      ...item.image,
+                      url: item.src,
+                      altText: item.alt,
+                    }
+                  : null;
+                return (
+                  <figure
+                    key={item.id}
+                    className="flux-pdp-hero__media"
+                    aria-hidden={index !== selectedMediaIndex}
+                  >
+                    {shopifyImage ? (
+                      <Image
+                        alt={item.alt}
+                        data={shopifyImage}
+                        loader={shopifyUncroppedLoader}
+                        sizes="(min-width: 900px) 591px, 100vw"
+                        loading={index === 0 ? 'eager' : 'lazy'}
+                      />
+                    ) : (
+                      <img src={item.src} alt={item.alt} />
+                    )}
+                  </figure>
+                );
+              })
+            ) : (
+              <figure className="flux-pdp-hero__media">
+                {selectedVariant?.image?.url || product.featuredImage?.url ? (
+                  <Image
+                    alt={view.name || product.title}
+                    data={selectedVariant?.image ?? product.featuredImage}
+                    loader={shopifyUncroppedLoader}
+                    sizes="(min-width: 900px) 591px, 100vw"
+                  />
+                ) : null}
+              </figure>
+            )}
+          </div>
+
+          {/* Desktop: 30% prev / 70% next. Arrow follows the cursor.
+              Hidden on coarse pointers so mobile swipe still owns the slider. */}
+          {thumbs.length > 1 ? (
+            <button
+              type="button"
+              className={`flux-pdp-gallery__hotspots${
+                galleryCursor ? ' is-active' : ''
+              }${galleryCursor ? ` is-${galleryCursor.side}` : ''}`}
+              aria-label={
+                galleryCursor?.side === 'prev'
+                  ? 'Previous image'
+                  : 'Next image'
+              }
+              onMouseMove={onGalleryHotspotMove}
+              onMouseLeave={onGalleryHotspotLeave}
+              onClick={onGalleryHotspotClick}
+            >
+              {galleryCursor ? (
+                <span
+                  className={`flux-pdp-gallery__cursor-arrow is-${galleryCursor.side}`}
+                  style={{
+                    left: galleryCursor.x,
+                    top: galleryCursor.y,
+                  }}
+                  aria-hidden="true"
                 >
-                  {shopifyImage ? (
-                    <Image
-                      alt={item.alt}
-                      data={shopifyImage}
-                      loader={shopifyUncroppedLoader}
-                      sizes="(min-width: 900px) 591px, 100vw"
-                      loading={index === 0 ? 'eager' : 'lazy'}
-                    />
-                  ) : (
-                    <img src={item.src} alt={item.alt} />
-                  )}
-                </figure>
-              );
-            })
-          ) : (
-            <figure className="flux-pdp-hero__media">
-              {selectedVariant?.image?.url || product.featuredImage?.url ? (
-                <Image
-                  alt={view.name || product.title}
-                  data={selectedVariant?.image ?? product.featuredImage}
-                  loader={shopifyUncroppedLoader}
-                  sizes="(min-width: 900px) 591px, 100vw"
-                />
+                  <img
+                    src={
+                      galleryCursor.side === 'prev' ? arrowLeft : arrowRight
+                    }
+                    alt=""
+                    width={12}
+                    height={8}
+                  />
+                </span>
               ) : null}
-            </figure>
-          )}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -419,7 +456,9 @@ export default function FluxPdpHero({
 
         <div className="flux-pdp-hero__heading">
           <div className="flux-pdp-hero__heading-main">
-            <h1 className="flux-pdp-hero__title">{view.name}</h1>
+            <h1 className="flux-pdp-hero__title">
+              {view.focusTitle || view.name}
+            </h1>
             {view.shortDescription ? (
               <p className="flux-pdp-hero__blurb">{view.shortDescription}</p>
             ) : null}
@@ -447,7 +486,9 @@ export default function FluxPdpHero({
                   </span>
                 ) : null}
               </div>
-            ) : null}
+            ) : (
+              <p className="flux-pdp-price__mrp-label">MRP</p>
+            )}
             {price ? (
               <span className="flux-pdp-price__current">
                 <Money data={price} withoutTrailingZeros />
@@ -532,9 +573,14 @@ export default function FluxPdpHero({
                   return null;
                 }
                 const selected = Boolean(value.selected);
+                const shippingNote = isPackOption(option)
+                  ? packShippingMessage(value.name)
+                  : null;
                 const className = `flux-pdp-swatch${
-                  selected ? ' is-selected' : ''
-                }${!value.available ? ' is-unavailable' : ''}`;
+                  shippingNote ? ' flux-pdp-swatch--pack' : ''
+                }${selected ? ' is-selected' : ''}${
+                  !value.available ? ' is-unavailable' : ''
+                }`;
                 return (
                   <button
                     key={option.name + value.name}
@@ -544,7 +590,10 @@ export default function FluxPdpHero({
                     aria-pressed={selected}
                     onClick={() => onOptionSelect(value)}
                   >
-                    {value.name}
+                    <span className="flux-pdp-swatch__label">{value.name}</span>
+                    {shippingNote ? (
+                      <span className="flux-pdp-swatch__note">{shippingNote}</span>
+                    ) : null}
                   </button>
                 );
               })}

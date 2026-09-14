@@ -217,7 +217,8 @@ export default function ProductPage({
             <PdpHowTo howTo={product.howTo} />
           </div>
         ) : null}
-        <div data-pdp-reveal>
+        {/* Slide-in on the similar rail owns entrance — no parent reveal. */}
+        <div className="pdp-main pdp-main--lower">
           <PdpSimilar products={similar} />
         </div>
       </div>

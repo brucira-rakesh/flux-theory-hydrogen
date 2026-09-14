@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import {
   getAdjacentAndFirstAvailableVariants,
   getSelectedProductOptions,
@@ -18,8 +18,8 @@ import PdpLifestyle from '~/components/PDP/PdpLifestyle';
 import PdpMarquee from '~/components/PDP/PdpMarquee';
 import PdpSimilar from '~/components/PDP/PdpSimilar';
 import SiteHeader from '~/components/ProductShelf/SiteHeader';
-// TEMPORARY: sticky ATC hidden — re-import PdpStickyBar when restoring.
-// import PdpStickyBar from '~/components/PDP/PdpStickyBar';
+import FluxPdpStickyBar from '~/components/FluxPDP/FluxPdpStickyBar';
+import {usePdpMotion} from '~/hooks/usePdpMotion';
 import {
   clientIpFromRequest,
   loadJudgeMeProductReviews,
@@ -310,95 +310,106 @@ export default function FluxPdp() {
 
   const [quantity, setQuantity] = useState(1);
   const [stickyVisible, setStickyVisible] = useState(false);
-  const [heroFormOutOfView, setHeroFormOutOfView] = useState(false);
-  const [lifestyleInView, setLifestyleInView] = useState(false);
-  const [howToApproaching, setHowToApproaching] = useState(false);
+  /** Gift section has scrolled up past the top of the viewport. */
+  const [pastGift, setPastGift] = useState(false);
+  /** Founder pin/scrub range is active — hide sticky for the CEO sequence. */
+  const [founderPinActive, setFounderPinActive] = useState(false);
   const formRef = useRef(null);
   const lifestyleRef = useRef(null);
-  const howToRef = useRef(null);
+  const giftSectionRef = useRef(null);
+  /** Pinned while the gift section curtains over the end of the hero. */
+  const heroCurtainPinRef = useRef(null);
   const heroControlsRef = useRef(null);
   const footerSentinelRef = useRef(null);
+  const pageRef = useRef(null);
+
+  usePdpMotion(pageRef, {
+    enabled: Boolean(product),
+    replayKey: product?.handle,
+  });
+
+  const onFounderPinActiveChange = useCallback((active) => {
+    setFounderPinActive(Boolean(active));
+  }, []);
 
   useEffect(() => {
     setQuantity(1);
     setStickyVisible(false);
-    setHeroFormOutOfView(false);
-    setLifestyleInView(false);
-    setHowToApproaching(false);
+    setPastGift(false);
+    setFounderPinActive(false);
   }, [product.handle]);
 
+  // Sticky ATC: show once the gift section is leaving (top above viewport),
+  // hide while the founder/CEO pin animation runs, show again after it ends.
   useEffect(() => {
-    setStickyVisible(heroFormOutOfView && (!lifestyleInView || howToApproaching));
-  }, [heroFormOutOfView, lifestyleInView, howToApproaching]);
+    setStickyVisible(pastGift && !founderPinActive);
+  }, [pastGift, founderPinActive]);
 
   useEffect(() => {
+    const gift = giftSectionRef.current;
     const form = formRef.current;
-    if (!form || typeof IntersectionObserver === 'undefined') return;
+    if (typeof IntersectionObserver === 'undefined') return undefined;
 
-    const lifestyle = lifestyleRef.current;
-    const howTo = howToRef.current;
-    let formOut = false;
-    let lifestyleVisible = false;
-    let howToNear = false;
+    const scroller = document.querySelector('[data-scroll-root]') ?? window;
+    let lastPast = null;
+    let ticking = false;
 
-    const recompute = () => {
-      setHeroFormOutOfView(formOut);
-      setLifestyleInView(lifestyleVisible);
-      setHowToApproaching(howToNear);
-      setStickyVisible(formOut && (!lifestyleVisible || howToNear));
+    const readPastGift = () => {
+      let next = false;
+      if (gift) {
+        // Leaving / left upward: section top has crossed the viewport top.
+        next = gift.getBoundingClientRect().top < 0;
+      } else if (form) {
+        // No gift bundle — fall back to hero ATC form leaving the viewport.
+        next = form.getBoundingClientRect().bottom <= 0;
+      }
+      if (next === lastPast) return;
+      lastPast = next;
+      setPastGift(next);
     };
 
-    formOut = form.getBoundingClientRect().bottom <= 0;
-    if (lifestyle) {
-      const rect = lifestyle.getBoundingClientRect();
-      lifestyleVisible = rect.bottom > 0 && rect.top < window.innerHeight;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        readPastGift();
+      });
+    };
+
+    readPastGift();
+
+    // Native scroll only — Lenis still moves the document, so window/scroller
+    // events fire. Avoid a second Lenis listener (was doubling work per frame).
+    if (scroller === window) {
+      window.addEventListener('scroll', onScroll, {passive: true});
+    } else {
+      scroller.addEventListener('scroll', onScroll, {passive: true});
     }
-    if (howTo) {
-      const rect = howTo.getBoundingClientRect();
-      const early = 56;
-      howToNear = rect.top < window.innerHeight + early && rect.bottom > 0;
-    }
-    recompute();
 
-    const gateObserver = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.target === form) formOut = !entry.isIntersecting;
-          if (lifestyle && entry.target === lifestyle) {
-            lifestyleVisible = entry.isIntersecting;
-          }
-        }
-        recompute();
-      },
-      {threshold: 0, rootMargin: '0px'},
-    );
-
-    gateObserver.observe(form);
-    if (lifestyle) gateObserver.observe(lifestyle);
-
-    let howToObserver;
-    if (howTo) {
-      howToObserver = new IntersectionObserver(
-        ([entry]) => {
-          howToNear = entry.isIntersecting;
-          recompute();
-        },
-        {threshold: 0, rootMargin: '0px 0px 56px 0px'},
-      );
-      howToObserver.observe(howTo);
+    const targets = [gift, form].filter(Boolean);
+    let io;
+    if (targets.length) {
+      io = new IntersectionObserver(readPastGift, {threshold: 0});
+      for (const target of targets) io.observe(target);
     }
 
     return () => {
-      gateObserver.disconnect();
-      howToObserver?.disconnect();
+      if (scroller === window) {
+        window.removeEventListener('scroll', onScroll);
+      } else {
+        scroller.removeEventListener('scroll', onScroll);
+      }
+      io?.disconnect();
     };
-  }, [product.handle, Boolean(view.lifestyle), Boolean(view.howTo)]);
+  }, [product.handle, Boolean(giftBundle)]);
 
   return (
-    <SmoothScroll>
-      <div className="pdp-page flux-pdp">
+    <SmoothScroll lenisOptions={{duration: 0.4}}>
+      <div ref={pageRef} className="pdp-page flux-pdp">
         <SiteHeader />
-        <main className="pdp-main">
+        {/* No data-pdp-reveal on main — transforms break the gift curtain pin. */}
+        <main ref={heroCurtainPinRef} className="pdp-main flux-pdp-curtain-pin">
           <FluxPdpHero
             product={product}
             view={view}
@@ -425,25 +436,49 @@ export default function FluxPdp() {
             }
           />
         </main>
-        <FluxPdpGiftBanner bundle={giftBundle} />
+        {giftBundle ? (
+          <FluxPdpGiftBanner
+            bundle={giftBundle}
+            sectionRef={giftSectionRef}
+            pinTargetRef={heroCurtainPinRef}
+          />
+        ) : null}
         {view.marquee ? (
-          <PdpMarquee items={view.marquee.items} variant="light" />
+          <div data-pdp-reveal data-pdp-reveal-y="0">
+            <PdpMarquee items={view.marquee.items} variant="light" />
+          </div>
         ) : null}
         {view.lifestyle ? (
-          <PdpLifestyle lifestyle={view.lifestyle} sectionRef={lifestyleRef} />
+          <div data-pdp-reveal>
+            <PdpLifestyle lifestyle={view.lifestyle} sectionRef={lifestyleRef} />
+          </div>
         ) : null}
-        <FluxPdpTestimonial />
+        {/* No data-pdp-reveal wrapper — parent transforms break ScrollTrigger pin. */}
+        <FluxPdpTestimonial onPinActiveChange={onFounderPinActiveChange} />
+        {/* Slide-in on the review grid owns entrance — no parent reveal
+            (parent transforms hide / fight the horizontal rail entry). */}
         <FluxPdpReviewCta reviews={reviews} />
         <div className="pdp-main pdp-main--lower">
           <PdpSimilar products={similar} />
         </div>
-        {/* TEMPORARY: sticky ATC hidden on Flux PDP — restore PdpStickyBar when ready. */}
+        <FluxPdpStickyBar
+          product={product}
+          selectedVariant={selectedVariant}
+          price={price}
+          compareAtPrice={compareAtPrice}
+          title={view.name}
+          visible={stickyVisible}
+          heroControlsRef={heroControlsRef}
+          footerSentinelRef={footerSentinelRef}
+        />
         <div
           ref={footerSentinelRef}
           className="pdp-footer-sentinel"
           aria-hidden="true"
         />
-        <FooterV3 />
+        <div data-pdp-reveal data-pdp-reveal-y="16">
+          <FooterV3 />
+        </div>
       </div>
     </SmoothScroll>
   );

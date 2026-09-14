@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import gsap from 'gsap'
 import SiteHeader from '../components/ProductShelf/SiteHeader'
 import FooterV3 from '../components/Footer/FooterV3'
@@ -227,9 +227,9 @@ export default function ShopPage({ catalog = [] }) {
         <header className="shop-hero">
           <nav className="shop-breadcrumb" aria-label="Breadcrumb">
             <span className="shop-breadcrumb__item">
-              <a href={HOME_URL} className="shop-breadcrumb__link">
+              <Link to={HOME_URL} className="shop-breadcrumb__link">
                 Home
-              </a>
+              </Link>
             </span>
             {routeCategory === 'all' ? (
               <span className="shop-breadcrumb__item">
