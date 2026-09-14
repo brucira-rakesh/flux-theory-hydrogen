@@ -899,6 +899,10 @@ export default function CloudTransition({
           goingUp &&
           !isScrollLocked() &&
           !scrollNavState.skippingSections &&
+          // A section pinned ON this seam owns its own upward crossing —
+          // see scrollNavState.suppressSeamReverse. `!isScrollLocked()`
+          // cannot stand in for this: the claim outlives the lock.
+          !scrollNavState.suppressSeamReverse &&
           prevMarkerTop <= REVERSE_CROSSING_EPS_PX &&
           markerTop > REVERSE_CROSSING_EPS_PX
         ) {
@@ -1138,6 +1142,9 @@ export default function CloudTransition({
     if (
       goingUp &&
       !isScrollLocked() &&
+      // Mirrors render()'s own reverse test — see that guard's comment and
+      // scrollNavState.suppressSeamReverse.
+      !scrollNavState.suppressSeamReverse &&
       prevMarkerTop <= REVERSE_CROSSING_EPS_PX &&
       markerTop > REVERSE_CROSSING_EPS_PX
     ) {

@@ -88,6 +88,30 @@ export const scrollNavState = {
    */
   suppressSeamCover: false,
   /**
+   * Set by useScenev2mweb (mobile hero) whenever it has claimed the UPWARD
+   * crossing of the seam it shares with CloudTransition; read by both of
+   * CloudTransition's reverse-crossing tests.
+   *
+   * On mobile the seam marker sits exactly on Scenev2mweb's pin line, so a
+   * single upward crossing is watched by two independent systems: that
+   * section's probe (which wants to re-pin and walk its scenes backwards)
+   * and CloudTransition's reverse wipe (which wants to teleport to the top
+   * of the page and reset the intro reel). CloudTransition's only defence
+   * was `!isScrollLocked()`, which cannot help here — the section has
+   * already released the lock by the time it arms that crossing — and it
+   * subscribes to Lenis first (it is rendered first), so it always won the
+   * race. Swiping forward off the last scene therefore armed a crossing
+   * that, on the way back up, replayed the whole wipe back to frame 0 of
+   * the intro instead of re-pinning: the section looped forever and the
+   * page below it was unreachable.
+   *
+   * Only ever true while that one mobile section is mounted AND holds the
+   * claim; the desktop carousel exits across a different marker, and the
+   * Seawave↔SceneV2 seam never sets this at all, so both keep their own
+   * reverse wipes untouched.
+   */
+  suppressSeamReverse: false,
+  /**
    * 0..1, written by useSeawaveSeq's `paint()` across the last
    * SEAWAVE_HANDOFF_LEAD_FRAMES frames of the final forward run, read by
    * CloudTransition's render loop as a coverage FLOOR.

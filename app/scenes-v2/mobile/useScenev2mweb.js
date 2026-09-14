@@ -24,6 +24,7 @@ import {
   acquireScrollLock,
   releaseScrollLock,
 } from "../../hooks/useScrollLock";
+import { scrollNavState } from "../../utils/scrollNavState";
 
 /** How long the scroll that carries the page off this section takes once
  *  the pin is released. Roughly the carousel's own commit duration, so
@@ -149,6 +150,19 @@ export function useScenev2mweb() {
    *  from ProductV3 re-pin and walk the scenes backwards. */
   const armedDownRef = useRef(true);
   const armedUpRef = useRef(false);
+  /**
+   * Arming the upward crossing is also a claim ON it: the seam marker sits
+   * exactly on our pin line, so CloudTransition watches the very same
+   * crossing and — subscribing to Lenis first, with its `!isScrollLocked()`
+   * guard useless once we have released the lock — would otherwise win it
+   * and wipe back to the top of the page instead of letting us re-pin.
+   * Published as one write with the ref so the two can never disagree; see
+   * scrollNavState.suppressSeamReverse.
+   */
+  const setArmedUp = useCallback((value) => {
+    armedUpRef.current = value;
+    scrollNavState.suppressSeamReverse = value;
+  }, []);
   /** Scroll offset at which the section's top sits on the viewport top —
    *  the position the pin snaps to and holds. */
   const lockYRef = useRef(0);
@@ -414,9 +428,9 @@ export function useScenev2mweb() {
       // Disarm the direction we came in on, so the snap itself can't read
       // back as another crossing.
       if (direction > 0) armedDownRef.current = false;
-      else armedUpRef.current = false;
+      else setArmedUp(false);
     },
-    [scrollPageTo, startSettle],
+    [scrollPageTo, startSettle, setArmedUp],
   );
 
   /**
@@ -448,7 +462,7 @@ export function useScenev2mweb() {
       setPinned(false);
       velocityRef.current = 0;
       armedDownRef.current = false;
-      armedUpRef.current = direction > 0;
+      setArmedUp(direction > 0);
       releaseScrollLock(lenisRef.current);
 
       const el = containerRef.current;
@@ -459,7 +473,7 @@ export function useScenev2mweb() {
           : Math.max(0, lockYRef.current - window.innerHeight);
       scrollPageTo(target, EXIT_DURATION_SEC);
     },
-    [scrollPageTo, stopSettle],
+    [scrollPageTo, stopSettle, setArmedUp],
   );
 
   /** Discover's action — the one way past the carousel that doesn't wait
@@ -569,8 +583,8 @@ export function useScenev2mweb() {
     // Fully below us (back up in the hero) / fully above us (down in
     // ProductV3): re-arm the crossing that would bring us back.
     if (rect.top >= window.innerHeight) armedDownRef.current = true;
-    else if (rect.bottom <= 0) armedUpRef.current = true;
-  }, [isReducedMotion, pin]);
+    else if (rect.bottom <= 0) setArmedUp(true);
+  }, [isReducedMotion, pin, setArmedUp]);
 
   useLenis(probe);
 
@@ -597,6 +611,9 @@ export function useScenev2mweb() {
         pinnedRef.current = false;
         releaseScrollLock(lenisRef.current);
       }
+      // Never leave the seam claimed by a section that has gone away, or
+      // CloudTransition's reverse wipe stays suppressed for the next route.
+      scrollNavState.suppressSeamReverse = false;
     },
     [],
   );
