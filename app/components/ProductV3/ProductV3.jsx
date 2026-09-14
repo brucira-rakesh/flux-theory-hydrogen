@@ -123,6 +123,7 @@ export default function ProductV3({ products = [] }) {
 
   return (
     <section
+      id="home-product"
       ref={sectionRef}
       className="relative z-[21] min-h-dvh w-full overflow-hidden bg-[#0d1b24] lg:h-dvh"
     >

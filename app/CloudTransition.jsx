@@ -593,8 +593,25 @@ export default function CloudTransition({
       // Seawave — evaluated every frame (even mid-auto) so the reverse wipe,
       // which parks the marker on SeawaveSeq's pin (1vh above the seam),
       // leaves forward armed again.
-      if (markerTop > FWD_REARM_MARKER_VH * viewportH)
+      // Not while the mobile carousel has claimed this seam: re-arming there
+      // is what replayed the wipe on the way out of the last scene and
+      // snapped the page back onto the pin instead of into ProductV3.
+      if (
+        !scrollNavState.suppressSeamReverse &&
+        markerTop > FWD_REARM_MARKER_VH * viewportH
+      ) {
         forwardArmedRef.current = true;
+      }
+
+      // A claimed seam owns both directions. An in-flight wipe must not keep
+      // enforcing its snap — that yank is what undoes the carousel's exit.
+      if (scrollNavState.suppressSeamReverse && auto.active) {
+        auto.active = false;
+        auto.enforce = false;
+        autoplayLockRef.current = false;
+        forwardTriggerPendingRef.current = false;
+        if (!isScrollLocked()) lenisInstRef.current?.start();
+      }
 
       let cover;
       if (auto.active) {
@@ -776,6 +793,7 @@ export default function CloudTransition({
         const forwardTriggerPositionReady =
           marker &&
           forwardArmedRef.current &&
+          !scrollNavState.suppressSeamReverse &&
           !isScrollLocked() &&
           // A PageProgress rail jump tweens straight past this boundary on
           // its way further down the page — this line's own position-based
@@ -1125,7 +1143,10 @@ export default function CloudTransition({
     lenisPrevScrollRef.current = scrollY;
     lenisPrevMarkerTopRef.current = markerTop;
 
-    if (markerTop > FWD_REARM_MARKER_VH * viewportH) {
+    if (
+      !scrollNavState.suppressSeamReverse &&
+      markerTop > FWD_REARM_MARKER_VH * viewportH
+    ) {
       forwardArmedRef.current = true;
     }
 
@@ -1201,6 +1222,7 @@ export default function CloudTransition({
     // gather over a properly covered frame.
     const forwardWipeOwed =
       !auto.active &&
+      !scrollNavState.suppressSeamReverse &&
       forwardArmedRef.current &&
       !isScrollLocked() &&
       markerTop <= AUTOPLAY_TRIGGER_MARKER_VH * viewportH;

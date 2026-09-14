@@ -102,8 +102,11 @@ export const scrollNavState = {
    * subscribes to Lenis first (it is rendered first), so it always won the
    * race. Swiping forward off the last scene therefore armed a crossing
    * that, on the way back up, replayed the whole wipe back to frame 0 of
-   * the intro instead of re-pinning: the section looped forever and the
-   * page below it was unreachable.
+   * the intro instead of re-pinning. The still-armed FORWARD latch did the
+   * same on the exit scroll itself, snapping the page back onto the pin.
+   * Either way the section looped and ProductV3 stayed unreachable.
+   * useScenev2mweb holds this claim for the whole pin, and disarms the
+   * forward latch with syncSeamAfterJump(false) on a downward exit.
    *
    * Only ever true while that one mobile section is mounted AND holds the
    * claim; the desktop carousel exits across a different marker, and the

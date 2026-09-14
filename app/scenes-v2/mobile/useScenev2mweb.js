@@ -127,6 +127,7 @@ export function useScenev2mweb() {
   const commitElapsedRef = useRef(0);
 
   const dragStartYRef = useRef(0);
+  const lastPointerYRef = useRef(0);
   const pointerIdRef = useRef(null);
 
   const rafRef = useRef(null);
@@ -163,6 +164,13 @@ export function useScenev2mweb() {
     armedUpRef.current = value;
     scrollNavState.suppressSeamReverse = value;
   }, []);
+  /**
+   * True from unpin(1) until that exit scroll has actually left the section.
+   * The exit tween crosses the same line the pin probe watches; without this
+   * a single backward tick of the tween (or leftover fling) re-pins and the
+   * user never reaches ProductV3.
+   */
+  const forwardExitRef = useRef(null);
   /** Scroll offset at which the section's top sits on the viewport top —
    *  the position the pin snaps to and holds. */
   const lockYRef = useRef(0);
@@ -321,7 +329,12 @@ export function useScenev2mweb() {
     const instance = lenisRef.current;
     if (instance) {
       if (durationSec <= 0) {
+        // The pin holds overflow:hidden. Lenis's max scroll can still be the
+        // pin line until it remeasures — a scrollTo then clamps and the page
+        // never reaches ProductV3.
+        instance.resize?.();
         instance.scrollTo(y, { immediate: true, force: true });
+        scrollRootTo(y);
       } else {
         instance.scrollTo(y, { duration: durationSec, force: true });
       }
@@ -426,9 +439,13 @@ export function useScenev2mweb() {
       startSettle();
 
       // Disarm the direction we came in on, so the snap itself can't read
-      // back as another crossing.
+      // back as another crossing. setArmedUp(false) also drops the seam
+      // claim — re-assert it. While this pin holds the page, the marker
+      // sits on our top edge; a leaked scroll must not be a reverse wipe
+      // back to the intro. Only unpin(-1) is allowed to release that claim.
       if (direction > 0) armedDownRef.current = false;
       else setArmedUp(false);
+      scrollNavState.suppressSeamReverse = true;
     },
     [scrollPageTo, startSettle, setArmedUp],
   );
@@ -462,16 +479,59 @@ export function useScenev2mweb() {
       setPinned(false);
       velocityRef.current = 0;
       armedDownRef.current = false;
-      setArmedUp(direction > 0);
-      releaseScrollLock(lenisRef.current);
 
       const el = containerRef.current;
       const height = el?.offsetHeight ?? window.innerHeight;
+      const bottom = el?.getBoundingClientRect().bottom ?? height;
+      // Live bottom, not lockY + height. lockY is the pin line and can be a
+      // frame behind the scroller; scrolling to a stale target above the
+      // current offset is an upward crossing of the seam, which is the
+      // reverse wipe back to the intro.
+      const product = document.getElementById("home-product");
+      const productTop = product
+        ? Math.round(getScrollY() + product.getBoundingClientRect().top)
+        : null;
+      // Prefer the product grid itself over section-bottom math. The two
+      // should coincide; if they don't, the grid is what the exit has to
+      // land on.
       const target =
         direction > 0
-          ? lockYRef.current + height
+          ? (productTop ?? Math.round(getScrollY() + bottom) + 8)
           : Math.max(0, lockYRef.current - window.innerHeight);
-      scrollPageTo(target, EXIT_DURATION_SEC);
+
+      if (direction > 0) {
+        // Leaving DOWN. Claim the seam (so the reverse wipe cannot teleport
+        // to the intro) and disarm the forward latch. That latch is still
+        // armed if the pin grabbed the page before the hero wipe consumed
+        // it — releasing the lock and scrolling down then satisfies every
+        // forward-trigger condition and the wipe snaps the page back onto
+        // this pin instead of into ProductV3.
+        setArmedUp(true);
+        scrollNavState.syncSeamAfterJump?.(false);
+        // Already clear of the section (the pin lost a fling and the page
+        // is sitting on ProductV3 with scroll still locked). Pulling back
+        // to the seam is the loop. Just hand the page over.
+        if (bottom > 8) {
+          forwardExitRef.current = {
+            until: performance.now() + (EXIT_DURATION_SEC + 0.4) * 1000,
+            target,
+          };
+        }
+      } else {
+        forwardExitRef.current = null;
+        setArmedUp(false);
+      }
+
+      releaseScrollLock(lenisRef.current);
+      // Already sitting on ProductV3 — scrolling back to a computed seam
+      // target is the loop. Only move when the grid is still below the fold.
+      if (direction < 0 || bottom > 8) {
+        // Forward is an instant snap, not a 1.1s tween. The tween was the
+        // window the cloud wipe used to yank the page back onto the pin.
+        // Reverse stays a tween so it can carry the seam marker across
+        // CloudTransition's reverse line.
+        scrollPageTo(target, direction > 0 ? 0 : EXIT_DURATION_SEC);
+      }
     },
     [scrollPageTo, stopSettle, setArmedUp],
   );
@@ -485,6 +545,10 @@ export function useScenev2mweb() {
     }
     const el = containerRef.current;
     if (!el) return;
+    // Same reason unpin(1) disarms the latch: a downward scroll from here
+    // is otherwise a fresh hero-wipe trigger and never reaches ProductV3.
+    scrollNavState.syncSeamAfterJump?.(false);
+    scrollNavState.suppressSeamReverse = true;
     const target = getScrollY() + el.getBoundingClientRect().bottom;
     scrollPageTo(target, EXIT_DURATION_SEC);
   }, [scrollPageTo, unpin]);
@@ -522,6 +586,19 @@ export function useScenev2mweb() {
     const rect = el.getBoundingClientRect();
     const pinY = Math.round(scrollY + rect.top);
     lockYRef.current = pinY;
+
+    // A forward exit owns the scroller until it has cleared this section.
+    // Recapturing mid-tween is what walks the user back into the sequence
+    // instead of letting ProductV3 come on screen.
+    const exit = forwardExitRef.current;
+    if (exit) {
+      const cleared =
+        performance.now() > exit.until ||
+        scrollY >= exit.target - 2 ||
+        rect.bottom <= 0;
+      if (cleared) forwardExitRef.current = null;
+      else return;
+    }
 
     // Crossing test BEFORE the fully-above/below re-arms below, and this
     // order is the whole point: one tick of a fast flick can carry the page
@@ -640,6 +717,11 @@ export function useScenev2mweb() {
     const el = containerRef.current;
     if (!el) return undefined;
 
+    // Reset on each pointerdown. A cancelled touch fires pointercancel AND
+    // touchend; consuming once is what keeps that pair from stepping twice.
+    let gestureConsumed = false;
+    let tracking = false;
+
     const onPointerDown = (event) => {
       // Only while the section holds the page — unpinned, a drag here is
       // the user scrolling the page past us and none of our business.
@@ -658,23 +740,28 @@ export function useScenev2mweb() {
         // no-op — see above
       }
       dragStartYRef.current = event.clientY;
+      lastPointerYRef.current = event.clientY;
+      gestureConsumed = false;
+      tracking = true;
     };
 
-    const endGesture = (event) => {
+    const onPointerMove = (event) => {
       if (pointerIdRef.current !== event.pointerId) return;
-      pointerIdRef.current = null;
-      try {
-        el.releasePointerCapture?.(event.pointerId);
-      } catch {
-        // no-op — see onPointerDown's setPointerCapture try/catch
-      }
+      lastPointerYRef.current = event.clientY;
+    };
 
-      // Nothing scrubs live while the finger is down — only the released
-      // gesture's net direction matters, past a small dead zone that tells
-      // a real swipe apart from a tap/jitter. There is no further distance
-      // or velocity threshold: any swipe past that commits.
-      const deltaY = event.clientY - dragStartYRef.current;
+    // Shared by pointerup, pointercancel, and touchend. The scroll lock
+    // preventDefaults touchmove while pinned, and iOS answers that by
+    // cancelling the pointer instead of firing pointerup — often with
+    // clientY 0. Without a fallback the last swipe never calls unpin and
+    // the page stays locked on the final scene.
+    const commitSwipe = (endY) => {
+      if (!tracking || gestureConsumed || !pinnedRef.current) return;
+      if (!Number.isFinite(endY)) return;
+
+      const deltaY = endY - dragStartYRef.current;
       if (Math.abs(deltaY) < SWIPE_DEAD_ZONE_PX) return;
+      gestureConsumed = true;
 
       // Swiping UP (finger moves toward the top, deltaY negative) advances
       // to the next scene — the same "swipe up for next" convention as a
@@ -698,14 +785,104 @@ export function useScenev2mweb() {
       }
     };
 
+    const endGesture = (event) => {
+      if (pointerIdRef.current !== event.pointerId) return;
+      pointerIdRef.current = null;
+      try {
+        el.releasePointerCapture?.(event.pointerId);
+      } catch {
+        // no-op — see onPointerDown's setPointerCapture try/catch
+      }
+
+      // Nothing scrubs live while the finger is down — only the released
+      // gesture's net direction matters, past a small dead zone that tells
+      // a real swipe apart from a tap/jitter. There is no further distance
+      // or velocity threshold: any swipe past that commits.
+      // A cancelled pointer often reports 0,0. That is not a swipe to the
+      // top of the screen — use the last move we actually saw.
+      const cancelledAtOrigin =
+        event.type === "pointercancel" &&
+        event.clientX === 0 &&
+        event.clientY === 0;
+      commitSwipe(cancelledAtOrigin ? lastPointerYRef.current : event.clientY);
+      // touchend follows pointerup on touch screens and may be the only
+      // event with a real coordinate. Don't drop tracking until then.
+      // A mouse has no touchend, so this gesture is over.
+      if (event.pointerType === "mouse") tracking = false;
+    };
+
+    const onTouchEnd = (event) => {
+      const touch = event.changedTouches?.[0];
+      if (touch) commitSwipe(touch.clientY);
+      tracking = false;
+    };
+
     el.addEventListener("pointerdown", onPointerDown);
+    el.addEventListener("pointermove", onPointerMove);
     el.addEventListener("pointerup", endGesture);
     el.addEventListener("pointercancel", endGesture);
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchEnd);
+
+    // Window capture, registered before the scroll lock's own listeners
+    // (those are added later, when the pin is taken). A last-scene swipe or
+    // wheel otherwise never becomes an exit: the lock eats the event, and
+    // iOS often cancels pointerup so the element handler never sees it.
+    let windowTouchStartY = null;
+    const onWindowTouchStart = (event) => {
+      windowTouchStartY = event.touches?.[0]?.clientY ?? null;
+    };
+    const exitIfLastScene = (forward) => {
+      if (!forward || !pinnedRef.current || !ready) return false;
+      if (phaseRef.current !== "idle") return false;
+      if (sceneIndexRef.current < SCENES.length - 1) return false;
+      unpin(1);
+      return true;
+    };
+    const onWindowTouchMove = (event) => {
+      const y = event.touches?.[0]?.clientY;
+      if (y == null || windowTouchStartY == null) return;
+      const movedUp = windowTouchStartY - y;
+      if (movedUp < SWIPE_DEAD_ZONE_PX) return;
+      if (!exitIfLastScene(true)) return;
+      windowTouchStartY = null;
+      if (event.cancelable) event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+    const onWindowWheel = (event) => {
+      if (event.deltaY <= 0) return;
+      if (!exitIfLastScene(true)) return;
+      if (event.cancelable) event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+
+    window.addEventListener("touchstart", onWindowTouchStart, {
+      capture: true,
+      passive: true,
+    });
+    window.addEventListener("touchmove", onWindowTouchMove, {
+      capture: true,
+      passive: false,
+    });
+    window.addEventListener("wheel", onWindowWheel, {
+      capture: true,
+      passive: false,
+    });
 
     return () => {
       el.removeEventListener("pointerdown", onPointerDown);
+      el.removeEventListener("pointermove", onPointerMove);
       el.removeEventListener("pointerup", endGesture);
       el.removeEventListener("pointercancel", endGesture);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+      window.removeEventListener("touchstart", onWindowTouchStart, {
+        capture: true,
+      });
+      window.removeEventListener("touchmove", onWindowTouchMove, {
+        capture: true,
+      });
+      window.removeEventListener("wheel", onWindowWheel, { capture: true });
     };
   }, [ready, isReducedMotion, beginCommit, unpin]);
 
