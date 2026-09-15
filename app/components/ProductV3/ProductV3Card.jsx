@@ -55,7 +55,7 @@ export default function ProductV3Card({
 
       <div className="relative flex flex-1 flex-col gap-2 p-3 sm:gap-3 sm:p-5">
         <div>
-          <h3 className="[font-family:var(--font-body)] text-base font-bold uppercase tracking-[1.12px] text-white sm:text-lg sm:font-semibold sm:normal-case sm:tracking-[-0.02em]">
+          <h3 className="line-clamp-2 [font-family:var(--font-body)] text-base font-bold uppercase tracking-[1.12px] text-white sm:text-lg sm:font-semibold sm:normal-case sm:tracking-[-0.02em]">
             {product.name}
           </h3>
           <p className="mt-1 line-clamp-2 [font-family:var(--font-body)] text-xs leading-[1.2] tracking-[0.12px] text-white/70 sm:text-[11px] sm:leading-snug sm:tracking-normal sm:text-white/60">

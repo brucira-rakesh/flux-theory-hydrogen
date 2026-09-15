@@ -176,22 +176,6 @@ function CaptionPair({ id, caption, phase, onDiscover }) {
       >
         {caption.description}
       </AnimatedDescription>
-      {/* The only affordance telling a first-time visitor how to move
-          between scenes — the section pins and eats vertical scroll here
-          (see useScenev2mweb), so without this the natural instinct is to
-          keep scrolling the way every other section on the page scrolls,
-          which reads UP-swipe as "next" already (same physical gesture as a
-          normal scroll-down), but a DOWN-swipe here steps backward instead
-          of forward — surprising without a hint, since nothing else on the
-          page reverses like that. */}
-      <span className="scenev2mweb-overlay__swipe-hint" aria-hidden="true">
-        <img
-          src={iconScrollChevron}
-          alt=""
-          className="scenev2mweb-overlay__swipe-hint-icon"
-        />
-        Swipe up for next
-      </span>
       <button
         ref={discoverRef}
         type="button"

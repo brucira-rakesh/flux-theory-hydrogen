@@ -235,6 +235,7 @@ function loadDeferredData() {
  *   handle?: string,
  *   title?: string,
  *   featuredImage?: {url?: string, altText?: string | null} | null,
+ *   selectedOrFirstAvailableVariant?: {id?: string, availableForSale?: boolean} | null,
  *   productVariants?: {references?: {nodes?: unknown[]}} | null,
  * }} product
  */
@@ -252,6 +253,9 @@ function relatedProductsFromMetafield(product) {
       title: node.title || node.handle,
       imageUrl: node.featuredImage?.url || null,
       imageAlt: node.featuredImage?.altText || node.title || '',
+      variantGid: node.selectedOrFirstAvailableVariant?.id || null,
+      availableForSale:
+        node.selectedOrFirstAvailableVariant?.availableForSale !== false,
     });
   }
 
@@ -262,6 +266,9 @@ function relatedProductsFromMetafield(product) {
     imageUrl: product.featuredImage?.url || null,
     imageAlt: product.featuredImage?.altText || product.title || '',
     isCurrent: true,
+    variantGid: product.selectedOrFirstAvailableVariant?.id || null,
+    availableForSale:
+      product.selectedOrFirstAvailableVariant?.availableForSale !== false,
   };
 
   const withoutCurrent = related.filter((item) => item.id !== product.id);
@@ -314,6 +321,9 @@ export default function FluxPdp() {
   const [pastGift, setPastGift] = useState(false);
   /** Founder pin/scrub range is active — hide sticky for the CEO sequence. */
   const [founderPinActive, setFounderPinActive] = useState(false);
+  /** Mobile sticky ATC: hero buy box still on screen → direct add; else open picker. */
+  const [heroInView, setHeroInView] = useState(true);
+  const [isMobileSticky, setIsMobileSticky] = useState(false);
   const formRef = useRef(null);
   const lifestyleRef = useRef(null);
   const giftSectionRef = useRef(null);
@@ -337,13 +347,39 @@ export default function FluxPdp() {
     setStickyVisible(false);
     setPastGift(false);
     setFounderPinActive(false);
+    setHeroInView(true);
   }, [product.handle]);
 
-  // Sticky ATC: show once the gift section is leaving (top above viewport),
-  // hide while the founder/CEO pin animation runs, show again after it ends.
   useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mq = window.matchMedia('(max-width: 900px)');
+    const sync = () => setIsMobileSticky(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  // Sticky ATC: desktop shows once gift leaves; mobile bar is always on.
+  useEffect(() => {
+    if (isMobileSticky) {
+      setStickyVisible(true);
+      return;
+    }
     setStickyVisible(pastGift && !founderPinActive);
-  }, [pastGift, founderPinActive]);
+  }, [pastGift, founderPinActive, isMobileSticky]);
+
+  useEffect(() => {
+    const hero = document.querySelector('.flux-pdp-hero');
+    const form = formRef.current;
+    const target = hero || form;
+    if (!target || typeof IntersectionObserver === 'undefined') return undefined;
+    const io = new IntersectionObserver(
+      ([entry]) => setHeroInView(Boolean(entry?.isIntersecting)),
+      {threshold: 0, rootMargin: '0px'},
+    );
+    io.observe(target);
+    return () => io.disconnect();
+  }, [product.handle]);
 
   useEffect(() => {
     const gift = giftSectionRef.current;
@@ -468,6 +504,9 @@ export default function FluxPdp() {
           compareAtPrice={compareAtPrice}
           title={view.name}
           visible={stickyVisible}
+          heroInView={heroInView}
+          quantity={quantity}
+          onQuantityChange={setQuantity}
           heroControlsRef={heroControlsRef}
           footerSentinelRef={footerSentinelRef}
         />
@@ -640,6 +679,10 @@ const PRODUCT_FRAGMENT = `#graphql
               altText
               width
               height
+            }
+            selectedOrFirstAvailableVariant {
+              id
+              availableForSale
             }
           }
         }
