@@ -77,7 +77,22 @@ export default function SmoothScroll({ children, lenisOptions = null }) {
     gsap.ticker.add(tick)
     gsap.ticker.lagSmoothing(0)
 
+    // Lenis + pinned sections: ST's default resize refresh can leave pin-spacers
+    // at the pre-resize width (PDP curtain pin locks .pdp-main). Debounce a
+    // full Lenis + ScrollTrigger remeasure on viewport changes.
+    let resizeTimer = 0
+    const onResize = () => {
+      window.clearTimeout(resizeTimer)
+      resizeTimer = window.setTimeout(() => {
+        lenis.resize()
+        ScrollTrigger.refresh()
+      }, 120)
+    }
+    window.addEventListener('resize', onResize)
+
     return () => {
+      window.clearTimeout(resizeTimer)
+      window.removeEventListener('resize', onResize)
       gsap.ticker.remove(tick)
       lenis.off('scroll', onScroll)
       lenis.destroy()

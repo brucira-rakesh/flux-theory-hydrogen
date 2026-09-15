@@ -34,6 +34,8 @@
   gap: 16px 12px;
   align-items: start;
   min-width: 0;
+  /* Match the breathing room under the sticky ATC on the right. */
+  margin-bottom: calc(24 * var(--pdp-fluid) / 1440);
 }
 
 .flux-pdp-gallery:not(:has(.flux-pdp-thumbs)) {
@@ -41,13 +43,34 @@
 }
 
 .flux-pdp-thumbs {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: calc(8 * var(--pdp-fluid) / 1440);
+  /* Cap to main media height so overflow uses the arrow controls. */
+  max-height: calc(var(--flux-pdp-media-w) * 560 / 591);
+  min-height: 0;
+}
+
+.flux-pdp-thumbs__rail {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(8 * var(--pdp-fluid) / 1440);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+
+.flux-pdp-thumbs__rail::-webkit-scrollbar {
+  display: none;
 }
 
 .flux-pdp-thumbs__btn {
   display: block;
+  flex: 0 0 auto;
   width: calc(123 * var(--pdp-fluid) / 1440);
   height: calc(131 * var(--pdp-fluid) / 1440);
   padding: 0;
@@ -68,6 +91,52 @@
   height: 100%;
   object-fit: contain;
   object-position: center;
+}
+
+/* Circular up/down control — Figma thumbs rail (ref: dotted chevron in circle). */
+.flux-pdp-thumbs__nav {
+  position: absolute;
+  left: 50%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.14);
+  transform: translateX(-50%);
+  cursor: pointer;
+}
+
+.flux-pdp-thumbs__nav.is-prev {
+  top: 8px;
+}
+
+.flux-pdp-thumbs__nav.is-next {
+  bottom: 8px;
+}
+
+.flux-pdp-thumbs__nav-icon {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid #111;
+  border-bottom: 2px solid #111;
+  transform: rotate(45deg);
+  margin-top: -3px;
+}
+
+.flux-pdp-thumbs__nav.is-prev .flux-pdp-thumbs__nav-icon {
+  transform: rotate(225deg);
+  margin-top: 3px;
+}
+
+.flux-pdp-thumbs__nav:hover,
+.flux-pdp-thumbs__nav:focus-visible {
+  background: #fff;
 }
 
 .flux-pdp-gallery__stage {
@@ -96,6 +165,26 @@
 
 .flux-pdp-hero__slider::-webkit-scrollbar {
   display: none;
+}
+
+/* Figma 309:10 — black progress track on the main media. */
+.flux-pdp-gallery__progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.flux-pdp-gallery__progress-fill {
+  display: block;
+  height: 100%;
+  background: #111;
+  transition: width 0.28s ease;
 }
 
 /* 30% / 70% hover split — cursor-following prev/next arrow. */
@@ -153,7 +242,9 @@
   width: 100%;
   min-width: 100%;
   max-width: 100%;
-  aspect-ratio: 591 / 741;
+  /* Shorter than 591/741 so white space sits under the stage, closer to the
+     ATC bottom margin on the buy box (Figma 309:10). */
+  aspect-ratio: 590 / 730;
   background: var(--pdp-panel, #eff2f4);
   overflow: hidden;
   scroll-snap-align: start;
@@ -164,7 +255,7 @@
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center;
 }
 
@@ -189,6 +280,9 @@
   max-height: none;
   overflow: visible;
   padding: 0 56px;
+  /* Buy-box width drives title/price stacking on mid desktops. */
+  container-type: inline-size;
+  container-name: flux-buybox;
 }
 
 /* Figma 3097:2002 — sits in the info column above the title (not over the gallery). */
@@ -285,10 +379,10 @@
   gap: 0;
   margin: 0;
   flex: 0 0 auto;
-  min-width: 0;
   font-family: var(--pdp-body, 'Geist', sans-serif);
   line-height: 1;
   min-width: 140px;
+  min-height: 85px;
   /* margin-left: calc(44 * var(--pdp-fluid) / 1440); */
 }
 
@@ -424,7 +518,7 @@
   margin: 0 0 calc(8 * var(--pdp-fluid) / 1440);
   font-family: var(--pdp-body, 'Geist', sans-serif);
   font-size: calc(12 * var(--pdp-fluid) / 1440);
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0;
   line-height: 1.4;
   text-transform: uppercase;
@@ -753,6 +847,98 @@
   max-width: none;
 }
 
+/*
+  Laptop / mid desktop (901–1439): keep the 2-col desktop layout, but shrink
+  the Figma-fixed gallery so the buy box isn't crushed. Mobile stack at ≤900
+  is unchanged.
+*/
+@media (min-width: 901px) and (max-width: 1439px) {
+  .pdp-page.flux-pdp {
+    --flux-pdp-thumb-w: clamp(72px, 8.5vw, 123px);
+    /* ~34% of content width leaves the buy box readable beside the gallery. */
+    --flux-pdp-media-w: min(591px, max(240px, calc((100vw - 44px) * 0.34)));
+    --flux-pdp-gallery-gap: 12px;
+    --flux-pdp-hero-col-gap: clamp(16px, 2vw, 28px);
+    --flux-pdp-gallery-w: calc(
+      var(--flux-pdp-thumb-w) + var(--flux-pdp-gallery-gap) + var(--flux-pdp-media-w)
+    );
+  }
+
+  .flux-pdp-hero {
+    grid-template-columns: minmax(0, var(--flux-pdp-gallery-w)) minmax(0, 1fr);
+    column-gap: var(--flux-pdp-hero-col-gap);
+  }
+
+  .flux-pdp-gallery {
+    grid-template-columns: var(--flux-pdp-thumb-w) minmax(0, 1fr);
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .flux-pdp-thumbs__btn {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 123 / 131;
+  }
+
+  .flux-pdp-gallery__stage,
+  .flux-pdp-hero__slider {
+    max-width: 100%;
+  }
+
+  .flux-pdp-hero__info {
+    padding: 0 clamp(12px, 2.5vw, 40px);
+  }
+
+  .flux-pdp-breadcrumb {
+    white-space: normal;
+  }
+
+  .flux-pdp-chips,
+  .flux-pdp-offers {
+    max-width: 100%;
+  }
+
+  .flux-pdp-price {
+    min-width: 0;
+  }
+
+  .flux-pdp-price__current {
+    font-size: clamp(24px, 2.4vw, 32px);
+  }
+}
+
+/* Stack title above price when the buy box itself is narrow (any viewport). */
+@container flux-buybox (max-width: 520px) {
+  .flux-pdp-hero__heading {
+    flex-wrap: wrap;
+    gap: 12px 16px;
+  }
+
+  .flux-pdp-hero__heading-main {
+    flex: 1 1 100%;
+  }
+
+  .flux-pdp-hero__heading-rule {
+    display: none;
+  }
+
+  .flux-pdp-price {
+    flex: 1 1 auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: flex-start;
+    gap: 8px 16px;
+    min-height: 0;
+    width: 100%;
+  }
+
+  .flux-pdp-price__meta {
+    padding-top: 0;
+  }
+}
+
 /* Figma 3110:3446 — mobile PDP hero (iPhone). Full-bleed gallery, stacked
    title/price, 2×2 benefit chips, ATC after chips above variants/offers. */
 @media (max-width: 900px) {
@@ -775,6 +961,7 @@
     max-width: none;
     margin-left: -16px;
     margin-right: -16px;
+    margin-bottom: 0;
   }
 
   /* Swipe-only gallery — no visible thumbnail strip. */
@@ -790,7 +977,11 @@
   }
 
   .flux-pdp-hero__media {
-    aspect-ratio: 402 / 480;
+    aspect-ratio: 402 / 420;
+  }
+
+  .flux-pdp-gallery__progress {
+    height: 2px;
   }
 
   .flux-pdp-hero__info {
@@ -979,6 +1170,12 @@
 .pdp-page.flux-pdp .flux-pdp-curtain-pin {
   position: relative;
   z-index: 1;
+  /* ST pin can stamp max-width from an earlier viewport; never lock the hero. */
+  max-width: none;
+}
+
+.pdp-page.flux-pdp .pin-spacer:has(> .flux-pdp-curtain-pin) {
+  max-width: none !important;
 }
 
 /* Gift bundle — Figma 3101:2447. Full-bleed banner + % hotspots + ATC card.
@@ -1451,6 +1648,19 @@
   opacity: 0.8;
 }
 
+@media (min-width: 641px) and (max-width: 1200px) {
+  .flux-pdp-quote {
+    padding: clamp(32px, 4vw, 48px) clamp(24px, 4vw, 76px) clamp(40px, 5vw, 64px);
+  }
+
+  .flux-pdp-review-wall__title,
+  .flux-pdp-review-wall__title.at-title,
+  .flux-pdp-reviews__title,
+  .flux-pdp-reviews__title.at-title {
+    font-size: clamp(36px, 5vw, 64px);
+  }
+}
+
 @media (max-width: 960px) {
   .flux-pdp-quote {
     padding: 40px 24px 48px;
@@ -1611,10 +1821,11 @@
 
 .flux-pdp-reviews__stars {
   display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-end;
   align-items: center;
   gap: calc(6.5 * var(--pdp-fluid) / 1440);
   margin: calc(54 * var(--pdp-fluid) / 1440) 0 0;
-  opacity: 0.5;
 }
 
 .flux-pdp-reviews__star {
@@ -1622,6 +1833,8 @@
   flex-shrink: 0;
   width: calc(39 * var(--pdp-fluid) / 1440);
   height: calc(39 * var(--pdp-fluid) / 1440);
+  opacity: 0.5;
+  transition: opacity 0.18s ease;
 }
 
 .flux-pdp-reviews__star-btn {
@@ -1634,6 +1847,14 @@
   background: transparent;
   cursor: pointer;
   line-height: 0;
+}
+
+/* DOM is 5→1 + row-reverse → visual 1→5; hover fills through the hovered star. */
+.flux-pdp-reviews__star-btn:hover .flux-pdp-reviews__star,
+.flux-pdp-reviews__star-btn:hover ~ .flux-pdp-reviews__star-btn .flux-pdp-reviews__star,
+.flux-pdp-reviews__star-btn:focus-visible .flux-pdp-reviews__star,
+.flux-pdp-reviews__star-btn:focus-visible ~ .flux-pdp-reviews__star-btn .flux-pdp-reviews__star {
+  opacity: 1;
 }
 
 .flux-pdp-reviews__star-btn:focus-visible {
@@ -1762,12 +1983,9 @@
   min-width: 0;
 }
 
-/* Entry shell — GSAP slides this; overflow stays on the inner grid so mobile
-   touch scrolling isn't fighting a transform on the scroller itself. */
 .flux-pdp-review-wall__grid-shell {
   flex: 1 1 auto;
   min-width: 0;
-  will-change: transform;
 }
 
 .flux-pdp-review-wall__grid {
@@ -1872,17 +2090,14 @@
   flex-shrink: 0;
 }
 
-.flux-pdp-review-wall__avatar-stack img {
+.flux-pdp-review-wall__avatar-stack .flux-pdp-review-wall__avatar--stack {
   width: calc(39 * var(--pdp-fluid) / 1440);
   height: calc(39 * var(--pdp-fluid) / 1440);
-  border-radius: 0;
-  object-fit: cover;
-  border: 1.2px solid #fff;
   margin-right: -14.625px;
-  background: #ddd;
+  font-size: calc(11 * var(--pdp-fluid) / 1440);
 }
 
-.flux-pdp-review-wall__avatar-stack img:last-child {
+.flux-pdp-review-wall__avatar-stack .flux-pdp-review-wall__avatar--stack:last-child {
   margin-right: 0;
 }
 
@@ -2029,7 +2244,7 @@
 .flux-pdp-review-wall__quote-card p {
   margin: 0;
   font-family: var(--pdp-body, 'Geist', sans-serif);
-  font-size: calc(24 * var(--pdp-fluid) / 1440);
+  font-size: calc(22 * var(--pdp-fluid) / 1440);
   font-weight: 500;
   line-height: 1.2;
 }
@@ -2796,6 +3011,17 @@
     visibility 0s linear 0s;
 }
 
+@media (min-width: 901px) and (max-width: 1100px) {
+  .flux-pdp-sticky {
+    gap: 0.75rem 1rem;
+    padding-inline: 1rem;
+  }
+
+  .flux-pdp-sticky__title {
+    max-width: 22ch;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
 
   .flux-pdp-sticky,
@@ -2814,7 +3040,7 @@
 
 .flux-pdp-sticky__title {
   margin: 0;
-  max-width: 44ch;
+  max-width: 30ch;
   font-family: var(--pdp-body, 'Geist', sans-serif);
   font-size: clamp(14px, 1.2vw, 18px);
   font-weight: 600;

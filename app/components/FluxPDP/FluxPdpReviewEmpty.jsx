@@ -79,7 +79,8 @@ export default function FluxPdpReviewEmpty({
             aria-label="Rate this product"
           >
             {Array.from({length: 5}, (_, index) => {
-              const value = index + 1;
+              // Render 5→1 so CSS row-reverse + sibling hover fills LTR.
+              const value = 5 - index;
               return (
                 <button
                   key={value}

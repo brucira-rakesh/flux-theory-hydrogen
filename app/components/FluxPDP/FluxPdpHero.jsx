@@ -4,10 +4,6 @@ import {Image, Money, getProductOptions} from '@shopify/hydrogen';
 import {Link, useNavigate} from 'react-router';
 import PdpControls from '~/components/PDP/PdpControls';
 import {
-  FLUX_PDP_FEATURE_ICON_SRC,
-  fluxPdpFeaturesFor,
-} from '~/components/FluxPDP/fluxPdpFeatures';
-import {
   isShopifyDefaultTitleOption,
   shouldShowSizeSelect,
 } from '~/lib/storefrontCatalog';
@@ -15,7 +11,7 @@ import iconOfferCopy from '~/assets/pdp/offers/icon-copy.svg';
 import arrowLeft from '~/assets/pdp/reviews/arrow-left.svg';
 import arrowRight from '~/assets/pdp/reviews/arrow-right.svg';
 
-export function mediaItemsFromProduct(product, max = 5) {
+export function mediaItemsFromProduct(product, max = 12) {
   const items = [];
   for (const node of product?.media?.nodes ?? []) {
     if (items.length >= max) break;
@@ -133,9 +129,13 @@ export default function FluxPdpHero({
   const navigate = useNavigate();
   const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
   const [copiedCode, setCopiedCode] = useState('');
+  const [pincode, setPincode] = useState('');
   /** Desktop gallery cursor arrow — follows pointer in the 30%/70% hit zones. */
   const [galleryCursor, setGalleryCursor] = useState(null);
+  /** Thumb rail can scroll further up / down. */
+  const [thumbsNav, setThumbsNav] = useState({up: false, down: false});
   const sliderRef = useRef(null);
+  const thumbsRailRef = useRef(null);
   const heroRef = useRef(null);
   const infoRef = useRef(null);
   const toastTimer = useRef(null);
@@ -143,6 +143,10 @@ export default function FluxPdpHero({
   const ignoreScrollSyncRef = useRef(false);
   const scrollSyncTimerRef = useRef(null);
   const thumbs = useMemo(() => mediaItemsFromProduct(product), [product]);
+  const galleryProgress =
+    thumbs.length > 0
+      ? ((selectedMediaIndex + 1) / thumbs.length) * 100
+      : 0;
 
   useEffect(() => () => {
     clearTimeout(toastTimer.current);
@@ -151,7 +155,51 @@ export default function FluxPdpHero({
 
   useEffect(() => {
     setSelectedMediaIndex(0);
+    setPincode('');
   }, [product.id]);
+
+  // Thumb rail overflow — show up/down arrows only when more thumbs exist
+  // below/above the visible stack (Figma vertical gallery control).
+  useEffect(() => {
+    const rail = thumbsRailRef.current;
+    if (!rail) {
+      setThumbsNav({up: false, down: false});
+      return undefined;
+    }
+
+    const update = () => {
+      const max = rail.scrollHeight - rail.clientHeight;
+      if (max <= 2) {
+        setThumbsNav({up: false, down: false});
+        return;
+      }
+      setThumbsNav({
+        up: rail.scrollTop > 2,
+        down: rail.scrollTop < max - 2,
+      });
+    };
+
+    update();
+    rail.addEventListener('scroll', update, {passive: true});
+    const ro =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(update)
+        : null;
+    ro?.observe(rail);
+    window.addEventListener('resize', update);
+    return () => {
+      rail.removeEventListener('scroll', update);
+      ro?.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [thumbs.length, product.id]);
+
+  const scrollThumbs = (direction) => {
+    const rail = thumbsRailRef.current;
+    if (!rail) return;
+    const step = Math.max(rail.clientHeight * 0.75, 140);
+    rail.scrollBy({top: direction * step, behavior: 'smooth'});
+  };
 
   /**
    * Gallery slider is `overflow-x: auto` with `data-lenis-prevent`, so a
@@ -224,6 +272,15 @@ export default function FluxPdpHero({
     };
   }, [selectedMediaIndex]);
 
+  // Keep the active thumb visible inside the capped rail.
+  useEffect(() => {
+    const rail = thumbsRailRef.current;
+    if (!rail) return;
+    const btn = rail.querySelectorAll('.flux-pdp-thumbs__btn')[selectedMediaIndex];
+    if (!(btn instanceof HTMLElement)) return;
+    btn.scrollIntoView({block: 'nearest', inline: 'nearest', behavior: 'smooth'});
+  }, [selectedMediaIndex]);
+
   const productOptions = getProductOptions({
     ...product,
     selectedOrFirstAvailableVariant: selectedVariant,
@@ -233,7 +290,7 @@ export default function FluxPdpHero({
     .filter(isSwatchableOption)
     .filter(isPackOption);
 
-  const chips = fluxPdpFeaturesFor(product.handle);
+  const chips = view.chips ?? [];
 
   const onOptionSelect = (value) => {
     if (value.selected || !value.variantUriQuery) return;
@@ -268,13 +325,14 @@ export default function FluxPdpHero({
     if (rect.width <= 0) return;
     const side =
       (event.clientX - rect.left) / rect.width < 0.3 ? 'prev' : 'next';
+    // No wrap — ends stay put (Figma gallery is not a loop).
     if (side === 'prev') {
-      setSelectedMediaIndex(
-        (index) => (index - 1 + thumbs.length) % thumbs.length,
-      );
+      setSelectedMediaIndex((index) => Math.max(0, index - 1));
       return;
     }
-    setSelectedMediaIndex((index) => (index + 1) % thumbs.length);
+    setSelectedMediaIndex((index) =>
+      Math.min(thumbs.length - 1, index + 1),
+    );
   };
 
   const onSliderScroll = () => {
@@ -311,22 +369,49 @@ export default function FluxPdpHero({
       <div className="flux-pdp-hero__main">
       <div className="flux-pdp-gallery">
         {thumbs.length ? (
-          <div className="flux-pdp-thumbs" role="list" aria-label="Product images">
-            {thumbs.map((item, index) => (
+          <div className="flux-pdp-thumbs">
+            {thumbsNav.up ? (
               <button
-                key={item.id}
                 type="button"
-                role="listitem"
-                className={`flux-pdp-thumbs__btn${
-                  index === selectedMediaIndex ? ' is-active' : ''
-                }`}
-                aria-label={`Show image ${index + 1}`}
-                aria-pressed={index === selectedMediaIndex}
-                onClick={() => setSelectedMediaIndex(index)}
+                className="flux-pdp-thumbs__nav is-prev"
+                aria-label="Previous thumbnails"
+                onClick={() => scrollThumbs(-1)}
               >
-                <img src={item.src} alt="" />
+                <span className="flux-pdp-thumbs__nav-icon" aria-hidden="true" />
               </button>
-            ))}
+            ) : null}
+            <div
+              ref={thumbsRailRef}
+              className="flux-pdp-thumbs__rail"
+              role="list"
+              aria-label="Product images"
+            >
+              {thumbs.map((item, index) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="listitem"
+                  className={`flux-pdp-thumbs__btn${
+                    index === selectedMediaIndex ? ' is-active' : ''
+                  }`}
+                  aria-label={`Show image ${index + 1}`}
+                  aria-pressed={index === selectedMediaIndex}
+                  onClick={() => setSelectedMediaIndex(index)}
+                >
+                  <img src={item.src} alt="" />
+                </button>
+              ))}
+            </div>
+            {thumbsNav.down ? (
+              <button
+                type="button"
+                className="flux-pdp-thumbs__nav is-next"
+                aria-label="More thumbnails"
+                onClick={() => scrollThumbs(1)}
+              >
+                <span className="flux-pdp-thumbs__nav-icon" aria-hidden="true" />
+              </button>
+            ) : null}
           </div>
         ) : null}
 
@@ -381,6 +466,22 @@ export default function FluxPdpHero({
               </figure>
             )}
           </div>
+
+          {thumbs.length > 1 ? (
+            <div
+              className="flux-pdp-gallery__progress"
+              role="progressbar"
+              aria-valuemin={1}
+              aria-valuemax={thumbs.length}
+              aria-valuenow={selectedMediaIndex + 1}
+              aria-label={`Image ${selectedMediaIndex + 1} of ${thumbs.length}`}
+            >
+              <span
+                className="flux-pdp-gallery__progress-fill"
+                style={{width: `${galleryProgress}%`}}
+              />
+            </div>
+          ) : null}
 
           {/* Desktop: 30% prev / 70% next. Arrow follows the cursor.
               Hidden on coarse pointers so mobile swipe still owns the slider. */}
@@ -457,7 +558,7 @@ export default function FluxPdpHero({
         <div className="flux-pdp-hero__heading">
           <div className="flux-pdp-hero__heading-main">
             <h1 className="flux-pdp-hero__title">
-              {view.focusTitle || view.name}
+              {view.name}
             </h1>
             {view.shortDescription ? (
               <p className="flux-pdp-hero__blurb">{view.shortDescription}</p>
@@ -498,21 +599,23 @@ export default function FluxPdpHero({
           </div>
         </div>
 
-        <ul className="flux-pdp-chips">
-          {chips.map((chip) => {
-            const src =
-              FLUX_PDP_FEATURE_ICON_SRC[chip.icon] ??
-              FLUX_PDP_FEATURE_ICON_SRC.drop;
-            return (
-              <li key={chip.label} className="flux-pdp-chip">
+        {chips.length ? (
+          <ul className="flux-pdp-chips">
+            {chips.map((chip) => (
+              <li key={chip.id ?? chip.label} className="flux-pdp-chip">
                 <span className="flux-pdp-chip__icon">
-                  <img src={src} alt="" width={22} height={24} />
+                  <img
+                    src={chip.iconUrl}
+                    alt={chip.iconAlt || ''}
+                    width={22}
+                    height={24}
+                  />
                 </span>
                 <span>{chip.label}</span>
               </li>
-            );
-          })}
-        </ul>
+            ))}
+          </ul>
+        ) : null}
 
         {relatedProducts?.length ? (
           <div className="flux-pdp-option flux-pdp-related">
@@ -657,8 +760,21 @@ export default function FluxPdpHero({
             type="text"
             name="pincode"
             inputMode="numeric"
+            pattern="[0-9]{6}"
+            maxLength={6}
             autoComplete="postal-code"
             placeholder="Enter Your Pin Code To Check Delivery."
+            value={pincode}
+            onChange={(event) => {
+              const digits = event.target.value.replace(/\D/g, '').slice(0, 6);
+              setPincode(digits);
+            }}
+            onBeforeInput={(event) => {
+              // Block non-digit keystrokes before they land in the field.
+              if (event.data && /\D/.test(event.data)) {
+                event.preventDefault();
+              }
+            }}
           />
           <button type="button" aria-label="Check delivery">
             <MagnifyingGlass size={18} weight="regular" aria-hidden />

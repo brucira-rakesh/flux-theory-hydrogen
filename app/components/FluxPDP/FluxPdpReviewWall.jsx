@@ -1,34 +1,15 @@
-import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
-import gsap from 'gsap';
-import {ScrollTrigger} from 'gsap/ScrollTrigger';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import AnimatedTitle from '~/components/AnimatedTitle/AnimatedTitle';
-import {prefersReducedMotion} from '~/hooks/useSpotlight';
-import {getScrollRoot} from '~/utils/scrollRoot';
 import arrowLeft from '~/assets/pdp/reviews/arrow-left.svg';
 import arrowRight from '~/assets/pdp/reviews/arrow-right.svg';
-import avatarFallback1 from '~/assets/pdp/reviews/avatar-1.png';
-import avatarFallback2 from '~/assets/pdp/reviews/avatar-2.png';
-import avatarFallback3 from '~/assets/pdp/reviews/avatar-3.png';
-import avatarFallback4 from '~/assets/pdp/reviews/avatar-4.png';
-import avatarFallback5 from '~/assets/pdp/reviews/avatar-5.png';
 import starFilled from '~/assets/pdp/reviews/star-filled.svg';
 import {getAvatarProps} from '~/utils/avatar';
-
-gsap.registerPlugin(ScrollTrigger);
 
 const TITLE_DURATION = 0.8;
 const TITLE_STAGGER = 0.02;
 const TITLE_SWEEP_BLUR = 5;
 
 const HEADLINE = ['REAL PEOPLE.', 'REAL ROUTINES.'];
-
-const FALLBACK_AVATARS = [
-  avatarFallback1,
-  avatarFallback2,
-  avatarFallback3,
-  avatarFallback4,
-  avatarFallback5,
-];
 
 function StarRow({size = 12, count = 5, className = ''}) {
   return (
@@ -47,13 +28,17 @@ function StarRow({size = 12, count = 5, className = ''}) {
   );
 }
 
-function ReviewerAvatar({name, photoUrl}) {
+function ReviewerAvatar({name, photoUrl, className = ''}) {
+  const rootClass = ['flux-pdp-review-wall__avatar', className]
+    .filter(Boolean)
+    .join(' ');
+
   if (photoUrl) {
     return (
       <img
         src={photoUrl}
         alt=""
-        className="flux-pdp-review-wall__avatar"
+        className={rootClass}
         width={61}
         height={61}
         draggable={false}
@@ -63,7 +48,7 @@ function ReviewerAvatar({name, photoUrl}) {
   const {initials, background} = getAvatarProps(name);
   return (
     <div
-      className="flux-pdp-review-wall__avatar flux-pdp-review-wall__avatar--initials"
+      className={`${rootClass} flux-pdp-review-wall__avatar--initials`}
       style={{background}}
       aria-hidden="true"
     >
@@ -147,7 +132,6 @@ function ReviewColumn({column}) {
  */
 export default function FluxPdpReviewWall({summary, cards, onWriteReview}) {
   const sectionRef = useRef(null);
-  const gridShellRef = useRef(null);
   const gridRef = useRef(null);
   const [canScrollPrev, setCanScrollPrev] = useState(false);
   const [canScrollNext, setCanScrollNext] = useState(false);
@@ -173,10 +157,23 @@ export default function FluxPdpReviewWall({summary, cards, onWriteReview}) {
     [],
   );
 
-  const stackAvatars = [
-    ...(summary.avatars ?? []),
-    ...FALLBACK_AVATARS,
-  ].slice(0, 5);
+  const stackReviewers = useMemo(() => {
+    const seen = new Set();
+    const list = [];
+    for (const card of cards) {
+      const name = card.reviewer?.name?.trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      list.push({
+        name,
+        avatar: card.reviewer.avatar ?? null,
+      });
+      if (list.length >= 5) break;
+    }
+    return list;
+  }, [cards]);
 
   const cardKey = cards.map((card) => card.id).join('|');
 
@@ -215,42 +212,6 @@ export default function FluxPdpReviewWall({summary, cards, onWriteReview}) {
       ro?.disconnect();
     };
   }, [measureScroll, cardKey]);
-
-  // One-shot entry: slide the grid shell from the right (desktop + mobile).
-  // Animate a wrapper — not the overflow scroller — so touch browsers don't
-  // drop the transform on `overflow-x: auto` rails.
-  useLayoutEffect(() => {
-    const section = sectionRef.current;
-    const shell = gridShellRef.current;
-    if (!section || !shell) return undefined;
-    if (prefersReducedMotion()) return undefined;
-
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        shell,
-        {
-          x: () => Math.max(shell.offsetWidth * 0.85, window.innerWidth * 0.45),
-          opacity: 0.2,
-        },
-        {
-          x: 0,
-          opacity: 1,
-          duration: 1.2,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: section,
-            start: 'top 78%',
-            once: true,
-            scroller: getScrollRoot() ?? undefined,
-          },
-        },
-      );
-    }, section);
-
-    requestAnimationFrame(() => ScrollTrigger.refresh());
-
-    return () => ctx.revert();
-  }, [cardKey]);
 
   const scrollByCard = (direction) => {
     const grid = gridRef.current;
@@ -326,18 +287,18 @@ export default function FluxPdpReviewWall({summary, cards, onWriteReview}) {
             </div>
 
             <div className="flux-pdp-review-wall__trust">
-              <div className="flux-pdp-review-wall__avatar-stack">
-                {stackAvatars.map((src, index) => (
-                  <img
-                    key={`${src}-${index}`}
-                    src={src}
-                    alt=""
-                    width={39}
-                    height={39}
-                    draggable={false}
-                  />
-                ))}
-              </div>
+              {stackReviewers.length > 0 ? (
+                <div className="flux-pdp-review-wall__avatar-stack">
+                  {stackReviewers.map((reviewer) => (
+                    <ReviewerAvatar
+                      key={reviewer.name}
+                      name={reviewer.name}
+                      photoUrl={reviewer.avatar}
+                      className="flux-pdp-review-wall__avatar--stack"
+                    />
+                  ))}
+                </div>
+              ) : null}
               <div className="flux-pdp-review-wall__trust-meta">
                 <StarRow
                   size={12}
@@ -359,7 +320,7 @@ export default function FluxPdpReviewWall({summary, cards, onWriteReview}) {
             </button>
           </aside>
 
-          <div className="flux-pdp-review-wall__grid-shell" ref={gridShellRef}>
+          <div className="flux-pdp-review-wall__grid-shell">
             <div className="flux-pdp-review-wall__grid" ref={gridRef}>
               {cards.map((column) => (
                 <ReviewColumn key={column.id} column={column} />

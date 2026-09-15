@@ -721,6 +721,22 @@ const PRODUCT_FRAGMENT = `#graphql
     shortDescription: metafield(namespace: "custom", key: "short_description") {
       value
     }
+    productIcons: metafield(namespace: "custom", key: "product_icons") {
+      references(first: 8) {
+        nodes {
+          ... on Metaobject {
+            title: field(key: "title") { value }
+            icon: field(key: "icon") {
+              reference {
+                ... on MediaImage {
+                  image { url altText width height }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
     allIngredients: metafield(namespace: "custom", key: "all_ingredients") {
       value
     }

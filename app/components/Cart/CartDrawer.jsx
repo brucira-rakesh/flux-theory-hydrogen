@@ -141,7 +141,7 @@ function CartDrawerPanel({cart: originalCart, open, onClose}) {
           </button>
         </div>
 
-        <div className="cart-drawer__body">
+        <div className="cart-drawer__body" data-lenis-prevent>
           {lines.length === 0 ? (
             <div className="cart-drawer__empty">
               <p>Your bag is empty.</p>
@@ -160,6 +160,7 @@ function CartDrawerPanel({cart: originalCart, open, onClose}) {
 
         {lines.length > 0 && (
           <div className="cart-drawer__foot">
+            <CartDrawerDiscount discountCodes={cart?.discountCodes} />
             <div className="cart-drawer__subtotal">
               <span>Subtotal</span>
               <strong>{subtotal ? formatMoneyDisplay(subtotal) : '—'}</strong>
@@ -174,6 +175,57 @@ function CartDrawerPanel({cart: originalCart, open, onClose}) {
           </div>
         )}
       </aside>
+    </div>
+  );
+}
+
+function CartDrawerDiscount({discountCodes}) {
+  const inputId = useId();
+  const codes =
+    discountCodes
+      ?.filter((discount) => discount.applicable)
+      ?.map(({code}) => code) || [];
+
+  return (
+    <div className="cart-drawer__discount">
+      {codes.length > 0 ? (
+        <div className="cart-drawer__discount-applied" role="group" aria-label="Applied discounts">
+          <CartForm
+            route="/cart"
+            action={CartForm.ACTIONS.DiscountCodesUpdate}
+            inputs={{discountCodes: []}}
+          >
+            <code className="cart-drawer__discount-code">{codes.join(', ')}</code>
+            <button type="submit" className="cart-drawer__discount-remove" aria-label="Remove discount">
+              Remove
+            </button>
+          </CartForm>
+        </div>
+      ) : null}
+
+      <CartForm
+        route="/cart"
+        action={CartForm.ACTIONS.DiscountCodesUpdate}
+        inputs={{discountCodes: codes}}
+      >
+        <div className="cart-drawer__discount-form">
+          <label htmlFor={inputId} className="sr-only">
+            Discount code
+          </label>
+          <input
+            id={inputId}
+            className="cart-drawer__discount-input"
+            type="text"
+            name="discountCode"
+            placeholder="Discount code"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <button type="submit" className="cart-drawer__discount-apply">
+            Apply
+          </button>
+        </div>
+      </CartForm>
     </div>
   );
 }

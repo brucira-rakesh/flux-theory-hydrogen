@@ -554,6 +554,28 @@ export function activeOffersFromMetafield(product) {
 }
 
 /**
+ * custom.product_icons (list.metaobject_reference) → hero chip row.
+ * Metaobject `product_icons`: file `icon` + text `title`.
+ * Returns [] when the metafield is absent.
+ */
+export function productIconsFromMetafield(product) {
+  const nodes = product?.productIcons?.references?.nodes ?? [];
+  return nodes
+    .map((node, index) => {
+      const label = node?.title?.value?.trim() ?? '';
+      const iconUrl = node?.icon?.reference?.image?.url ?? '';
+      if (!label || !iconUrl) return null;
+      return {
+        id: `${label}-${index}`,
+        label,
+        iconUrl,
+        iconAlt: node?.icon?.reference?.image?.altText || label,
+      };
+    })
+    .filter(Boolean);
+}
+
+/**
  * custom.product_ticker (list.metaobject_reference) → PdpMarquee items array.
  * Pill copy only — the FT divider mark is a static asset in PdpMarquee.
  * Returns undefined when the metafield is absent.
@@ -780,7 +802,8 @@ export function toPdpViewModel(product) {
     slug: product.handle,
     gid: product.id,
     name: product.title,
-    // Figma mobile/desktop hero uses the short archetype title (THE LOVER).
+    // Short archetype label for non-PDP surfaces (shelf overlays). PDP hero
+    // uses `name` (Shopify title) only.
     focusTitle:
       overlay?.focusTitle ?? shelfProduct?.focusTitle ?? product.title,
     breadcrumb: overlay?.breadcrumb ?? ['Home', 'Shop All', product.title],
@@ -789,6 +812,7 @@ export function toPdpViewModel(product) {
       metafieldText(product?.shortDescription) ||
       overlay?.shortDescription ||
       '',
+    chips: productIconsFromMetafield(product),
     price: moneyAmount(money),
     currency: moneySymbol(money?.currencyCode),
     money,

@@ -1208,6 +1208,19 @@
   overflow-x: clip;
 }
 
+@media (min-width: 641px) and (max-width: 1439px) {
+  .pdp-similar {
+    --pdp-similar-card-w: clamp(220px, 28vw, 318px);
+    --pdp-similar-gap: clamp(8px, 1vw, 14px);
+  }
+
+  .pdp-similar__title {
+    font-size: clamp(28px, 3.2vw, 40px);
+    letter-spacing: -0.04em;
+    margin-bottom: clamp(24px, 3vw, 42px);
+  }
+}
+
 /* Hidden probe: resolves fixed card width for fit-vs-scroll measurement. */
 .pdp-similar__card-measure {
   position: absolute;
@@ -1231,10 +1244,8 @@
   opacity: 0.9;
 }
 
-/* Entry shell — GSAP slides this; overflow stays on the inner rail. */
 .pdp-similar__rail-shell {
   min-width: 0;
-  will-change: transform;
 }
 
 .pdp-similar__rail {
