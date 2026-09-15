@@ -974,13 +974,18 @@
   }
 
   .flux-pdp-gallery__stage,
-  .flux-pdp-hero__slider,
-  .flux-pdp-hero__media {
+  .flux-pdp-hero__slider {
     max-width: none;
     width: 100%;
+    gap: 4px;
   }
 
+  /* Peek the next frame — ~1.2 slides in view (Swiper slidesPerView: 1.2). */
   .flux-pdp-hero__media {
+    flex: 0 0 calc(100% / 1.2);
+    width: calc(100% / 1.2);
+    min-width: calc(100% / 1.2);
+    max-width: calc(100% / 1.2);
     aspect-ratio: 402 / 420;
   }
 
@@ -1321,12 +1326,6 @@
   pointer-events: none;
 }
 
-/* SplitText line mask — chars rise from below without spilling. */
-.flux-pdp-gift__title .clip-text {
-  overflow: hidden;
-}
-
-.flux-pdp-gift__title .char,
 .flux-pdp-gift__title .at-char {
   font: inherit;
   letter-spacing: inherit;

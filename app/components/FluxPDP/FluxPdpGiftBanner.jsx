@@ -1,17 +1,21 @@
-import {Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
+import {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {Image} from '@shopify/hydrogen';
 import {Check} from '@phosphor-icons/react';
 import gsap from 'gsap';
 import {ScrollTrigger} from 'gsap/ScrollTrigger';
-import {SplitText} from 'gsap/SplitText';
 import {AddToCartButton} from '~/components/AddToCartButton';
+import AnimatedTitle from '~/components/AnimatedTitle/AnimatedTitle';
 import {useCartDrawer} from '~/components/Cart/CartProvider';
 import {prefersReducedMotion} from '~/hooks/useSpotlight';
 import {moneyAmount, moneySymbol} from '~/lib/storefrontCatalog';
 import {getScrollRoot} from '~/utils/scrollRoot';
 import hotspotPlus from '~/assets/pdp/gift/hotspot-plus.svg';
 
-gsap.registerPlugin(ScrollTrigger, SplitText);
+gsap.registerPlugin(ScrollTrigger);
+
+const TITLE_DURATION = 0.8;
+const TITLE_STAGGER = 0.02;
+const TITLE_SWEEP_BLUR = 5;
 
 const SHOPIFY_CDN_ORIGIN = 'https://cdn.shopify.com';
 
@@ -33,9 +37,9 @@ function shopifyUncroppedLoader({src, width}) {
  * Omits entirely when `bundle` is null (no `custom.product_bundle`).
  *
  * Scroll stack: hero pins (`pinSpacing: false`) so this section curtains
- * over it. Entrance wipe + image counter-parallax + SplitText headline are
- * scrubbed across that same cover range so the reveal happens on top of the
- * locked hero (not while the hero is still scrolling away).
+ * over it. Entrance wipe + image counter-parallax are scrubbed across that
+ * cover range; the headline uses AnimatedTitle (blur/fade reveal + optional
+ * letter wave) once the gift section enters view.
  *
  * @param {{
  *   bundle?: {
@@ -68,9 +72,30 @@ export default function FluxPdpGiftBanner({
   const outerRef = useRef(null);
   const innerRef = useRef(null);
   const mediaRef = useRef(null);
-  const headlineRef = useRef(null);
   const hotspots = bundle?.hotspots ?? [];
   const hotspotKey = hotspots.map((spot) => spot.id).join('|');
+
+  const scrollTrigger = useMemo(
+    () => ({
+      trigger: sectionRef,
+      // Fire as the gift curtain peeks in — same window as the wipe scrub.
+      start: 'top 80%',
+      end: 'bottom top',
+      toggleActions: 'play none none none',
+    }),
+    [],
+  );
+
+  const titleBlurSweep = useMemo(
+    () => ({
+      loop: 4,
+      letter: 1.6,
+      step: 0.09,
+      blur: TITLE_SWEEP_BLUR,
+      postReveal: 0.4,
+    }),
+    [],
+  );
 
   const [selectedIds, setSelectedIds] = useState(
     () => new Set(hotspots.map((spot) => spot.id)),
@@ -116,8 +141,7 @@ export default function FluxPdpGiftBanner({
     const outer = outerRef.current;
     const inner = innerRef.current;
     const media = mediaRef.current;
-    const headline = headlineRef.current;
-    if (!bundle || !section || !outer || !inner || !media || !headline) {
+    if (!bundle || !section || !outer || !inner || !media) {
       return undefined;
     }
 
@@ -126,22 +150,10 @@ export default function FluxPdpGiftBanner({
       return undefined;
     }
 
-    let split;
-
     const ctx = gsap.context(() => {
       gsap.set(outer, {yPercent: 100});
       gsap.set(inner, {yPercent: -100});
       gsap.set(media, {yPercent: 15});
-
-      split = SplitText.create(headline, {
-        type: 'chars,words,lines',
-        linesClass: 'clip-text',
-      });
-
-      const chars = split.chars;
-      if (chars?.length) {
-        gsap.set(chars, {autoAlpha: 0, yPercent: 150});
-      }
 
       const tl = gsap.timeline({
         scrollTrigger: {
@@ -164,27 +176,12 @@ export default function FluxPdpGiftBanner({
         {yPercent: 0, duration: 1},
         0,
       ).fromTo(media, {yPercent: 15}, {yPercent: 0, duration: 1}, 0);
-
-      if (chars?.length) {
-        tl.fromTo(
-          chars,
-          {autoAlpha: 0, yPercent: 150},
-          {
-            autoAlpha: 1,
-            yPercent: 0,
-            duration: 0.85,
-            stagger: {each: 0.02, from: 'random'},
-          },
-          0.15,
-        );
-      }
     }, section);
 
     requestAnimationFrame(() => ScrollTrigger.refresh());
 
     return () => {
       ctx.revert();
-      split?.revert?.();
     };
   }, [bundle]);
 
@@ -278,14 +275,15 @@ export default function FluxPdpGiftBanner({
                 />
               </div>
 
-              <h2 ref={headlineRef} className="flux-pdp-gift__title">
-                {bundle.titleLines.map((line, index) => (
-                  <Fragment key={`${line}-${index}`}>
-                    {index > 0 ? <br /> : null}
-                    {line}
-                  </Fragment>
-                ))}
-              </h2>
+              <AnimatedTitle
+                as="h2"
+                className="flux-pdp-gift__title"
+                lines={bundle.titleLines}
+                duration={TITLE_DURATION}
+                stagger={TITLE_STAGGER}
+                blurSweep={titleBlurSweep}
+                scrollTrigger={scrollTrigger}
+              />
 
               <div className="flux-pdp-gift__hotspots">
                 {hotspots.map((spot) => {

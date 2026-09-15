@@ -235,10 +235,9 @@ export default function FluxPdpHero({
     const slide = slider.children[selectedMediaIndex];
     if (!(slide instanceof HTMLElement)) return undefined;
 
-    const width = slider.clientWidth || 0;
-    const targetLeft = width
-      ? selectedMediaIndex * width
-      : slide.offsetLeft;
+    // Use the slide's own offset so fractional mobile widths (1.2 / view)
+    // stay in sync — index * slider.clientWidth only works for full-bleed.
+    const targetLeft = slide.offsetLeft;
 
     // Already settled — don't re-animate (avoids fighting scroll-snap).
     if (Math.abs(slider.scrollLeft - targetLeft) < 2) {
@@ -339,8 +338,12 @@ export default function FluxPdpHero({
     if (ignoreScrollSyncRef.current) return;
     const slider = sliderRef.current;
     if (!slider || !thumbs.length) return;
-    const width = slider.clientWidth || 1;
-    const next = Math.round(slider.scrollLeft / width);
+    const first = slider.children[0];
+    const slideWidth =
+      first instanceof HTMLElement && first.offsetWidth > 0
+        ? first.offsetWidth
+        : slider.clientWidth || 1;
+    const next = Math.round(slider.scrollLeft / slideWidth);
     const clamped = Math.max(0, Math.min(thumbs.length - 1, next));
     if (clamped !== selectedMediaIndex) setSelectedMediaIndex(clamped);
   };
