@@ -37,13 +37,16 @@
 // case the bake fades/settles oddly right at the end).
 // ============================================================================
 
-const modules = import.meta.glob("../assets/mweb-hero-seq/*.webp", {
+// Named prefix — not bare `*.webp` — so a stray `.webp` in the folder
+// cannot land at index 0 and shift every SCENES frame off by one.
+const modules = import.meta.glob("../assets/mweb-hero-seq/Mweb_Hero_*.webp", {
   eager: true,
   import: "default",
 });
 
 export const FRAME_URLS = Object.entries(modules)
   .map(([path, url]) => [Number(path.match(/(\d+)\.webp$/)?.[1] ?? 0), url])
+  .filter(([n]) => n > 0)
   .sort(([a], [b]) => a - b)
   .map(([, url]) => url);
 

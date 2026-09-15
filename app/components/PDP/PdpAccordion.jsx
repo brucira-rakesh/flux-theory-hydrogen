@@ -1,15 +1,67 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import iconFacebook from '../../assets/pdp/icon-facebook.svg'
 import iconInstagram from '../../assets/pdp/icon-instagram.svg'
 import iconTwitter from '../../assets/pdp/icon-twitter.svg'
+import { prefersReducedMotion } from '../../hooks/useSpotlight'
 
 gsap.registerPlugin(ScrollTrigger)
 
+const PANEL_DURATION = 0.4
+const PANEL_EASE = 'power2.inOut'
+
 function AccordionItem({ item, open, onToggle, extra = null }) {
   const panelId = `pdp-acc-${item.id}`
+  const panelRef = useRef(null)
+  const didInitRef = useRef(false)
   const hasBody = Boolean(item.intro || item.body || item.bullets?.length || extra)
+  /** Keep focusable until the close tween finishes — toggling `inert` mid-frame
+   *  was cancelling the height transition and making open/close snap. */
+  const [panelInert, setPanelInert] = useState(!open)
+
+  useLayoutEffect(() => {
+    const panel = panelRef.current
+    if (!panel || !hasBody) return undefined
+
+    gsap.killTweensOf(panel)
+
+    // First paint: match open state without animating (defaultOpen panels).
+    if (!didInitRef.current) {
+      didInitRef.current = true
+      gsap.set(panel, { height: open ? 'auto' : 0 })
+      setPanelInert(!open)
+      return undefined
+    }
+
+    if (prefersReducedMotion()) {
+      gsap.set(panel, { height: open ? 'auto' : 0 })
+      setPanelInert(!open)
+      return undefined
+    }
+
+    if (open) {
+      setPanelInert(false)
+      gsap.fromTo(
+        panel,
+        { height: panel.getBoundingClientRect().height },
+        {
+          height: 'auto',
+          duration: PANEL_DURATION,
+          ease: PANEL_EASE,
+        },
+      )
+      return undefined
+    }
+
+    gsap.to(panel, {
+      height: 0,
+      duration: PANEL_DURATION,
+      ease: PANEL_EASE,
+      onComplete: () => setPanelInert(true),
+    })
+    return undefined
+  }, [open, hasBody])
 
   return (
     <div className={`pdp-acc__item${open ? ' is-open' : ''}`}>
@@ -29,12 +81,13 @@ function AccordionItem({ item, open, onToggle, extra = null }) {
 
       {hasBody && (
         <div
+          ref={panelRef}
           id={panelId}
           className="pdp-acc__panel"
           role="region"
           aria-label={item.title}
           aria-hidden={!open}
-          inert={!open ? true : undefined}
+          inert={panelInert ? true : undefined}
         >
           <div className="pdp-acc__panel-inner">
             {item.intro && <p className="pdp-acc__intro">{item.intro}</p>}
@@ -83,12 +136,13 @@ export default function PdpAccordion({
   useEffect(() => () => clearTimeout(toastTimer.current), [])
 
   // Accordion height changes shift the details section — re-measure ScrollTrigger
-  // (details-bottle parallax in usePdpMotion) after the panel transition settles.
+  // after the panel tween settles (not on the same frame, which cancels motion).
   useEffect(() => {
-    const frame = requestAnimationFrame(() => ScrollTrigger.refresh())
-    const afterPanel = window.setTimeout(() => ScrollTrigger.refresh(), 450)
+    const afterPanel = window.setTimeout(
+      () => ScrollTrigger.refresh(),
+      Math.round(PANEL_DURATION * 1000) + 50,
+    )
     return () => {
-      cancelAnimationFrame(frame)
       window.clearTimeout(afterPanel)
     }
   }, [openId])

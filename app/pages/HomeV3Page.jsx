@@ -96,6 +96,13 @@ export const HomeV3Page = ({productCards} = {}) => {
 
   useLayoutEffect(() => {
     if (!USE_ELEMENT_SCROLLER) return undefined;
+    // Re-assert on setup: React StrictMode runs this cleanup (which clears
+    // elementMode) before re-running passive effects in children. Without
+    // putting the flag back here, Scenev2mweb's IntersectionObservers
+    // subscribe with a null root and never see content inside the overflow
+    // scroller — the mobile reel stays opacity 0 forever.
+    setElementScrollRoot(true);
+    ScrollTrigger.defaults({ scroller: SCROLL_ROOT_SELECTOR });
     const html = document.documentElement;
     html.dataset.scrollRootActive = 'true';
     return () => {

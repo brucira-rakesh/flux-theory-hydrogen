@@ -578,28 +578,24 @@ export default function FluxPdpHero({
             }`}
             aria-label="Price"
             role="group"
-            key={selectedVariant?.id ?? 'price'}
           >
-            {compareAtPrice || percentOff != null ? (
-              <div className="flux-pdp-price__meta">
-                {compareAtPrice ? (
-                  <s className="flux-pdp-price__compare">
-                    <span>MRP</span>
-                    <Money data={compareAtPrice} withoutTrailingZeros />
-                  </s>
-                ) : null}
-                {percentOff != null ? (
-                  <span className="flux-pdp-price__badge">
-                    {percentOff}% OFF
-                  </span>
-                ) : null}
-              </div>
-            ) : null}
+            <div className="flux-pdp-price__meta">
+              {compareAtPrice ? (
+                <s className="flux-pdp-price__compare">
+                  <span>MRP</span>
+                  <Money data={compareAtPrice} withoutTrailingZeros />
+                </s>
+              ) : (
+                <span className="flux-pdp-price__mrp-prefix">MRP</span>
+              )}
+              {percentOff != null ? (
+                <span className="flux-pdp-price__badge">
+                  {percentOff}% OFF
+                </span>
+              ) : null}
+            </div>
             {price ? (
               <span className="flux-pdp-price__current">
-                {compareAtPrice || percentOff != null ? null : (
-                  <span className="flux-pdp-price__mrp-prefix">MRP</span>
-                )}
                 <Money data={price} withoutTrailingZeros />
               </span>
             ) : null}

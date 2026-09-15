@@ -17,6 +17,7 @@ import {
 } from "../../utils/frameSequence";
 import { createSequenceLoader } from "../../utils/sequenceLoader";
 import {
+  SCROLL_ROOT_SELECTOR,
   getScrollRoot,
   getScrollY,
   scrollRootTo,
@@ -91,6 +92,32 @@ const PRELOAD_ROOT_MARGIN = "150% 0px";
 /** Keep the idle loop alive only while the section is actually near the
  *  viewport. Offscreen (Product / Video / Footer) cancels rAF entirely. */
 const PAINT_ROOT_MARGIN = "25% 0px";
+
+/**
+ * Live scrollport for HomeV3 mobile observers / scroll listeners.
+ *
+ * Prefer `getScrollRoot()`, but fall back to a DOM query: StrictMode can
+ * clear elementMode in a layout-effect cleanup before passive effects
+ * re-subscribe, and a null root makes IntersectionObserver use the viewport
+ * — which Chrome then clips against the overflow scroller, so off-screen
+ * sections never report intersecting.
+ */
+function getObserverScrollRoot() {
+  const fromFlag = getScrollRoot();
+  if (fromFlag instanceof Element) return fromFlag;
+  const fromDom = document.querySelector(SCROLL_ROOT_SELECTOR);
+  return fromDom instanceof Element ? fromDom : null;
+}
+
+/** True when `el` is within `viewports` of the visible scrollport (viewport
+ *  coords — works the same for document scroll and `[data-scroll-root]`). */
+function isNearScrollport(el, viewports) {
+  if (!el) return false;
+  const rect = el.getBoundingClientRect();
+  const vh = window.innerHeight || 1;
+  const pad = vh * viewports;
+  return rect.top < vh + pad && rect.bottom > -pad;
+}
 
 /** Decelerating ease — the commit lands softly on the target frame instead
  *  of snapping to a stop at a constant rate. */
@@ -221,48 +248,142 @@ export function useScenev2mweb() {
 
   // -- approach / visibility -----------------------------------------------
 
+  // Arm frame preload once the section is ~1.5 viewports away. Geometry +
+  // scroll listeners are the source of truth — IntersectionObserver against
+  // `[data-scroll-root]` is unreliable here (StrictMode null-root races, and
+  // Lenis toggling overflow on the same node can suppress IO callbacks).
   useEffect(() => {
     const el = containerRef.current;
-    if (!el || typeof IntersectionObserver === "undefined") {
+    if (!el) {
       setPreloadArmed(true);
       return undefined;
     }
-    // HomeV3 mobile scrolls `[data-scroll-root]`, not the document. A null
-    // root + rootMargin does not see "upcoming" content inside that
-    // overflow port — observe the scroller itself so 150% margin works.
-    const scrollRoot = getScrollRoot();
-    const root = scrollRoot instanceof Element ? scrollRoot : null;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry?.isIntersecting) return;
-        setPreloadArmed(true);
-        io.disconnect();
-      },
-      { root, rootMargin: PRELOAD_ROOT_MARGIN },
-    );
-    io.observe(el);
-    return () => io.disconnect();
+
+    let cancelled = false;
+    let armed = false;
+    const preloadViewports = 1.5;
+
+    const arm = () => {
+      if (cancelled || armed) return;
+      armed = true;
+      setPreloadArmed(true);
+      teardown();
+    };
+
+    const check = () => {
+      if (isNearScrollport(el, preloadViewports)) arm();
+    };
+
+    let raf = 0;
+    let io = null;
+    const timers = [];
+    let scroller = null;
+
+    const onScroll = () => check();
+
+    const teardown = () => {
+      cancelAnimationFrame(raf);
+      for (const id of timers) window.clearTimeout(id);
+      timers.length = 0;
+      scroller?.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onScroll);
+      io?.disconnect();
+      io = null;
+    };
+
+    const bindScroller = () => {
+      scroller?.removeEventListener("scroll", onScroll);
+      scroller = getObserverScrollRoot();
+      scroller?.addEventListener("scroll", onScroll, { passive: true });
+    };
+
+    bindScroller();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    check();
+    raf = requestAnimationFrame(() => {
+      bindScroller();
+      check();
+    });
+    // Layout after intro / Lenis mount can shift the section a frame late.
+    timers.push(window.setTimeout(check, 0));
+    timers.push(window.setTimeout(check, 250));
+
+    if (typeof IntersectionObserver !== "undefined") {
+      io = new IntersectionObserver(
+        ([entry]) => {
+          if (entry?.isIntersecting) arm();
+        },
+        {
+          root: getObserverScrollRoot(),
+          rootMargin: PRELOAD_ROOT_MARGIN,
+        },
+      );
+      io.observe(el);
+    }
+
+    return () => {
+      cancelled = true;
+      teardown();
+    };
   }, []);
 
   useEffect(() => {
     const el = containerRef.current;
-    if (!el || typeof IntersectionObserver === "undefined") {
+    if (!el) {
       nearViewportRef.current = true;
       setNearViewport(true);
       return undefined;
     }
-    const scrollRoot = getScrollRoot();
-    const root = scrollRoot instanceof Element ? scrollRoot : null;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        const near = Boolean(entry?.isIntersecting);
-        nearViewportRef.current = near;
-        setNearViewport(near);
-      },
-      { root, rootMargin: PAINT_ROOT_MARGIN },
-    );
-    io.observe(el);
-    return () => io.disconnect();
+
+    let cancelled = false;
+    let scroller = null;
+    let raf = 0;
+    const paintViewports = 0.25;
+
+    const apply = (near) => {
+      if (cancelled) return;
+      if (near === nearViewportRef.current) return;
+      nearViewportRef.current = near;
+      setNearViewport(near);
+    };
+
+    const check = () => apply(isNearScrollport(el, paintViewports));
+
+    const onScroll = () => check();
+
+    const bindScroller = () => {
+      scroller?.removeEventListener("scroll", onScroll);
+      scroller = getObserverScrollRoot();
+      scroller?.addEventListener("scroll", onScroll, { passive: true });
+    };
+
+    bindScroller();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    check();
+    raf = requestAnimationFrame(() => {
+      bindScroller();
+      check();
+    });
+
+    let io = null;
+    if (typeof IntersectionObserver !== "undefined") {
+      io = new IntersectionObserver(
+        ([entry]) => apply(Boolean(entry?.isIntersecting)),
+        {
+          root: getObserverScrollRoot(),
+          rootMargin: PAINT_ROOT_MARGIN,
+        },
+      );
+      io.observe(el);
+    }
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+      scroller?.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onScroll);
+      io?.disconnect();
+    };
   }, []);
 
   // -- preload ---------------------------------------------------------------

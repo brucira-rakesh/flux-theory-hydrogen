@@ -87,17 +87,11 @@ export default function FluxPdpTestimonial({onPinActiveChange}) {
         onPinActiveChangeRef.current?.(Boolean(active));
       };
 
-      const mobileMq = window.matchMedia('(max-width: 640px)');
-      const isMobile = mobileMq.matches;
-      // Mobile has no zoom legs — keep the pin short so reverse scroll to
-      // top isn't stuck scrubbing an empty 2.2× viewport range.
-      const pinEnd = isMobile ? '+=100%' : '+=220%';
-
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: section,
           start: 'top top',
-          end: pinEnd,
+          end: '+=220%',
           pin: true,
           // Soft scrub syncs better with Lenis than scrub:true (less fight
           // when scrolling back through the pin).
@@ -110,15 +104,12 @@ export default function FluxPdpTestimonial({onPinActiveChange}) {
         },
       });
 
-      // Desktop: zoom card to fill the section. Mobile card is already
-      // full-bleed (see CSS) so scaling it would blow up type and clip.
-      if (!isMobile) {
-        tl.to(card, {
-          scale: () => fillScaleFor(section, card),
-          ease: 'none',
-          duration: 0.35,
-        });
-      }
+      // Zoom card to fill the section (covers white/inset padding) on all viewports.
+      tl.to(card, {
+        scale: () => fillScaleFor(section, card),
+        ease: 'none',
+        duration: 0.35,
+      });
 
       // Word fill: step colors only when the filled count changes — avoids
       // interpolating `color` on ~40 nodes every scroll frame (jank on reverse).
@@ -127,7 +118,7 @@ export default function FluxPdpTestimonial({onPinActiveChange}) {
       tl.to(fill, {
         t: 1,
         ease: 'none',
-        duration: isMobile ? 1 : 0.5,
+        duration: 0.5,
         onUpdate: () => {
           const next = Math.round(fill.t * words.length);
           if (next === filledCount) return;
@@ -144,13 +135,11 @@ export default function FluxPdpTestimonial({onPinActiveChange}) {
         },
       });
 
-      if (!isMobile) {
-        tl.to(card, {
-          scale: 1,
-          ease: 'none',
-          duration: 0.35,
-        });
-      }
+      tl.to(card, {
+        scale: 1,
+        ease: 'none',
+        duration: 0.35,
+      });
     }, section);
 
     const refresh = () => ScrollTrigger.refresh();

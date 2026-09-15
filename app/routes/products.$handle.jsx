@@ -317,9 +317,11 @@ export default function FluxPdp() {
 
   const [quantity, setQuantity] = useState(1);
   const [stickyVisible, setStickyVisible] = useState(false);
-  /** Gift section has scrolled up past the top of the viewport. */
-  const [pastGift, setPastGift] = useState(false);
-  /** Founder pin/scrub range is active — hide sticky for the CEO sequence. */
+  /** Desktop: ticker fully entered — sticky may show. */
+  const [tickerFullyOnScreen, setTickerFullyOnScreen] = useState(false);
+  /** Gift section intersects the viewport — hide mobile sticky while on it. */
+  const [giftInView, setGiftInView] = useState(false);
+  /** Founder pin/scrub (zoom → fill → zoom-out) — hide sticky while active. */
   const [founderPinActive, setFounderPinActive] = useState(false);
   /** Mobile sticky ATC: hero buy box still on screen → direct add; else open picker. */
   const [heroInView, setHeroInView] = useState(true);
@@ -327,6 +329,7 @@ export default function FluxPdp() {
   const formRef = useRef(null);
   const lifestyleRef = useRef(null);
   const giftSectionRef = useRef(null);
+  const tickerRef = useRef(null);
   /** Pinned while the gift section curtains over the end of the hero. */
   const heroCurtainPinRef = useRef(null);
   const heroControlsRef = useRef(null);
@@ -345,7 +348,8 @@ export default function FluxPdp() {
   useEffect(() => {
     setQuantity(1);
     setStickyVisible(false);
-    setPastGift(false);
+    setTickerFullyOnScreen(false);
+    setGiftInView(false);
     setFounderPinActive(false);
     setHeroInView(true);
   }, [product.handle]);
@@ -359,14 +363,15 @@ export default function FluxPdp() {
     return () => mq.removeEventListener('change', sync);
   }, []);
 
-  // Sticky ATC: desktop shows once gift leaves; mobile bar is always on.
+  // Mobile: sticky on by default; hide on gift + while CEO pin/zoom is active.
+  // Desktop: show after ticker is fully on screen; hide during CEO pin.
   useEffect(() => {
     if (isMobileSticky) {
-      setStickyVisible(true);
+      setStickyVisible(!giftInView && !founderPinActive);
       return;
     }
-    setStickyVisible(pastGift && !founderPinActive);
-  }, [pastGift, founderPinActive, isMobileSticky]);
+    setStickyVisible(tickerFullyOnScreen && !founderPinActive);
+  }, [isMobileSticky, giftInView, founderPinActive, tickerFullyOnScreen]);
 
   useEffect(() => {
     const hero = document.querySelector('.flux-pdp-hero');
@@ -381,27 +386,45 @@ export default function FluxPdp() {
     return () => io.disconnect();
   }, [product.handle]);
 
+  // Gift in view (mobile sticky hide while the gifting section is on screen).
   useEffect(() => {
+    const gift = giftSectionRef.current;
+    if (!gift || typeof IntersectionObserver === 'undefined') {
+      setGiftInView(false);
+      return undefined;
+    }
+    const io = new IntersectionObserver(
+      ([entry]) => setGiftInView(Boolean(entry?.isIntersecting)),
+      {threshold: 0, rootMargin: '0px'},
+    );
+    io.observe(gift);
+    return () => io.disconnect();
+  }, [product.handle, Boolean(giftBundle)]);
+
+  useEffect(() => {
+    const ticker = tickerRef.current;
     const gift = giftSectionRef.current;
     const form = formRef.current;
     if (typeof IntersectionObserver === 'undefined') return undefined;
 
     const scroller = document.querySelector('[data-scroll-root]') ?? window;
-    let lastPast = null;
+    let lastReady = null;
     let ticking = false;
 
-    const readPastGift = () => {
+    const readTickerReady = () => {
       let next = false;
-      if (gift) {
-        // Leaving / left upward: section top has crossed the viewport top.
+      if (ticker) {
+        // 100% on screen, or scrolled past: the ticker's bottom has reached
+        // the viewport bottom (entire section has entered from below).
+        next = ticker.getBoundingClientRect().bottom <= window.innerHeight;
+      } else if (gift) {
         next = gift.getBoundingClientRect().top < 0;
       } else if (form) {
-        // No gift bundle — fall back to hero ATC form leaving the viewport.
         next = form.getBoundingClientRect().bottom <= 0;
       }
-      if (next === lastPast) return;
-      lastPast = next;
-      setPastGift(next);
+      if (next === lastReady) return;
+      lastReady = next;
+      setTickerFullyOnScreen(next);
     };
 
     const onScroll = () => {
@@ -409,24 +432,24 @@ export default function FluxPdp() {
       ticking = true;
       requestAnimationFrame(() => {
         ticking = false;
-        readPastGift();
+        readTickerReady();
       });
     };
 
-    readPastGift();
+    readTickerReady();
 
-    // Native scroll only — Lenis still moves the document, so window/scroller
-    // events fire. Avoid a second Lenis listener (was doubling work per frame).
     if (scroller === window) {
       window.addEventListener('scroll', onScroll, {passive: true});
     } else {
       scroller.addEventListener('scroll', onScroll, {passive: true});
     }
 
-    const targets = [gift, form].filter(Boolean);
+    const targets = [ticker, gift, form].filter(Boolean);
     let io;
     if (targets.length) {
-      io = new IntersectionObserver(readPastGift, {threshold: 0});
+      io = new IntersectionObserver(readTickerReady, {
+        threshold: [0, 1],
+      });
       for (const target of targets) io.observe(target);
     }
 
@@ -438,7 +461,7 @@ export default function FluxPdp() {
       }
       io?.disconnect();
     };
-  }, [product.handle, Boolean(giftBundle)]);
+  }, [product.handle, Boolean(giftBundle), Boolean(view.marquee)]);
 
   return (
     <SmoothScroll lenisOptions={{duration: 0.4}}>
@@ -480,7 +503,7 @@ export default function FluxPdp() {
           />
         ) : null}
         {view.marquee ? (
-          <div data-pdp-reveal data-pdp-reveal-y="0">
+          <div ref={tickerRef} data-pdp-reveal data-pdp-reveal-y="0">
             <PdpMarquee items={view.marquee.items} variant="light" />
           </div>
         ) : null}

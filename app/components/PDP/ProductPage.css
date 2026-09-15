@@ -499,18 +499,14 @@
 }
 
 .pdp-acc__panel {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
+  height: 0;
 }
 
-.pdp-acc__item.is-open .pdp-acc__panel {
-  grid-template-rows: 1fr;
-}
+/* Open height is set by GSAP (inline). No CSS height:auto here — it fought the
+   tween and snapped open/closed. */
 
 .pdp-acc__panel-inner {
-  overflow: hidden;
-  min-height: 0;
   padding: 0 calc(16 * var(--pdp-fluid) / 1440);
   opacity: 0;
   transform: translateY(-0.35rem);

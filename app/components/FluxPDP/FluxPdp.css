@@ -382,17 +382,19 @@
   font-family: var(--pdp-body, 'Geist', sans-serif);
   line-height: 1;
   min-width: 140px;
+  /* Tall enough for MRP + optional badge row in either pack state. */
   min-height: 85px;
-  /* margin-left: calc(44 * var(--pdp-fluid) / 1440); */
 }
 
-/* Figma 3101:2119 — MRP struck + badge on one row; Money renders a <div>. */
+/* Figma 3101:2119 — MRP struck + badge on one row; Money renders a <div>.
+   Always rendered (discounted or not) so pack switches keep the same slots. */
 .flux-pdp-price__meta {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   gap: calc(13 * var(--pdp-fluid) / 1440);
-  padding-top: 8px;
+  min-height: calc(12px * 1.4);
+  padding-top: 0;
 }
 
 .flux-pdp-price__compare {
@@ -444,22 +446,19 @@
   line-height: 1.3;
   text-transform: capitalize;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  /* Hold width across ₹349 ↔ ₹599 / ₹1,299 pack prices. */
+  min-width: 6ch;
 }
 
-/* Non-discount: “MRP” inline before the amount (e.g. MRP ₹349). */
-.flux-pdp-price--undiscounted .flux-pdp-price__current {
-  display: inline-flex;
-  align-items: baseline;
-  flex-wrap: nowrap;
-}
-
+/* Non-discount: plain MRP label (same 12px metrics as struck compare). */
 .flux-pdp-price__mrp-prefix {
-  display: inline;
-  margin-right: 0.3em;
-  color: inherit;
-  font-size: inherit;
-  font-weight: inherit;
-  line-height: inherit;
+  display: block;
+  margin: 0;
+  color: #111;
+  font-size: calc(12 * var(--pdp-fluid) / 1440);
+  font-weight: 500;
+  line-height: 1.3;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -472,13 +471,20 @@
   color: #111;
   text-transform: capitalize;
   white-space: nowrap;
+  text-align: left;
+  align-self: flex-start;
+}
+
+.flux-pdp-price--undiscounted .flux-pdp-price__taxes {
+  align-self: flex-start;
+  text-align: left;
 }
 
 .flux-pdp-chips {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: calc(8 * var(--pdp-fluid) / 1440);
+  gap: calc(8 * var(--pdp-fluid) / 1440) calc(12 * var(--pdp-fluid) / 1440);
   margin: 0;
   padding: calc(24 * var(--pdp-fluid) / 1440) 0;
   list-style: none;
@@ -938,6 +944,12 @@
     width: 100%;
   }
 
+  .flux-pdp-price--undiscounted {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
   .flux-pdp-price__meta {
     padding-top: 0;
   }
@@ -1061,12 +1073,15 @@
     min-height: 0;
   }
 
-  /* No discount column — price + taxes stack full width. */
+  /* Undiscounted: MRP above price (same grid engine — no display:flex swap). */
   .flux-pdp-price--undiscounted {
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
     grid-template-areas:
+      'meta'
       'current'
       'taxes';
+    gap: 2px;
   }
 
   .flux-pdp-price__current {
@@ -1075,6 +1090,11 @@
     font-size: 28px;
     font-weight: 500;
     line-height: 1.15;
+    min-width: 6ch;
+  }
+
+  .flux-pdp-price--undiscounted .flux-pdp-price__current {
+    color: #111;
   }
 
   .flux-pdp-price__taxes {
@@ -1086,6 +1106,12 @@
     text-transform: capitalize;
   }
 
+  .flux-pdp-price--undiscounted .flux-pdp-price__taxes {
+    align-self: start;
+    justify-self: start;
+    text-align: left;
+  }
+
   .flux-pdp-price__meta {
     grid-area: meta;
     flex-direction: column;
@@ -1094,11 +1120,22 @@
     align-self: stretch;
     gap: 6px;
     padding-top: 0;
+    min-height: 0;
+  }
+
+  .flux-pdp-price--undiscounted .flux-pdp-price__meta {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
   }
 
   .flux-pdp-price__compare {
     font-size: 12px;
     opacity: 0.45;
+  }
+
+  .flux-pdp-price__mrp-prefix {
+    font-size: 12px;
   }
 
   .flux-pdp-price__badge {
@@ -1733,31 +1770,35 @@
   }
 }
 
-/* Mobile — full-bleed viewport stage. No card zoom (text would overflow);
-   pin + word-fill still run. */
+/* Mobile — inset card inside a full-viewport stage so zoom-in/out can run
+   (same sequence as desktop). Section padding is the “room” the card grows into. */
 @media (max-width: 640px) {
   .flux-pdp-quote {
-    display: block;
+    display: flex;
+    align-items: center;
     min-height: 100svh;
     min-height: 100dvh;
-    padding: 0;
+    /* ~40px inset → fillScale ≈ 1.1 on typical phones (visible zoom). */
+    padding: 40px 16px;
     box-sizing: border-box;
   }
 
   .flux-pdp-quote__pin {
     width: 100%;
     max-width: none;
-    height: 100%;
-    min-height: 100svh;
-    min-height: 100dvh;
+    height: auto;
+    min-height: calc(100svh - 80px);
+    min-height: calc(100dvh - 80px);
+    display: flex;
+    align-items: stretch;
   }
 
   .flux-pdp-quote__card {
     aspect-ratio: auto;
     width: 100%;
-    height: 100%;
-    min-height: 100svh;
-    min-height: 100dvh;
+    height: auto;
+    min-height: calc(100svh - 80px);
+    min-height: calc(100dvh - 80px);
     max-height: none;
   }
 
