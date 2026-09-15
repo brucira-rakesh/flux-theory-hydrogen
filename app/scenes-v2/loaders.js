@@ -2,6 +2,10 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js";
+import {
+  BASIS_TRANSCODER_PATH,
+  DRACO_DECODER_PATH,
+} from "~/lib/meshDecoders";
 
 // One DRACOLoader (and its wasm decoder) shared by every scene component —
 // same as Scene.jsx's single module-level dracoLoader.
@@ -9,7 +13,8 @@ let sharedDracoLoader = null;
 const getDracoLoader = () => {
   if (!sharedDracoLoader) {
     sharedDracoLoader = new DRACOLoader();
-    sharedDracoLoader.setDecoderPath("/draco/");
+    // CDN — Oxygen 404s same-origin .wasm (see meshDecoders.js).
+    sharedDracoLoader.setDecoderPath(DRACO_DECODER_PATH);
   }
   return sharedDracoLoader;
 };
@@ -25,7 +30,7 @@ let sharedKtx2Loader = null;
 const getKtx2Loader = (manager, renderer) => {
   if (!sharedKtx2Loader) {
     sharedKtx2Loader = new KTX2Loader(manager);
-    sharedKtx2Loader.setTranscoderPath("/basis/");
+    sharedKtx2Loader.setTranscoderPath(BASIS_TRANSCODER_PATH);
     sharedKtx2Loader.detectSupport(renderer);
   }
   return sharedKtx2Loader;

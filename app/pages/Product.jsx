@@ -14,6 +14,10 @@ import { getPdpByProductId } from '../data/pdp'
 import ProductDetailsV2 from '../components/ProductShelf/ProductDetailsV2'
 import AnimatedDescription from '../components/AnimatedDescription/AnimatedDescription'
 import {oxygenPublicUrl} from '~/lib/oxygenPublicUrl'
+import {
+  BASIS_TRANSCODER_PATH,
+  DRACO_DECODER_PATH,
+} from '~/lib/meshDecoders'
 import bathroomTextureUrl from '~/assets/ktx2/bathroom_etc1s.ktx2?url'
 
 // Overlay content shown for every clicked bottle (see the reveal/return
@@ -967,8 +971,10 @@ export default function Product() {
 
     // --- Loaders: Draco geometry + KTX2 (basisu) texture, shared across both loads ---
     const dracoLoader = new DRACOLoader()
+    dracoLoader.setDecoderPath(DRACO_DECODER_PATH)
 
     const ktx2Loader = new KTX2Loader()
+    ktx2Loader.setTranscoderPath(BASIS_TRANSCODER_PATH)
     ktx2Loader.detectSupport(renderer)
 
     const gltfLoader = new GLTFLoader()

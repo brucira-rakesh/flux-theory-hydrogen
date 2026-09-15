@@ -39,9 +39,14 @@ export default async function handleRequest(
       "'wasm-unsafe-eval'",
       'https://cdn.shopify.com',
       'https://shopify.com',
+      // Draco/Basis WASM — Oxygen 404s same-origin .wasm; loaders use jsDelivr.
+      'https://cdn.jsdelivr.net',
     ],
     workerSrc: ["'self'", 'blob:'],
-    connectSrc: ['blob:'],
+    connectSrc: [
+      'blob:',
+      'https://cdn.jsdelivr.net',
+    ],
     // Without an explicit img-src, images fall under default-src and Judge.me
     // review CDN photos are blocked (broken <img> on the reviews wall).
     imgSrc: [

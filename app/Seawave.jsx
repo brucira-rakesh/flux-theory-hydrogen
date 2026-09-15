@@ -4,6 +4,10 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js'
+import {
+  BASIS_TRANSCODER_PATH,
+  DRACO_DECODER_PATH,
+} from '~/lib/meshDecoders'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
@@ -1457,8 +1461,10 @@ const Seawave = () => {
     window.addEventListener('scroll', markScrollFallbackDirty, { passive: true })
 
     const dracoLoader = new DRACOLoader()
+    dracoLoader.setDecoderPath(DRACO_DECODER_PATH)
 
     const ktx2Loader = new KTX2Loader()
+    ktx2Loader.setTranscoderPath(BASIS_TRANSCODER_PATH)
     ktx2Loader.detectSupport(renderer)
 
     const gltfLoader = new GLTFLoader()
