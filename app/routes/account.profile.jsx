@@ -2,6 +2,7 @@ import {CUSTOMER_UPDATE_MUTATION} from '~/graphql/customer-account/CustomerUpdat
 import {
   data,
   Form,
+  redirect,
   useActionData,
   useNavigation,
   useOutletContext,
@@ -19,7 +20,9 @@ export const meta = () => {
  * @param {Route.LoaderArgs}
  */
 export async function loader({context}) {
-  await context.customerAccount.handleAuthStatus();
+  if (!(await context.customerAccount.isLoggedIn())) {
+    throw redirect('/account/login');
+  }
 
   return {};
 }

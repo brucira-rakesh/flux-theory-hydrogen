@@ -10,8 +10,12 @@ import {useSmoothScrollLock} from '~/components/SmoothScroll/SmoothScroll';
 import {
   cartLinesForMerchandise,
   isShopifyDefaultTitleOption,
+  packShippingNote,
+  projectedCartAmountForVariant,
   shouldShowSizeSelect,
+  variantForPackLabel,
 } from '~/lib/storefrontCatalog';
+import {useRootOptimisticCart} from '~/hooks/useRootOptimisticCart';
 
 function isSwatchableOption(option) {
   const values = (option?.optionValues ?? [])
@@ -29,27 +33,6 @@ function isPackOption(option) {
   if (name.includes('pack')) return true;
   return (option?.optionValues ?? []).some((value) =>
     /pack of\s*\d+/i.test(value?.name ?? ''),
-  );
-}
-
-function packShippingMessage(selectedValueName) {
-  const name = selectedValueName?.trim().toLowerCase() ?? '';
-  if (name.includes('pack of 2')) return 'Free Shipping';
-  if (name.includes('pack of 1')) return '+₹49 Shipping Fee';
-  return null;
-}
-
-/** Resolve a pack option value to a merchandise id from product.variants. */
-function variantForPackLabel(product, packLabel) {
-  const nodes = product?.variants?.nodes ?? [];
-  if (!packLabel || !nodes.length) return null;
-  return (
-    nodes.find((variant) =>
-      (variant.selectedOptions ?? []).some(
-        (option) =>
-          /pack/i.test(option?.name ?? '') && option?.value === packLabel,
-      ),
-    ) ?? null
   );
 }
 
@@ -73,6 +56,7 @@ export default function FluxPdpStickyBar({
 }) {
   const navigate = useNavigate();
   const {openCart} = useCartDrawer();
+  const cart = useRootOptimisticCart();
   const barRef = useRef(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   useStickyFooterDock(barRef, footerSentinelRef, visible);
@@ -101,7 +85,14 @@ export default function FluxPdpStickyBar({
         entries.push({
           id: `${option.name}::${value.name}`,
           label: value.name,
-          note: packShippingMessage(value.name),
+          note: packShippingNote(
+            projectedCartAmountForVariant({
+              cart,
+              productId: product.id,
+              variantPrice: variant?.price,
+              quantity,
+            }),
+          ),
           value,
           variantGid: variant?.id ?? null,
           availableForSale:
@@ -111,7 +102,7 @@ export default function FluxPdpStickyBar({
       }
     }
     return entries;
-  }, [product, selectedVariant]);
+  }, [product, selectedVariant, cart, quantity]);
 
   const selectOptions = useMemo(
     () => packEntries.map(({id, label}) => ({id, label})),

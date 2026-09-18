@@ -1,67 +1,28 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import iconFacebook from '../../assets/pdp/icon-facebook.svg'
 import iconInstagram from '../../assets/pdp/icon-instagram.svg'
 import iconTwitter from '../../assets/pdp/icon-twitter.svg'
-import { prefersReducedMotion } from '../../hooks/useSpotlight'
 
 gsap.registerPlugin(ScrollTrigger)
 
-const PANEL_DURATION = 0.4
-const PANEL_EASE = 'power2.inOut'
+const PANEL_DURATION_MS = 400
 
 function AccordionItem({ item, open, onToggle, extra = null }) {
   const panelId = `pdp-acc-${item.id}`
-  const panelRef = useRef(null)
-  const didInitRef = useRef(false)
   const hasBody = Boolean(item.intro || item.body || item.bullets?.length || extra)
-  /** Keep focusable until the close tween finishes — toggling `inert` mid-frame
-   *  was cancelling the height transition and making open/close snap. */
+  /** Keep the closed panel out of tab order after the grid close finishes. */
   const [panelInert, setPanelInert] = useState(!open)
 
-  useLayoutEffect(() => {
-    const panel = panelRef.current
-    if (!panel || !hasBody) return undefined
-
-    gsap.killTweensOf(panel)
-
-    // First paint: match open state without animating (defaultOpen panels).
-    if (!didInitRef.current) {
-      didInitRef.current = true
-      gsap.set(panel, { height: open ? 'auto' : 0 })
-      setPanelInert(!open)
-      return undefined
-    }
-
-    if (prefersReducedMotion()) {
-      gsap.set(panel, { height: open ? 'auto' : 0 })
-      setPanelInert(!open)
-      return undefined
-    }
-
+  useEffect(() => {
     if (open) {
       setPanelInert(false)
-      gsap.fromTo(
-        panel,
-        { height: panel.getBoundingClientRect().height },
-        {
-          height: 'auto',
-          duration: PANEL_DURATION,
-          ease: PANEL_EASE,
-        },
-      )
       return undefined
     }
-
-    gsap.to(panel, {
-      height: 0,
-      duration: PANEL_DURATION,
-      ease: PANEL_EASE,
-      onComplete: () => setPanelInert(true),
-    })
-    return undefined
-  }, [open, hasBody])
+    const hide = window.setTimeout(() => setPanelInert(true), PANEL_DURATION_MS)
+    return () => window.clearTimeout(hide)
+  }, [open])
 
   return (
     <div className={`pdp-acc__item${open ? ' is-open' : ''}`}>
@@ -81,7 +42,6 @@ function AccordionItem({ item, open, onToggle, extra = null }) {
 
       {hasBody && (
         <div
-          ref={panelRef}
           id={panelId}
           className="pdp-acc__panel"
           role="region"
@@ -89,17 +49,19 @@ function AccordionItem({ item, open, onToggle, extra = null }) {
           aria-hidden={!open}
           inert={panelInert ? true : undefined}
         >
-          <div className="pdp-acc__panel-inner">
-            {item.intro && <p className="pdp-acc__intro">{item.intro}</p>}
-            {item.body && <p className="pdp-acc__body">{item.body}</p>}
-            {item.bullets?.length > 0 && (
-              <ul className="pdp-acc__list">
-                {item.bullets.map((bullet) => (
-                  <li key={bullet}>{bullet}</li>
-                ))}
-              </ul>
-            )}
-            {extra}
+          <div className="pdp-acc__clip">
+            <div className="pdp-acc__panel-inner">
+              {item.intro && <p className="pdp-acc__intro">{item.intro}</p>}
+              {item.body && <p className="pdp-acc__body">{item.body}</p>}
+              {item.bullets?.length > 0 && (
+                <ul className="pdp-acc__list">
+                  {item.bullets.map((bullet) => (
+                    <li key={bullet}>{bullet}</li>
+                  ))}
+                </ul>
+              )}
+              {extra}
+            </div>
           </div>
         </div>
       )}
@@ -135,12 +97,12 @@ export default function PdpAccordion({
 
   useEffect(() => () => clearTimeout(toastTimer.current), [])
 
-  // Accordion height changes shift the details section — re-measure ScrollTrigger
-  // after the panel tween settles (not on the same frame, which cancels motion).
+  // Accordion height changes shift the details section — re-measure after
+  // the grid-row transition settles (not on the same frame).
   useEffect(() => {
     const afterPanel = window.setTimeout(
       () => ScrollTrigger.refresh(),
-      Math.round(PANEL_DURATION * 1000) + 50,
+      PANEL_DURATION_MS + 50,
     )
     return () => {
       window.clearTimeout(afterPanel)

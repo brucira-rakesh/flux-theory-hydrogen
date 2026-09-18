@@ -1,6 +1,6 @@
 import {useEffect, useState} from 'react';
 import {useLoaderData} from 'react-router';
-import {fetchAllShopProducts} from '~/lib/storefrontCatalog';
+import {fetchAllShopProducts, fetchCollectionMainBanner} from '~/lib/storefrontCatalog';
 
 /**
  * @type {Route.MetaFunction}
@@ -13,13 +13,16 @@ export const meta = () => {
  * @param {Route.LoaderArgs} args
  */
 export async function loader({context}) {
-  const catalog = await fetchAllShopProducts(context.storefront);
-  return {catalog};
+  const [catalog, banner] = await Promise.all([
+    fetchAllShopProducts(context.storefront),
+    fetchCollectionMainBanner(context.storefront),
+  ]);
+  return {catalog, banner};
 }
 
 export default function ShopIndex() {
   /** @type {LoaderReturnData} */
-  const {catalog} = useLoaderData();
+  const {catalog, banner = null} = useLoaderData();
   const [bundle, setBundle] = useState(null);
 
   useEffect(() => {
@@ -38,7 +41,7 @@ export default function ShopIndex() {
   const {Page, SmoothScroll} = bundle;
   return (
     <SmoothScroll>
-      <Page catalog={catalog} />
+      <Page catalog={catalog} banner={banner} />
     </SmoothScroll>
   );
 }

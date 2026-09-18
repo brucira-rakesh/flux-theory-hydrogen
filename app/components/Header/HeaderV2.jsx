@@ -149,7 +149,7 @@ export default function HeaderV2({
               <LoggedInState>
                 {(isLoggedIn) => (
                   <Link
-                    to="/account"
+                    to={isLoggedIn ? '/account' : '/account/login'}
                     aria-label={isLoggedIn ? "Account" : "Sign in"}
                     className={ICON_BTN}
                   >
@@ -259,7 +259,7 @@ export default function HeaderV2({
               <LoggedInState>
                 {(isLoggedIn) => (
                   <Link
-                    to="/account"
+                    to={isLoggedIn ? '/account' : '/account/login'}
                     tabIndex={open ? 0 : -1}
                     onClick={closeDrawer}
                     className={

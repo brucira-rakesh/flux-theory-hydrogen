@@ -321,12 +321,14 @@ main[data-focus-active] .ps-header.is-pinned {
   color: #fff;
 }
 
-/* Mobile Flux PDP hero (Figma 3110:3446) — compact header chrome is just the
-   logo + hamburger, no search/account/bag cluster. */
+/* Mobile Flux PDP — logo + search + hamburger. Account/bag stay in the drawer. */
 @media (max-width: 900px) {
-  .ps-header.is-on-flux-pdp .header-search,
-  .ps-header.is-on-flux-pdp .ps-header__icon-btn:not(.ps-header__menu-btn) {
+  .ps-header.is-on-flux-pdp .ps-header__actions > .ps-header__icon-btn:not(.ps-header__menu-btn) {
     display: none;
+  }
+
+  .ps-header.is-on-flux-pdp .ps-header__cluster {
+    gap: 16px;
   }
 }
 

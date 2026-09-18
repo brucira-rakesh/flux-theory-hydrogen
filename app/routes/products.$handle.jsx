@@ -321,6 +321,8 @@ export default function FluxPdp() {
   const [tickerFullyOnScreen, setTickerFullyOnScreen] = useState(false);
   /** Gift section intersects the viewport — hide mobile sticky while on it. */
   const [giftInView, setGiftInView] = useState(false);
+  /** Accordion + share have left the viewport — mobile sticky may cover the dock. */
+  const [pastDetails, setPastDetails] = useState(false);
   /** Founder pin/scrub (zoom → fill → zoom-out) — hide sticky while active. */
   const [founderPinActive, setFounderPinActive] = useState(false);
   /** Mobile sticky ATC: hero buy box still on screen → direct add; else open picker. */
@@ -350,6 +352,7 @@ export default function FluxPdp() {
     setStickyVisible(false);
     setTickerFullyOnScreen(false);
     setGiftInView(false);
+    setPastDetails(false);
     setFounderPinActive(false);
     setHeroInView(true);
   }, [product.handle]);
@@ -363,15 +366,23 @@ export default function FluxPdp() {
     return () => mq.removeEventListener('change', sync);
   }, []);
 
-  // Mobile: sticky on by default; hide on gift + while CEO pin/zoom is active.
+  // Mobile: show after the details accordion (Share) has left, hide on gift
+  // and while CEO pin/zoom is active. Leaving sticky up during accordion
+  // covered the lower rows on tall phones (S23 Ultra) and ate taps.
   // Desktop: show after ticker is fully on screen; hide during CEO pin.
   useEffect(() => {
     if (isMobileSticky) {
-      setStickyVisible(!giftInView && !founderPinActive);
+      setStickyVisible(pastDetails && !giftInView && !founderPinActive);
       return;
     }
     setStickyVisible(tickerFullyOnScreen && !founderPinActive);
-  }, [isMobileSticky, giftInView, founderPinActive, tickerFullyOnScreen]);
+  }, [
+    isMobileSticky,
+    pastDetails,
+    giftInView,
+    founderPinActive,
+    tickerFullyOnScreen,
+  ]);
 
   useEffect(() => {
     const hero = document.querySelector('.flux-pdp-hero');
@@ -400,6 +411,51 @@ export default function FluxPdp() {
     io.observe(gift);
     return () => io.disconnect();
   }, [product.handle, Boolean(giftBundle)]);
+
+  useEffect(() => {
+    const details = document.querySelector('.pdp-details');
+    if (!details || typeof IntersectionObserver === 'undefined') {
+      setPastDetails(true);
+      return undefined;
+    }
+
+    const scroller = document.querySelector('[data-scroll-root]') ?? window;
+    let ticking = false;
+
+    const readPastDetails = () => {
+      // Share/Need Help sit in the details footer — wait until that block
+      // has fully left before docking the sticky bar over the bottom edge.
+      const next = details.getBoundingClientRect().bottom < 8;
+      setPastDetails((prev) => (prev === next ? prev : next));
+    };
+
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        readPastDetails();
+      });
+    };
+
+    readPastDetails();
+    if (scroller === window) {
+      window.addEventListener('scroll', onScroll, {passive: true});
+    } else {
+      scroller.addEventListener('scroll', onScroll, {passive: true});
+    }
+    const io = new IntersectionObserver(readPastDetails, {threshold: 0});
+    io.observe(details);
+
+    return () => {
+      if (scroller === window) {
+        window.removeEventListener('scroll', onScroll);
+      } else {
+        scroller.removeEventListener('scroll', onScroll);
+      }
+      io.disconnect();
+    };
+  }, [product.handle]);
 
   useEffect(() => {
     const ticker = tickerRef.current;
@@ -503,7 +559,12 @@ export default function FluxPdp() {
           />
         ) : null}
         {view.marquee ? (
-          <div ref={tickerRef} data-pdp-reveal data-pdp-reveal-y="0">
+          <div
+            ref={tickerRef}
+            className="flux-pdp-ticker"
+            data-pdp-reveal
+            data-pdp-reveal-y="0"
+          >
             <PdpMarquee items={view.marquee.items} variant="light" />
           </div>
         ) : null}

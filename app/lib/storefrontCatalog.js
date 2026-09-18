@@ -48,6 +48,62 @@ export function moneyAmount(money) {
   return Number(money?.amount ?? 0);
 }
 
+/** Cart subtotal at/above this (INR) qualifies for free shipping. */
+export const FREE_SHIPPING_THRESHOLD = 300;
+export const SHIPPING_FEE_NOTE = '+₹49 Shipping Fee';
+export const FREE_SHIPPING_NOTE = 'Free Shipping';
+
+/**
+ * Shipping copy for a pack swatch. Driven by projected cart value after
+ * adding this variant (existing lines of the same product are replaced).
+ */
+export function packShippingNote(amount) {
+  const value = Number(amount);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return value < FREE_SHIPPING_THRESHOLD
+    ? SHIPPING_FEE_NOTE
+    : FREE_SHIPPING_NOTE;
+}
+
+/** Variant matching a Pack option label (e.g. "Pack of 1"). */
+export function variantForPackLabel(product, packLabel) {
+  const nodes = product?.variants?.nodes ?? [];
+  if (!packLabel || !nodes.length) return null;
+  return (
+    nodes.find((variant) =>
+      (variant.selectedOptions ?? []).some((option) => {
+        if (option?.value !== packLabel) return false;
+        const name = option?.name ?? '';
+        const value = option?.value ?? '';
+        return /pack/i.test(name) || /pack of\s*\d+/i.test(value);
+      }),
+    ) ?? null
+  );
+}
+
+/**
+ * Cart subtotal if this product's current lines were swapped for
+ * `quantity` of `variantPrice`. Empty cart falls through to the variant total.
+ */
+export function projectedCartAmountForVariant({
+  cart,
+  productId,
+  variantPrice,
+  quantity = 1,
+}) {
+  const qty = Math.max(1, Number(quantity) || 1);
+  const variantTotal = moneyAmount(variantPrice) * qty;
+  const subtotal = moneyAmount(cart?.cost?.subtotalAmount);
+  if (!cart || subtotal <= 0) return variantTotal;
+
+  const existing = (cart?.lines?.nodes ?? []).reduce((sum, line) => {
+    if (line?.merchandise?.product?.id !== productId) return sum;
+    return sum + moneyAmount(line?.cost?.totalAmount);
+  }, 0);
+
+  return Math.max(0, subtotal - existing) + variantTotal;
+}
+
 export function formatMoneyDisplay(money) {
   const amount = moneyAmount(money);
   return `${moneySymbol(money?.currencyCode)}${amount.toLocaleString('en-IN', {
@@ -1142,3 +1198,103 @@ export const PRODUCT_SIMILAR_QUERY = `#graphql
     }
   }
 `;
+
+function imageFromFileNode(node) {
+  if (!node) return null;
+  const image = node.image ?? node.previewImage;
+  const url = image?.url || node.url;
+  if (!url) return null;
+  return {
+    url,
+    altText: image?.altText || node.alt || '',
+    width: image?.width ?? null,
+    height: image?.height ?? null,
+  };
+}
+
+/**
+ * `custom.main_banner` on a collection — list of files.
+ * First image = desktop, second = mobile (falls back to desktop if missing).
+ */
+export function parseCollectionMainBanner(metafield) {
+  const nodes = metafield?.references?.nodes?.length
+    ? metafield.references.nodes
+    : metafield?.reference
+      ? [metafield.reference]
+      : [];
+  const images = nodes.map(imageFromFileNode).filter(Boolean);
+  if (!images.length) return null;
+  return {
+    desktop: images[0],
+    mobile: images[1] ?? images[0],
+  };
+}
+
+export const COLLECTION_MAIN_BANNER_QUERY = `#graphql
+  query CollectionMainBanner(
+    $country: CountryCode
+    $language: LanguageCode
+    $handle: String!
+  ) @inContext(country: $country, language: $language) {
+    collection(handle: $handle) {
+      mainBanner: metafield(namespace: "custom", key: "main_banner") {
+        reference {
+          ... on MediaImage {
+            image {
+              url
+              altText
+              width
+              height
+            }
+          }
+          ... on GenericFile {
+            url
+            alt
+          }
+          ... on Video {
+            previewImage {
+              url
+              altText
+              width
+              height
+            }
+          }
+        }
+        references(first: 4) {
+          nodes {
+            ... on MediaImage {
+              image {
+                url
+                altText
+                width
+                height
+              }
+            }
+            ... on GenericFile {
+              url
+              alt
+            }
+            ... on Video {
+              previewImage {
+                url
+                altText
+                width
+                height
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+export async function fetchCollectionMainBanner(
+  storefront,
+  handle = 'shop-all',
+) {
+  const {collection} = await storefront.query(COLLECTION_MAIN_BANNER_QUERY, {
+    variables: {handle},
+  });
+  return parseCollectionMainBanner(collection?.mainBanner);
+}

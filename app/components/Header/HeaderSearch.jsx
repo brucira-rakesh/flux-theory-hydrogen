@@ -30,6 +30,7 @@ export function HeaderSearch({toggle, toggleClassName = '', onOpenChange}) {
   const overlayRef = useRef(null);
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [liveQuery, setLiveQuery] = useState('');
   const closeTimerRef = useRef(null);
   const titleId = useId();
   const location = useLocation();
@@ -43,6 +44,7 @@ export function HeaderSearch({toggle, toggleClassName = '', onOpenChange}) {
 
   function openOverlay() {
     clearCloseTimer();
+    setLiveQuery('');
     setMounted(true);
     onOpenChange?.(true);
   }
@@ -158,37 +160,43 @@ export function HeaderSearch({toggle, toggleClassName = '', onOpenChange}) {
                           type="search"
                           placeholder="Search..."
                           autoComplete="off"
-                          onChange={fetchResults}
-                          onFocus={fetchResults}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setLiveQuery(value);
+                            if (value.trim()) fetchResults(event);
+                          }}
+                          onFocus={(event) => {
+                            if (event.target.value.trim()) fetchResults(event);
+                          }}
                           ref={(node) => {
                             formInputRef.current = node;
                             inputRef.current = node;
                           }}
                         />
-                        <span className="header-search-overlay__icon" aria-hidden="true">
+                        <button
+                          type="button"
+                          className="header-search-overlay__close"
+                          aria-label="Close search"
+                          onClick={closeOverlay}
+                        >
                           <svg
                             width="22"
                             height="22"
                             viewBox="0 0 24 24"
                             fill="none"
+                            aria-hidden="true"
                           >
-                            <circle
-                              cx="11"
-                              cy="11"
-                              r="6"
-                              stroke="currentColor"
-                              strokeWidth="1.25"
-                            />
                             <path
-                              d="M16 16L20 20"
+                              d="M6 6L18 18M18 6L6 18"
                               stroke="currentColor"
-                              strokeWidth="1.25"
+                              strokeWidth="1.5"
                               strokeLinecap="round"
                             />
                           </svg>
-                        </span>
+                        </button>
                       </div>
 
+                      {liveQuery.trim() ? (
                       <SearchResultsPredictive>
                         {({items, total, term, state, closeSearch}) => (
                           <HeaderSearchPanel
@@ -207,6 +215,7 @@ export function HeaderSearch({toggle, toggleClassName = '', onOpenChange}) {
                           />
                         )}
                       </SearchResultsPredictive>
+                      ) : null}
                     </>
                   )}
                 </SearchFormPredictive>
@@ -237,8 +246,12 @@ function HeaderSearchPanel({
   onNavigate,
   onSeeAll,
 }) {
-  const query = term.current?.trim() ?? '';
-  if (!query && state === 'idle') return null;
+  const query = (
+    inputRef.current?.value ??
+    term.current ??
+    ''
+  ).trim();
+  if (!query) return null;
 
   const {products, pages, articles, collections} = items;
   const loading = state === 'loading' && query;

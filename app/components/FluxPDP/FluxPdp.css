@@ -1203,8 +1203,12 @@
   }
 
   .flux-pdp-related__swatch {
-    width: 64px;
-    height: 64px;
+    width: 60px;
+    height: 60px;
+  }
+
+  .flux-pdp-offer__detail {
+    white-space: wrap;
   }
 }
 
@@ -1279,8 +1283,22 @@
   max-width: none;
 }
 
-.pdp-page.flux-pdp .pin-spacer:has(> .flux-pdp-curtain-pin) {
+/* While the gift curtains over the hero, hide the accordion share row so it
+   cannot paint into the seam above the ticker if the pin lags a frame. */
+.pdp-page.flux-pdp .flux-pdp-curtain-pin.is-gift-pin .pdp-details__footer {
+  visibility: hidden;
+}
+
+.pdp-page.flux-pdp .pin-spacer:has(> .flux-pdp-curtain-pin),
+.pdp-page.flux-pdp .pin-spacer:has(> .flux-pdp-gift) {
   max-width: none !important;
+  width: 100%;
+}
+
+/* Keep the held gift frame above the ticker while it is pinned. */
+.pdp-page.flux-pdp .pin-spacer:has(> .flux-pdp-gift) {
+  position: relative;
+  z-index: 4;
 }
 
 /* Gift bundle — Figma 3101:2447. Full-bleed banner + % hotspots + ATC card.
@@ -1289,12 +1307,14 @@
 
 .flux-pdp-gift {
   position: relative;
-  z-index: 2;
+  z-index: 4;
+  isolation: isolate;
   width: 100%;
-  height: 100svh;
-  max-height: 100dvh;
-  /* Transparent shell — hero shows through until the wipe brings in content. */
-  background: transparent;
+  height: 100dvh;
+  min-height: 100svh;
+  /* Opaque so the pinned hero (share row at the accordion footer) cannot
+     paint through the curtain or the seam above the ticker. */
+  background: #0a1620;
   color: #fff;
   overflow: hidden;
 }
@@ -1312,6 +1332,13 @@
   width: 100%;
   height: 100%;
   background: #0a1620;
+}
+
+/* Sit above the pinned hero so Share/Need Help cannot leak into this seam. */
+.pdp-page.flux-pdp .flux-pdp-ticker {
+  position: relative;
+  z-index: 5;
+  background: #fff;
 }
 
 .flux-pdp-gift__scene {
@@ -1819,7 +1846,7 @@
   }
 
   .flux-pdp-quote__text {
-    font-size: 28px;
+    font-size: 22px;
     max-width: 72%;
   }
 

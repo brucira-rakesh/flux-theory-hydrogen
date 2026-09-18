@@ -5,8 +5,12 @@ import {Link, useNavigate} from 'react-router';
 import PdpControls from '~/components/PDP/PdpControls';
 import {
   isShopifyDefaultTitleOption,
+  packShippingNote,
+  projectedCartAmountForVariant,
   shouldShowSizeSelect,
+  variantForPackLabel,
 } from '~/lib/storefrontCatalog';
+import {useRootOptimisticCart} from '~/hooks/useRootOptimisticCart';
 import iconOfferCopy from '~/assets/pdp/offers/icon-copy.svg';
 import arrowLeft from '~/assets/pdp/reviews/arrow-left.svg';
 import arrowRight from '~/assets/pdp/reviews/arrow-right.svg';
@@ -74,14 +78,6 @@ function optionRowLabel(option) {
   return `SELECT ${option.name}`.toUpperCase();
 }
 
-/** One-liner under SELECT PACK — mirrors offer card detail typography. */
-function packShippingMessage(selectedValueName) {
-  const name = selectedValueName?.trim().toLowerCase() ?? '';
-  if (name.includes('pack of 2')) return 'Free Shipping';
-  if (name.includes('pack of 1')) return '+₹49 Shipping Fee';
-  return null;
-}
-
 const SHOPIFY_CDN_ORIGIN = 'https://cdn.shopify.com';
 
 /**
@@ -127,6 +123,7 @@ export default function FluxPdpHero({
   details = null,
 }) {
   const navigate = useNavigate();
+  const cart = useRootOptimisticCart();
   const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
   const [copiedCode, setCopiedCode] = useState('');
   const [pincode, setPincode] = useState('');
@@ -680,8 +677,18 @@ export default function FluxPdpHero({
                   return null;
                 }
                 const selected = Boolean(value.selected);
-                const shippingNote = isPackOption(option)
-                  ? packShippingMessage(value.name)
+                const packVariant = isPackOption(option)
+                  ? variantForPackLabel(product, value.name)
+                  : null;
+                const shippingNote = packVariant
+                  ? packShippingNote(
+                      projectedCartAmountForVariant({
+                        cart,
+                        productId: product.id,
+                        variantPrice: packVariant.price,
+                        quantity,
+                      }),
+                    )
                   : null;
                 const className = `flux-pdp-swatch${
                   shippingNote ? ' flux-pdp-swatch--pack' : ''

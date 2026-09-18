@@ -457,6 +457,8 @@
   opacity: 0.6;
   cursor: pointer;
   text-align: left;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: opacity 0.25s ease;
 }
 
@@ -499,12 +501,20 @@
 }
 
 .pdp-acc__panel {
-  overflow: hidden;
-  height: 0;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s cubic-bezier(0.65, 0, 0.35, 1);
 }
 
-/* Open height is set by GSAP (inline). No CSS height:auto here — it fought the
-   tween and snapped open/closed. */
+.pdp-acc__item.is-open .pdp-acc__panel {
+  grid-template-rows: 1fr;
+}
+
+/* 0fr/1fr interpolates on Samsung Chrome; GSAP height:auto often no-ops there. */
+.pdp-acc__clip {
+  overflow: hidden;
+  min-height: 0;
+}
 
 .pdp-acc__panel-inner {
   padding: 0 calc(16 * var(--pdp-fluid) / 1440);

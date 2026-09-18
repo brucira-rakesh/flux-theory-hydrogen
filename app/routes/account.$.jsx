@@ -5,7 +5,9 @@ import {redirect} from 'react-router';
  * @param {Route.LoaderArgs}
  */
 export async function loader({context}) {
-  await context.customerAccount.handleAuthStatus();
+  if (!(await context.customerAccount.isLoggedIn())) {
+    throw redirect('/account/login');
+  }
 
   return redirect('/account');
 }

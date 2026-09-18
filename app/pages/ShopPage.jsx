@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
+import { Image } from '@shopify/hydrogen'
 import gsap from 'gsap'
 import SiteHeader from '../components/ProductShelf/SiteHeader'
 import FooterV3 from '../components/Footer/FooterV3'
@@ -23,7 +24,7 @@ import { useSmoothScrollLock } from '../components/SmoothScroll/SmoothScroll'
 import { scrollToY } from '../components/SmoothScroll/smoothScrollApi'
 import '../components/Shop/Shop.css'
 
-export default function ShopPage({ catalog = [] }) {
+export default function ShopPage({ catalog = [], banner = null }) {
   const { category: categoryParam } = useParams()
   const navigate = useNavigate()
   const routeCategory = categoryFromParam(categoryParam)
@@ -209,6 +210,7 @@ export default function ShopPage({ catalog = [] }) {
   }
 
   const priceActive = Boolean(effectivePriceRange)
+  const hasBanner = Boolean(banner?.desktop?.url)
 
   const badgeCount =
     tags.length +
@@ -220,11 +222,29 @@ export default function ShopPage({ catalog = [] }) {
   }
 
   return (
-    <div className="shop-page">
-      <SiteHeader />
+    <div className={`shop-page${hasBanner ? ' shop-page--banner' : ''}`}>
+      <SiteHeader overlayHero={hasBanner} />
 
-      <main className="shop-main">
-        <header className="shop-hero">
+      <header className={hasBanner ? 'shop-banner' : 'shop-hero'}>
+        {hasBanner ? (
+          <div className="shop-banner__media" aria-hidden="true">
+            <Image
+              className="shop-banner__img shop-banner__img--desktop"
+              data={banner.desktop}
+              sizes="100vw"
+              widths={[720, 1080, 1440, 1920, 2400]}
+              alt=""
+            />
+            <Image
+              className="shop-banner__img shop-banner__img--mobile"
+              data={banner.mobile}
+              sizes="100vw"
+              widths={[480, 720, 960, 1200]}
+              alt=""
+            />
+          </div>
+        ) : null}
+        <div className={hasBanner ? 'shop-banner__copy' : undefined}>
           <nav className="shop-breadcrumb" aria-label="Breadcrumb">
             <span className="shop-breadcrumb__item">
               <Link to={HOME_URL} className="shop-breadcrumb__link">
@@ -263,8 +283,10 @@ export default function ShopPage({ catalog = [] }) {
           <p className="shop-hero__copy">
             Every formula is a state of mind. Find the wash that matches yours.
           </p>
-        </header>
+        </div>
+      </header>
 
+      <main className="shop-main">
         <div className="shop-toolbar">
           <p className="shop-toolbar__count" aria-live="polite">
             {filtered.length} {filtered.length === 1 ? 'product' : 'products'}

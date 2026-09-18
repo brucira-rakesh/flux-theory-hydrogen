@@ -81,7 +81,7 @@ function isFluxPdpPath(pathname) {
   return pathname.startsWith('/products')
 }
 
-export default function SiteHeader({ logoTo = '/' }) {
+export default function SiteHeader({ logoTo = '/', overlayHero = false }) {
   const rootData = useRouteLoaderData('root')
   const navLinks = useNavLinks(rootData, FALLBACK_NAV_LINKS)
   const location = useLocation()
@@ -95,7 +95,7 @@ export default function SiteHeader({ logoTo = '/' }) {
   const menuBtnRef = useRef(null)
   const lastScrollY = useRef(0)
   const activeId = resolveActiveId(location.pathname, location.hash, navLinks)
-  const onLight = isLightSurfacePath(location.pathname)
+  const onLight = isLightSurfacePath(location.pathname) && !overlayHero
   const onDarkHero = isDarkHeroPath(location.pathname)
   const onFluxPdp = isFluxPdpPath(location.pathname)
   const onPdp = onFluxPdp || location.pathname.startsWith('/old-pdp')
@@ -293,7 +293,7 @@ export default function SiteHeader({ logoTo = '/' }) {
                     label={isLoggedIn ? 'Account' : 'Sign in'}
                     width={13}
                     height={12}
-                    to="/account"
+                    to={isLoggedIn ? '/account' : '/account/login'}
                     loggedIn={isLoggedIn}
                   />
                 )}
@@ -392,7 +392,11 @@ export default function SiteHeader({ logoTo = '/' }) {
             <li>
               <LoggedInState>
                 {(isLoggedIn) => (
-                  <Link to="/account" tabIndex={open ? 0 : -1} onClick={closeDrawer}>
+                  <Link
+                    to={isLoggedIn ? '/account' : '/account/login'}
+                    tabIndex={open ? 0 : -1}
+                    onClick={closeDrawer}
+                  >
                     {isLoggedIn ? 'Account' : 'Sign in'}
                   </Link>
                 )}

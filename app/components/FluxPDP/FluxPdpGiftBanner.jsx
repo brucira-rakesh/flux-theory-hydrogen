@@ -13,8 +13,8 @@ import hotspotPlus from '~/assets/pdp/gift/hotspot-plus.svg';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const TITLE_DURATION = 0.8;
-const TITLE_STAGGER = 0.02;
+const TITLE_DURATION = 0.42;
+const TITLE_STAGGER = 0.012;
 const TITLE_SWEEP_BLUR = 5;
 
 const SHOPIFY_CDN_ORIGIN = 'https://cdn.shopify.com';
@@ -79,7 +79,7 @@ export default function FluxPdpGiftBanner({
     () => ({
       trigger: sectionRef,
       // Fire as the gift curtain peeks in — same window as the wipe scrub.
-      start: 'top 80%',
+      start: 'top 92%',
       end: 'bottom top',
       toggleActions: 'play none none none',
     }),
@@ -89,10 +89,10 @@ export default function FluxPdpGiftBanner({
   const titleBlurSweep = useMemo(
     () => ({
       loop: 4,
-      letter: 1.6,
-      step: 0.09,
+      letter: 0.9,
+      step: 0.05,
       blur: TITLE_SWEEP_BLUR,
-      postReveal: 0.4,
+      postReveal: 0.15,
     }),
     [],
   );
@@ -107,30 +107,57 @@ export default function FluxPdpGiftBanner({
     );
   }, [hotspotKey]);
 
-  // Hero pins at end-of-hero; gift curtains over (no spacer — true overlay).
+  // Hero pins while the gift curtains over (no spacer — true overlay).
+  // Once the gift fills the viewport the gift itself pins; the next scroll
+  // (short hold) releases it so ticker / lifestyle move normally.
   useLayoutEffect(() => {
     const gift = sectionRef.current;
     const pinTarget = pinTargetRef?.current;
-    if (!bundle || !gift || !pinTarget) return undefined;
+    if (!bundle || !gift) return undefined;
     if (prefersReducedMotion()) return undefined;
 
-    const st = ScrollTrigger.create({
-      trigger: pinTarget,
-      start: 'bottom bottom',
-      endTrigger: gift,
-      end: 'top top',
-      pin: pinTarget,
-      pinSpacing: false,
-      anticipatePin: 1,
-      fastScrollEnd: true,
-      invalidateOnRefresh: true,
-      scroller: getScrollRoot() ?? undefined,
-    });
+    const scroller = getScrollRoot() ?? undefined;
+    const triggers = [];
+
+    if (pinTarget) {
+      triggers.push(
+        ScrollTrigger.create({
+          trigger: gift,
+          start: 'top bottom',
+          end: 'top top',
+          pin: pinTarget,
+          pinSpacing: false,
+          anticipatePin: 1,
+          fastScrollEnd: true,
+          invalidateOnRefresh: true,
+          scroller,
+          onToggle: (self) => {
+            pinTarget.classList.toggle('is-gift-pin', self.isActive);
+          },
+        }),
+      );
+    }
+
+    triggers.push(
+      ScrollTrigger.create({
+        trigger: gift,
+        start: 'top top',
+        // Short hold — one more scroll/flick unpins and the section leaves.
+        end: '+=35%',
+        pin: true,
+        pinSpacing: true,
+        anticipatePin: 1,
+        fastScrollEnd: false,
+        invalidateOnRefresh: true,
+        scroller,
+      }),
+    );
 
     requestAnimationFrame(() => ScrollTrigger.refresh());
 
     return () => {
-      st.kill();
+      for (const st of triggers) st.kill();
+      pinTarget?.classList.remove('is-gift-pin');
       requestAnimationFrame(() => ScrollTrigger.refresh());
     };
   }, [bundle, pinTargetRef]);
@@ -158,12 +185,11 @@ export default function FluxPdpGiftBanner({
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: section,
-          // Same window as the hero curtain: gift enters from the bottom and
-          // fully covers once its top hits the viewport top.
+          // Wipe finishes as the gift fills the viewport — then the gift pin
+          // (start: top top) holds the frame until the next scroll.
           start: 'top bottom',
           end: 'top top',
-          // Soft scrub — Lenis + scrub:true fights hard on reverse scroll.
-          scrub: 0.45,
+          scrub: 0.15,
           fastScrollEnd: true,
           scroller: getScrollRoot() ?? undefined,
         },

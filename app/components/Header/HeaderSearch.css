@@ -188,6 +188,30 @@
   display: block;
 }
 
+.header-search-overlay__close {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: -4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--header-search-ink);
+  cursor: pointer;
+  appearance: none;
+}
+
+.header-search-overlay__close:hover,
+.header-search-overlay__close:focus-visible {
+  opacity: 0.7;
+}
+
+.header-search-overlay__close svg {
+  display: block;
+}
+
 /* Results panel — white card so it separates from the grey neu scrim. */
 .header-search-overlay__panel {
   display: grid;

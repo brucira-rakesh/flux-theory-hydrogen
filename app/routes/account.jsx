@@ -3,6 +3,7 @@ import {
   Form,
   NavLink,
   Outlet,
+  redirect,
   useLoaderData,
 } from 'react-router';
 import {CUSTOMER_DETAILS_QUERY} from '~/graphql/customer-account/CustomerDetailsQuery';
@@ -26,6 +27,10 @@ export const meta = () => {
  */
 export async function loader({context}) {
   const {customerAccount} = context;
+  if (!(await customerAccount.isLoggedIn())) {
+    throw redirect('/account/login');
+  }
+
   const {data, errors} = await customerAccount.query(CUSTOMER_DETAILS_QUERY, {
     variables: {
       language: customerAccount.i18n.language,
