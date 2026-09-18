@@ -45,7 +45,14 @@ export default function ProductV3({ products = [] }) {
   useScrollLock(Boolean(activeProduct));
 
   const registerCard = (el) => {
-    if (el) cardRefs.current.push(el);
+    if (!el) return undefined;
+    cardRefs.current.push(el);
+    // StrictMode double-invokes ref callbacks in dev — without removing the
+    // stale entry on that simulated unmount, cardRefs.current ends up with
+    // each card duplicated, throwing off every index-based calculation below.
+    return () => {
+      cardRefs.current = cardRefs.current.filter((node) => node !== el);
+    };
   };
 
   useEffect(() => {
@@ -67,6 +74,9 @@ export default function ProductV3({ products = [] }) {
     // Re-measured (not just computed once) so a resize before the reveal
     // plays doesn't leave cards stacked at a stale, now-wrong center point.
     const applyStackPose = () => {
+      // Measure the untransformed grid slots — a leftover stack pose (StrictMode
+      // re-running this effect, or a resize) would otherwise read as ~0 offset.
+      gsap.set(cards, { clearProps: "transform" });
       const centerCard = cards[Math.round(centerIndex)];
       const centerRect = centerCard.getBoundingClientRect();
       const centerX = centerRect.left + centerRect.width / 2;
@@ -119,6 +129,7 @@ export default function ProductV3({ products = [] }) {
       window.removeEventListener("resize", onResize);
       st.kill();
       gsap.killTweensOf(cards);
+      gsap.set(cards, { clearProps: "all" });
     };
   }, []);
 
