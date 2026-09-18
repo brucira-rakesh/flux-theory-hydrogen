@@ -3,7 +3,6 @@ import { useLenis } from "lenis/react";
 import { prefersReducedMotion } from "./hooks/useSpotlight";
 import { isScrollLocked } from "./hooks/useScrollLock";
 import { getScrollY, scrollRootTo } from "./utils/scrollRoot";
-import { isDesktopViewport } from "./utils/breakpoint";
 import { overlayWipe } from "./overlayWipeState";
 import { scrollNavState } from "./utils/scrollNavState";
 import "./CloudTransition.css";
@@ -516,8 +515,7 @@ export default function CloudTransition({
     const start = performance.now();
 
     const syncSize = () => {
-      const dprCap = isDesktopViewport() ? 1.5 : 1;
-      const dpr = Math.min(window.devicePixelRatio || 1, dprCap);
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       const w = Math.max(1, Math.floor(window.innerWidth * dpr));
       const h = Math.max(1, Math.floor(window.innerHeight * dpr));
       if (w !== state.width || h !== state.height) {
@@ -595,25 +593,8 @@ export default function CloudTransition({
       // Seawave — evaluated every frame (even mid-auto) so the reverse wipe,
       // which parks the marker on SeawaveSeq's pin (1vh above the seam),
       // leaves forward armed again.
-      // Not while the mobile carousel has claimed this seam: re-arming there
-      // is what replayed the wipe on the way out of the last scene and
-      // snapped the page back onto the pin instead of into ProductV3.
-      if (
-        !scrollNavState.suppressSeamReverse &&
-        markerTop > FWD_REARM_MARKER_VH * viewportH
-      ) {
+      if (markerTop > FWD_REARM_MARKER_VH * viewportH)
         forwardArmedRef.current = true;
-      }
-
-      // A claimed seam owns both directions. An in-flight wipe must not keep
-      // enforcing its snap — that yank is what undoes the carousel's exit.
-      if (scrollNavState.suppressSeamReverse && auto.active) {
-        auto.active = false;
-        auto.enforce = false;
-        autoplayLockRef.current = false;
-        forwardTriggerPendingRef.current = false;
-        if (!isScrollLocked()) lenisInstRef.current?.start();
-      }
 
       let cover;
       if (auto.active) {
@@ -795,7 +776,6 @@ export default function CloudTransition({
         const forwardTriggerPositionReady =
           marker &&
           forwardArmedRef.current &&
-          !scrollNavState.suppressSeamReverse &&
           !isScrollLocked() &&
           // A PageProgress rail jump tweens straight past this boundary on
           // its way further down the page — this line's own position-based
@@ -919,10 +899,6 @@ export default function CloudTransition({
           goingUp &&
           !isScrollLocked() &&
           !scrollNavState.skippingSections &&
-          // A section pinned ON this seam owns its own upward crossing —
-          // see scrollNavState.suppressSeamReverse. `!isScrollLocked()`
-          // cannot stand in for this: the claim outlives the lock.
-          !scrollNavState.suppressSeamReverse &&
           prevMarkerTop <= REVERSE_CROSSING_EPS_PX &&
           markerTop > REVERSE_CROSSING_EPS_PX
         ) {
@@ -1145,10 +1121,7 @@ export default function CloudTransition({
     lenisPrevScrollRef.current = scrollY;
     lenisPrevMarkerTopRef.current = markerTop;
 
-    if (
-      !scrollNavState.suppressSeamReverse &&
-      markerTop > FWD_REARM_MARKER_VH * viewportH
-    ) {
+    if (markerTop > FWD_REARM_MARKER_VH * viewportH) {
       forwardArmedRef.current = true;
     }
 
@@ -1165,9 +1138,6 @@ export default function CloudTransition({
     if (
       goingUp &&
       !isScrollLocked() &&
-      // Mirrors render()'s own reverse test — see that guard's comment and
-      // scrollNavState.suppressSeamReverse.
-      !scrollNavState.suppressSeamReverse &&
       prevMarkerTop <= REVERSE_CROSSING_EPS_PX &&
       markerTop > REVERSE_CROSSING_EPS_PX
     ) {
@@ -1224,7 +1194,6 @@ export default function CloudTransition({
     // gather over a properly covered frame.
     const forwardWipeOwed =
       !auto.active &&
-      !scrollNavState.suppressSeamReverse &&
       forwardArmedRef.current &&
       !isScrollLocked() &&
       markerTop <= AUTOPLAY_TRIGGER_MARKER_VH * viewportH;

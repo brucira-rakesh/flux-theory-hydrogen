@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { prefersReducedMotion } from '../../hooks/useSpotlight'
@@ -174,6 +174,12 @@ export default function AnimatedTitle({
    * Or `true` to use this element with start: 'top 80%'.
    */
   scrollTrigger: scrollTriggerProp,
+  /**
+   * Film-roll reveal — each line is masked (overflow-hidden) and slides up
+   * from below instead of the per-char blur/fade. Mutually exclusive with
+   * `blurSweep`. Good for headings overlapping imagery (e.g. mix-blend-exclusion).
+   */
+  rollUp = false,
 }) {
   const rootRef = useRef(null)
   const sweepTlRef = useRef(null)
@@ -264,6 +270,24 @@ export default function AnimatedTitle({
     const root = rootRef.current
     if (!root || reducedMotion) return undefined
 
+    if (rollUp) {
+      const lineTargets = root.querySelectorAll('.at-line-inner')
+      if (!lineTargets.length) return undefined
+
+      if (instant) {
+        root.classList.remove('is-reveal-pending')
+        root.classList.add('is-instant', 'is-revealed')
+        gsap.set(lineTargets, { yPercent: 0 })
+        return undefined
+      }
+
+      root.classList.add('is-reveal-pending')
+      root.classList.remove('is-revealed', 'is-instant')
+      delete root.dataset.atRevealed
+      gsap.set(lineTargets, { yPercent: 105 })
+      return undefined
+    }
+
     const targets = root.querySelectorAll('.at-char')
     if (!targets.length) return undefined
 
@@ -279,17 +303,26 @@ export default function AnimatedTitle({
     delete root.dataset.atRevealed
     gsap.set(targets, { opacity: 0, filter: 'blur(20px)', y: 0 })
     return undefined
-  }, [label, replayKey, reducedMotion, instant])
+  }, [label, replayKey, reducedMotion, instant, rollUp])
 
   useEffect(() => {
     const root = rootRef.current
     if (!root || reducedMotion) return undefined
 
-    const targets = root.querySelectorAll('.at-char')
+    const targets = rollUp
+      ? root.querySelectorAll('.at-line-inner')
+      : root.querySelectorAll('.at-char')
     if (!targets.length) return undefined
 
+    const fromVars = rollUp
+      ? { yPercent: 105 }
+      : { opacity: 0, filter: 'blur(20px)', y: 0 }
+    const settledVars = rollUp
+      ? { yPercent: 0 }
+      : { opacity: 1, filter: 'blur(0px)', y: 0 }
+
     if (instant) {
-      gsap.set(targets, { opacity: 1, filter: 'blur(0px)', y: 0 })
+      gsap.set(targets, settledVars)
       root.classList.remove('is-reveal-pending')
       root.classList.add('is-revealed')
       root.dataset.atRevealed = '1'
@@ -298,7 +331,7 @@ export default function AnimatedTitle({
     }
 
     if (!play) {
-      gsap.set(targets, { opacity: 0, filter: 'blur(20px)', y: 0 })
+      gsap.set(targets, fromVars)
       root.classList.add('is-reveal-pending')
       root.classList.remove('is-revealed')
       return undefined
@@ -306,13 +339,11 @@ export default function AnimatedTitle({
 
     const ctx = gsap.context(() => {
       const reveal = {
-        opacity: 1,
-        filter: 'blur(0px)',
-        y: 0,
-        duration,
-        stagger,
+        ...settledVars,
+        duration: rollUp ? duration * 1.1 : duration,
+        stagger: rollUp ? Math.max(stagger, 0.08) : stagger,
         delay,
-        ease: 'power2.out',
+        ease: rollUp ? 'power4.out' : 'power2.out',
         onComplete: () => {
           root.classList.remove('is-reveal-pending')
           root.classList.add('is-revealed')
@@ -329,25 +360,17 @@ export default function AnimatedTitle({
         const raw = scrollTriggerProp === true ? {} : scrollTriggerProp
         const triggerEl = resolveScrollTriggerElement(raw, root)
 
-        gsap.fromTo(
-          targets,
-          { opacity: 0, filter: 'blur(20px)', y: 0 },
-          {
-            ...reveal,
-            scrollTrigger: {
-              start: 'top top',
-              scroller: getScrollRoot() ?? undefined,
-              ...raw,
-              trigger: triggerEl,
-            },
+        gsap.fromTo(targets, fromVars, {
+          ...reveal,
+          scrollTrigger: {
+            start: 'top top',
+            scroller: getScrollRoot() ?? undefined,
+            ...raw,
+            trigger: triggerEl,
           },
-        )
+        })
       } else {
-        gsap.fromTo(
-          targets,
-          { opacity: 0, filter: 'blur(20px)', y: 0 },
-          reveal,
-        )
+        gsap.fromTo(targets, fromVars, reveal)
       }
     }, root)
 
@@ -365,6 +388,7 @@ export default function AnimatedTitle({
     instant,
     play,
     blurSweepEnabled,
+    rollUp,
   ])
 
   // Letter-by-letter blur wave. Starts after the entry reveal finishes so
@@ -592,39 +616,50 @@ export default function AnimatedTitle({
   return (
     <Tag
       ref={rootRef}
-      className={`at-title${className ? ` ${className}` : ''}${blurSweepEnabled ? ' at-title--blur-sweep' : ''}${blurSweepEnabled && !blurSweepVisible ? ' is-blur-hidden' : ''}`}
+      className={`at-title${className ? ` ${className}` : ''}${blurSweepEnabled ? ' at-title--blur-sweep' : ''}${blurSweepEnabled && !blurSweepVisible ? ' is-blur-hidden' : ''}${rollUp ? ' at-title--roll-up' : ''}`}
       aria-label={label}
     >
-      {lineGroups.map((line) => (
-        <span
-          key={line.key}
-          className={`at-line${line.lineClass ? ` ${line.lineClass}` : ''}`}
-          aria-hidden="true"
-        >
-          {line.groups.map((group) => {
-            if (group.type === 'space') {
+      {lineGroups.map((line) => {
+        const lineContent = (
+          <span
+            className={`at-line${line.lineClass ? ` ${line.lineClass}` : ''}`}
+            aria-hidden="true"
+          >
+            {line.groups.map((group) => {
+              if (group.type === 'space') {
+                return (
+                  <span key={group.key} className="at-space">
+                    {' '}
+                  </span>
+                )
+              }
+
               return (
-                <span key={group.key} className="at-space">
-                  {' '}
+                <span key={group.key} className="at-word">
+                  {group.chars.map(({ key, char, className: charClass }) => (
+                    <span
+                      key={key}
+                      className={`at-char${charClass ? ` ${charClass}` : ''}`}
+                    >
+                      {char}
+                    </span>
+                  ))}
                 </span>
               )
-            }
+            })}
+          </span>
+        )
 
-            return (
-              <span key={group.key} className="at-word">
-                {group.chars.map(({ key, char, className: charClass }) => (
-                  <span
-                    key={key}
-                    className={`at-char${charClass ? ` ${charClass}` : ''}`}
-                  >
-                    {char}
-                  </span>
-                ))}
-              </span>
-            )
-          })}
-        </span>
-      ))}
+        if (!rollUp) {
+          return <Fragment key={line.key}>{lineContent}</Fragment>
+        }
+
+        return (
+          <span key={line.key} className="at-line-mask">
+            <span className="at-line-inner">{lineContent}</span>
+          </span>
+        )
+      })}
     </Tag>
   )
 }

@@ -545,7 +545,9 @@ export default function FluxPdp() {
                   bottleSrc={null}
                   bottleAlt={`${view.name} bottle`}
                   productName={view.name}
-                  detailsExtra={<FluxPdpFeatureGrid handle={product.handle} />}
+                  detailsExtra={
+                    <FluxPdpFeatureGrid features={view.detailFeatures} />
+                  }
                 />
               ) : null
             }
@@ -864,6 +866,24 @@ const PRODUCT_FRAGMENT = `#graphql
         }
       }
     }
+    productIconsLeft: metafield(namespace: "custom", key: "product_icons_left") {
+      references(first: 8) {
+        nodes {
+          ... on Metaobject {
+            title: field(key: "title") { value }
+            description: field(key: "description") { value }
+            descrption: field(key: "descrption") { value }
+            icon: field(key: "icon") {
+              reference {
+                ... on MediaImage {
+                  image { url altText width height }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
     allIngredients: metafield(namespace: "custom", key: "all_ingredients") {
       value
     }
@@ -878,6 +898,8 @@ const PRODUCT_FRAGMENT = `#graphql
       value
     }
     howToUse: metafield(namespace: "custom", key: "how_to_use") {
+      type
+      value
       reference {
         ... on Metaobject {
           eyebrow: field(key: "eyebrow") { value }

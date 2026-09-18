@@ -53,6 +53,46 @@ export const FREE_SHIPPING_THRESHOLD = 300;
 export const SHIPPING_FEE_NOTE = '+₹49 Shipping Fee';
 export const FREE_SHIPPING_NOTE = 'Free Shipping';
 
+/** Spend thresholds shown on the cart progress bar (INR). */
+export const CART_PROGRESS_TIERS = [
+  {id: 'free-shipping', amount: FREE_SHIPPING_THRESHOLD, label: 'Free Shipping'},
+  {id: 'order-off', amount: 999, label: '10% Off'},
+];
+
+/**
+ * Unique merchandising offers from products currently in the cart.
+ * Same shape as PDP `activeOffersFromMetafield`.
+ */
+export function uniqueOffersFromCart(cart) {
+  const seen = new Set();
+  const offers = [];
+  for (const line of cart?.lines?.nodes ?? []) {
+    const product = line?.merchandise?.product;
+    if (!product) continue;
+    for (const offer of activeOffersFromMetafield(product)) {
+      const key = offer.code.toUpperCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      offers.push(offer);
+    }
+  }
+  return offers;
+}
+
+/**
+ * Cart subtotal vs {@link CART_PROGRESS_TIERS} for the drawer progress bar.
+ */
+export function cartProgressFromAmount(amount) {
+  const value = Math.max(0, Number(amount) || 0);
+  const tiers = CART_PROGRESS_TIERS;
+  const max = tiers[tiers.length - 1]?.amount || 1;
+  const percent = Math.min(100, (value / max) * 100);
+  const unlocked = tiers.filter((tier) => value >= tier.amount);
+  const next = tiers.find((tier) => value < tier.amount) ?? null;
+  const remaining = next ? Math.max(0, next.amount - value) : 0;
+  return {value, percent, unlocked, next, remaining, max, tiers};
+}
+
 /**
  * Shipping copy for a pack swatch. Driven by projected cart value after
  * adding this variant (existing lines of the same product are replaced).
@@ -110,6 +150,81 @@ export function formatMoneyDisplay(money) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+/** Percent off from Shopify compare-at vs current price. Null when inapplicable. */
+export function percentOffFromCompare(price, compareAtPrice) {
+  const current = Number(price?.amount);
+  const compare = Number(compareAtPrice?.amount);
+  if (
+    !compareAtPrice ||
+    !Number.isFinite(current) ||
+    !Number.isFinite(compare) ||
+    compare <= 0 ||
+    current >= compare
+  ) {
+    return null;
+  }
+  const percent = Math.round(((compare - current) / compare) * 100);
+  return percent > 0 ? percent : null;
+}
+
+function moneyTimes(money, quantity) {
+  if (!money) return null;
+  const qty = Math.max(1, Number(quantity) || 1);
+  return {
+    amount: String(moneyAmount(money) * qty),
+    currencyCode: money.currencyCode,
+  };
+}
+
+/** Line payable, compare-at total (qty × unit compare), and percent off. */
+export function cartLinePricing(line) {
+  const qty = Math.max(1, Number(line?.quantity) || 1);
+  const payable = line?.cost?.totalAmount ?? line?.merchandise?.price ?? null;
+  const perCompare =
+    line?.cost?.compareAtAmountPerQuantity ??
+    line?.merchandise?.compareAtPrice ??
+    null;
+  const compareTotal = moneyTimes(perCompare, qty);
+  const percentOff = percentOffFromCompare(payable, compareTotal);
+  const showCompare =
+    Boolean(compareTotal) && moneyAmount(compareTotal) > moneyAmount(payable);
+  return {
+    payable,
+    compareTotal: showCompare ? compareTotal : null,
+    percentOff,
+  };
+}
+
+/**
+ * Cart payable subtotal plus the pre-discount total (sum of line compare-at
+ * amounts, falling back to line payable when a line has no compare price).
+ */
+export function cartCompareSubtotal(cart) {
+  const payable = cart?.cost?.subtotalAmount ?? null;
+  let compareSum = 0;
+  let currency = payable?.currencyCode;
+  for (const line of cart?.lines?.nodes ?? []) {
+    const {payable: linePayable, compareTotal} = cartLinePricing(line);
+    if (compareTotal) {
+      compareSum += moneyAmount(compareTotal);
+      currency = compareTotal.currencyCode || currency;
+    } else {
+      compareSum += moneyAmount(linePayable);
+      currency = linePayable?.currencyCode || currency;
+    }
+  }
+  const payableAmount = moneyAmount(payable);
+  const compare =
+    compareSum > payableAmount
+      ? {amount: String(compareSum), currencyCode: currency}
+      : null;
+  return {
+    payable,
+    compare,
+    count: cart?.totalQuantity ?? 0,
+  };
 }
 
 export function cartLinesForMerchandise(merchandiseId, quantity = 1, selectedVariant) {
@@ -632,6 +747,34 @@ export function productIconsFromMetafield(product) {
 }
 
 /**
+ * custom.product_icons_left (list.metaobject_reference) → Product Details 2×2 grid.
+ * Metaobject `product_icons_product_details`: file `icon`, text `title`,
+ * and body copy on `description` or Shopify's `descrption` key.
+ * Returns [] when the metafield is absent.
+ */
+export function productIconsLeftFromMetafield(product) {
+  const nodes = product?.productIconsLeft?.references?.nodes ?? [];
+  return nodes
+    .map((node, index) => {
+      const label = node?.title?.value?.trim() ?? '';
+      const description =
+        node?.description?.value?.trim() ||
+        node?.descrption?.value?.trim() ||
+        '';
+      const iconUrl = node?.icon?.reference?.image?.url ?? '';
+      if (!label || !iconUrl) return null;
+      return {
+        id: `${label}-${index}`,
+        label,
+        description,
+        iconUrl,
+        iconAlt: node?.icon?.reference?.image?.altText || label,
+      };
+    })
+    .filter(Boolean);
+}
+
+/**
  * custom.product_ticker (list.metaobject_reference) → PdpMarquee items array.
  * Pill copy only — the FT divider mark is a static asset in PdpMarquee.
  * Returns undefined when the metafield is absent.
@@ -739,6 +882,10 @@ export function accordionFromMetafields(product, overlayItems) {
   const shopifyIngredients = metafieldText(product?.allIngredients);
   const shopifyWhyLove = metafieldText(product?.whyYoullLoveIt);
   const shopifyBenefits = parseProductDetailsRichText(product?.allBenefits);
+  const shopifyHowToUse =
+    product?.howToUse?.type === 'rich_text_field'
+      ? parseProductDetailsRichText(product.howToUse)
+      : {intro: '', bullets: []};
   const shopifySuitable = metafieldText(product?.suitableFor);
 
   const items = [];
@@ -767,6 +914,13 @@ export function accordionFromMetafields(product, overlayItems) {
     defaults: {id: 'why-love', title: 'Why You’ll Love It'},
   });
   if (whyLove) items.push(whyLove);
+
+  const howToUse = pickRichAccordionItem({
+    shopify: shopifyHowToUse,
+    overlay: overlayById.get('how-to-use'),
+    defaults: {id: 'how-to-use', title: 'How to use'},
+  });
+  if (howToUse) items.push(howToUse);
 
   const ingredients = pickBodyAccordionItem({
     shopify: shopifyIngredients,
@@ -869,6 +1023,7 @@ export function toPdpViewModel(product) {
       overlay?.shortDescription ||
       '',
     chips: productIconsFromMetafield(product),
+    detailFeatures: productIconsLeftFromMetafield(product),
     price: moneyAmount(money),
     currency: moneySymbol(money?.currencyCode),
     money,
@@ -1137,6 +1292,101 @@ export async function fetchHomeProductCards(storefront, handles = HOME_CARD_HAND
       shortDescription: product.shortDescription?.value ?? '',
     };
   });
+}
+
+export const CART_UPSELL_QUERY = `#graphql
+  query CartUpsell(
+    $country: CountryCode
+    $language: LanguageCode
+    $productId: ID!
+  ) @inContext(country: $country, language: $language) {
+    related: productRecommendations(productId: $productId) {
+      ...CartUpsellProduct
+    }
+  }
+  fragment CartUpsellProduct on Product {
+    id
+    handle
+    title
+    productType
+    tags
+    featuredImage {
+      id
+      url
+      altText
+      width
+      height
+    }
+    priceRange {
+      minVariantPrice {
+        amount
+        currencyCode
+      }
+    }
+    options {
+      name
+      optionValues {
+        name
+      }
+    }
+    variants(first: 20) {
+      nodes {
+        id
+        availableForSale
+        price {
+          amount
+          currencyCode
+        }
+        selectedOptions {
+          name
+          value
+        }
+      }
+    }
+    selectedOrFirstAvailableVariant {
+      id
+    }
+  }
+`;
+
+export async function fetchCartUpsellProducts(storefront, cart, limit = 6) {
+  const inCart = new Set();
+  let seedId = null;
+  for (const line of cart?.lines?.nodes ?? []) {
+    const id = line?.merchandise?.product?.id;
+    if (!id) continue;
+    inCart.add(id);
+    if (!seedId) seedId = id;
+  }
+
+  const recs = [];
+  if (seedId) {
+    try {
+      const data = await storefront.query(CART_UPSELL_QUERY, {
+        variables: {productId: seedId},
+      });
+      recs.push(...(data?.related ?? []));
+    } catch {
+      // Recommendations can 404 on unpublished seeds — fall through to catalog.
+    }
+  }
+
+  if (recs.length < limit) {
+    const {products} = await storefront.query(PRODUCT_SIMILAR_QUERY, {
+      variables: {first: 12},
+    });
+    recs.push(...(products?.nodes ?? []));
+  }
+
+  const seen = new Set();
+  const cards = [];
+  for (const product of recs) {
+    if (!product?.id || inCart.has(product.id) || seen.has(product.id)) continue;
+    seen.add(product.id);
+    cards.push(toListingCard(product));
+    if (cards.length >= limit) break;
+  }
+  return cards;
 }
 
 export const PRODUCT_SIMILAR_QUERY = `#graphql

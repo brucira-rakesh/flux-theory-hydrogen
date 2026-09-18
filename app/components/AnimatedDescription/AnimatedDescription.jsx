@@ -51,6 +51,11 @@ export default function AnimatedDescription({
    * Pass ScrollTrigger vars (trigger may be a ref) or `true`.
    */
   scrollTrigger: scrollTriggerProp,
+  /**
+   * When false, words stay hidden and no reveal runs (parent controls timing) —
+   * mirrors AnimatedTitle's `play` prop.
+   */
+  play = true,
 }) {
   const rootRef = useRef(null)
   const reducedMotion = useMemo(() => prefersReducedMotion(), [])
@@ -107,6 +112,8 @@ export default function AnimatedDescription({
 
       gsap.set(targets, fromVars)
 
+      if (!play) return
+
       if (scrollTriggerProp) {
         const raw = scrollTriggerProp === true ? {} : scrollTriggerProp
         const triggerEl =
@@ -141,6 +148,7 @@ export default function AnimatedDescription({
     replayKey,
     scrollTriggerProp,
     linesKey,
+    play,
   ])
 
   return (

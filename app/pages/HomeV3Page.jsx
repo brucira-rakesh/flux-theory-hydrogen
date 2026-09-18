@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { ReactLenis, useLenis } from 'lenis/react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -13,18 +13,16 @@ import HeaderV2 from '../components/Header/HeaderV2';
 import FooterV3 from '../components/Footer/FooterV3';
 import VideoHeroV3 from '../components/VideoHero/VideoHeroV3';
 import ProductV3 from '../components/ProductV3/ProductV3';
+import SceneV2 from '../Scene.v2';
 import Scenev2mweb from '../scenes-v2/mobile/Scenev2mweb';
-import { useDebugGui } from '../scenes-v2/useDebugGui';
 import { useIsDesktop } from '../hooks/useIsDesktop';
 import { isDesktopViewport } from '../utils/breakpoint';
+import { HOME_URL } from '../data/site';
 import {
   SCROLL_ROOT_SELECTOR,
   scrollRootTo,
   setElementScrollRoot,
 } from '../utils/scrollRoot';
-
-// Desktop-only carousel — keep Three/R3F out of the mobile HomeV3 chunk.
-const SceneV2 = lazy(() => import('../Scene.v2'));
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
 
@@ -69,7 +67,7 @@ const introSequence = {
   readyCount: Math.ceil(AUTOPLAY_FRAME_COUNT / 2),
 };
 
-export const HomeV3Page = ({productCards} = {}) => {
+export const HomeV3Page = ({ productCards } = {}) => {
   const rootRef = useRef(null);
   const lenisRef = useRef(null);
   // Zero-height markers at the seams CloudTransition wipes across — one
@@ -82,7 +80,6 @@ export const HomeV3Page = ({productCards} = {}) => {
   // should land back on the hero's own untouched start (top of page, frame
   // 0), not wherever its last-held frame was when the user first left it.
   const introResetRef = useRef(null);
-  const gui = useDebugGui('Home V3 Tweaks');
   // SceneV2's carousel is desktop-only — mobile uses Scenev2mweb's
   // swipe-controlled frame sequence instead (see the render below). Reactive, unlike
   // USE_ELEMENT_SCROLLER above, so it also gates SceneV2 mounting its WebGL
@@ -96,13 +93,6 @@ export const HomeV3Page = ({productCards} = {}) => {
 
   useLayoutEffect(() => {
     if (!USE_ELEMENT_SCROLLER) return undefined;
-    // Re-assert on setup: React StrictMode runs this cleanup (which clears
-    // elementMode) before re-running passive effects in children. Without
-    // putting the flag back here, Scenev2mweb's IntersectionObservers
-    // subscribe with a null root and never see content inside the overflow
-    // scroller — the mobile reel stays opacity 0 forever.
-    setElementScrollRoot(true);
-    ScrollTrigger.defaults({ scroller: SCROLL_ROOT_SELECTOR });
     const html = document.documentElement;
     html.dataset.scrollRootActive = 'true';
     return () => {
@@ -185,7 +175,7 @@ export const HomeV3Page = ({productCards} = {}) => {
           ...(USE_ELEMENT_SCROLLER ? { syncTouch: true } : null),
         }}
       >
-        <HeaderV2 logoTo="/" mode="light" visible />
+        <HeaderV2 logoTo={HOME_URL} mode="light" visible />
         <main ref={rootRef}>
           {/* Each seam below follows the same shape, and it is deliberate:
               the boundary marker is placed HANDOFF_HOLD_VH ABOVE the end of
@@ -247,17 +237,14 @@ export const HomeV3Page = ({productCards} = {}) => {
                     the last scene is switched off here, so scrolling on from
                     it hands straight to the cloud transition below
                     instead. */}
-                <Suspense fallback={null}>
-                  <SceneV2
-                    gui={gui}
-                    productEnabled={false}
-                    trailingHoldVh={HANDOFF_HOLD_VH + LAST_SCENE_EXIT_VH}
-                    // Centered scroll cue, drawn inside SceneV2's own pinned
-                    // overlay (see there) — the hero's cue lives in
-                    // IntroHeroV3's pin the same way.
-                    scrollCue
-                  />
-                </Suspense>
+                <SceneV2
+                  productEnabled={false}
+                  trailingHoldVh={HANDOFF_HOLD_VH + LAST_SCENE_EXIT_VH}
+                  // Centered scroll cue, drawn inside SceneV2's own pinned
+                  // overlay (see there) — the hero's cue lives in
+                  // IntroHeroV3's pin the same way.
+                  scrollCue
+                />
                 <div
                   ref={carouselToEndRef}
                   className="absolute left-0 w-px h-0"

@@ -93,29 +93,6 @@ export function createSequenceLoader({ frameCount, getFramePath, concurrency = P
   }
 
   /**
-   * Builds a 0..frameCount-1 index list, optionally starting with `order`
-   * (deduped) so priority ranges load before the rest of the reel.
-   */
-  function resolveLoadOrder(order) {
-    if (!order?.length) {
-      return Array.from({ length: frameCount }, (_, i) => i)
-    }
-    const seen = new Set()
-    const indices = []
-    for (const raw of order) {
-      const index = Math.round(raw)
-      if (index < 0 || index >= frameCount || seen.has(index)) continue
-      seen.add(index)
-      indices.push(index)
-    }
-    for (let i = 0; i < frameCount; i += 1) {
-      if (seen.has(i)) continue
-      indices.push(i)
-    }
-    return indices
-  }
-
-  /**
    * Loads every frame with bounded concurrency.
    *
    * Resolves once `readyCount` frames have settled (loaded or failed) so a
@@ -124,26 +101,36 @@ export function createSequenceLoader({ frameCount, getFramePath, concurrency = P
    * on this same instance. Omit `readyCount` (or pass >= frameCount) to
    * wait for the full sequence, matching the original behaviour.
    *
-   * Pass `order` to prioritize specific indices (e.g. current + next scene
-   * ranges) before filling the rest of the sequence in ascending order.
-   *
    * onProgress fires as (index, ratio) against the FULL frameCount, so a
    * progress bar still tracks the real download even after the gate trips.
+   *
+   * `stride` > 1 loads coarse-to-fine: every `stride`-th frame first (0, 10,
+   * 20… for 10), then the remaining frames from the beginning. A scrub
+   * anywhere in the reel then has a nearby frame to show early, instead of
+   * only the front of the sequence being ready. Default 1 = plain in order.
    */
-  function preloadSequence(onProgress, { readyCount, order } = {}) {
+  function preloadSequence(onProgress, { readyCount, stride = 1 } = {}) {
     if (frameCount <= 0) return Promise.resolve()
 
-    const indices = resolveLoadOrder(order)
+    const step = Math.max(1, Math.floor(stride))
+    const order = []
+    for (let i = 0; i < frameCount; i += step) order.push(i)
+    if (step > 1) {
+      for (let i = 0; i < frameCount; i += 1) {
+        if (i % step !== 0) order.push(i)
+      }
+    }
+
     const gateAt = Math.min(
-      indices.length,
-      Math.max(1, readyCount ?? indices.length),
+      frameCount,
+      Math.max(1, readyCount ?? frameCount),
     )
     let settledCount = 0
     let gated = false
 
     return new Promise((resolve) => {
       let inFlight = 0
-      let cursor = 0
+      let nextIndex = 0
 
       const tripGate = () => {
         if (gated || settledCount < gateAt) return
@@ -152,14 +139,14 @@ export function createSequenceLoader({ frameCount, getFramePath, concurrency = P
       }
 
       const pump = () => {
-        if (cursor >= indices.length && inFlight === 0) {
+        if (nextIndex >= frameCount && inFlight === 0) {
           tripGate()
           return
         }
 
-        while (inFlight < concurrency && cursor < indices.length) {
-          const index = indices[cursor]
-          cursor += 1
+        while (inFlight < concurrency && nextIndex < frameCount) {
+          const index = order[nextIndex]
+          nextIndex += 1
           inFlight += 1
 
           loadFrame(index).then((img) => {

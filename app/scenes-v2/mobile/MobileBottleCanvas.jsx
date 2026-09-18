@@ -87,11 +87,7 @@ function BottleOnly({ scenes, enabled, progressRef, isAnimatingRef }) {
         canvasExposure={CANVAS_EXPOSURE}
         sceneIds={scenes.map((s) => s.id)}
         progressRef={progressRef}
-        // Same DEV-only gate Scene.v2.jsx uses for the desktop rig — was
-        // left off the `showHelpers` prop entirely here, which defaults to
-        // false (see BottleStudioLights' own `showHelpersProp`), so the
-        // light gizmos never appeared on mobile even in dev.
-        showHelpers={import.meta.env.DEV}
+        showHelpers={false}
       />
       <BottleRigV2
         scenes={scenes}

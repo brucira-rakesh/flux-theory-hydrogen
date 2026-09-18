@@ -51,3 +51,31 @@
     filter: none;
   }
 }
+
+/* Roll-up reveal — line masked behind overflow-hidden, content itself stays
+   fully visible (opacity/blur untouched) since the mask is what hides it
+   pre-reveal, not the char-level state used by the default reveal.
+   !important beats `.at-title.is-reveal-pending .at-char` (higher
+   specificity) which otherwise keeps chars invisible for the whole slide,
+   only popping opaque at the very end when is-reveal-pending is removed. */
+.at-title--roll-up .at-char {
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+.at-line-mask {
+  display: block;
+  overflow: hidden;
+}
+
+.at-line-inner {
+  display: block;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .at-line-inner {
+    will-change: auto;
+    transform: none;
+  }
+}

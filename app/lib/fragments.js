@@ -47,6 +47,18 @@ export const CART_QUERY_FRAGMENT = `#graphql
           title
           id
           vendor
+          productOffers: metafield(namespace: "custom", key: "product_offers") {
+            references(first: 8) {
+              nodes {
+                ... on Metaobject {
+                  id
+                  couponCode: field(key: "coupon_code") { value }
+                  name: field(key: "name") { value }
+                  description: field(key: "description") { value }
+                }
+              }
+            }
+          }
         }
         selectedOptions {
           name
@@ -102,6 +114,18 @@ export const CART_QUERY_FRAGMENT = `#graphql
           title
           id
           vendor
+          productOffers: metafield(namespace: "custom", key: "product_offers") {
+            references(first: 8) {
+              nodes {
+                ... on Metaobject {
+                  id
+                  couponCode: field(key: "coupon_code") { value }
+                  name: field(key: "name") { value }
+                  description: field(key: "description") { value }
+                }
+              }
+            }
+          }
         }
         selectedOptions {
           name

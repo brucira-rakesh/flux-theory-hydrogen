@@ -94,16 +94,34 @@ export default function PdpAccordion({
   )
   const [toastVisible, setToastVisible] = useState(false)
   const toastTimer = useRef(null)
+  const sectionRef = useRef(null)
 
   useEffect(() => () => clearTimeout(toastTimer.current), [])
 
-  // Accordion height changes shift the details section — re-measure after
-  // the grid-row transition settles (not on the same frame).
+  // Keep the details block from shrinking when a panel closes. Collapsing
+  // it would pull the gift curtain into the viewport and fire the pin/wipe.
   useEffect(() => {
-    const afterPanel = window.setTimeout(
-      () => ScrollTrigger.refresh(),
-      PANEL_DURATION_MS + 50,
-    )
+    const el = sectionRef.current
+    if (!el) return undefined
+
+    const lockMinHeight = () => {
+      const next = el.getBoundingClientRect().height
+      const prev = Number(el.dataset.accMinH) || 0
+      if (next > prev) {
+        el.dataset.accMinH = String(next)
+        el.style.minHeight = `${next}px`
+        return true
+      }
+      return false
+    }
+
+    lockMinHeight()
+    const afterPanel = window.setTimeout(() => {
+      const grew = lockMinHeight()
+      // Only remeasure pins when the block actually got taller. Refreshing
+      // on collapse re-arms the gift curtain while the accordion is in use.
+      if (grew) ScrollTrigger.refresh()
+    }, PANEL_DURATION_MS + 50)
     return () => {
       window.clearTimeout(afterPanel)
     }
@@ -151,7 +169,11 @@ export default function PdpAccordion({
   }
 
   return (
-    <section className="pdp-details" aria-label="Product details">
+    <section
+      ref={sectionRef}
+      className="pdp-details"
+      aria-label="Product details"
+    >
       <div className="pdp-details__accordion">
         {items.map((item) => (
           <AccordionItem

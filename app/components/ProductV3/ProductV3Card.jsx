@@ -10,20 +10,13 @@ function formatPrice(value) {
 /**
  * ProductV3Card — Figma node 2810-2496's per-product tile.
  *
- * `product` is the same toListingCard() view-model shape the PLP grid
- * (app/components/Shop/ProductCard.jsx) consumes — `name`/`price`/`currency`/
- * `image`/`variantGid`/`sizes`/`variantBySize`, plus `shortDescription` (the
- * PDP's custom.short_description metafield, added by fetchHomeProductCards).
- *
- * The "+" button doesn't add to cart itself — same as the PLP card, it calls
- * `onQuickAdd(product)` to open ProductV3's ProductFormPopup (the exact same
- * size/quantity/ATC modal the PLP grid and similar-products rail use), since
- * these products have real size variants that need picking before Add to
- * Cart, not just a single default variant.
- *
  * `ref` is forwarded straight through (React 19 lets function components
  * accept it as a plain prop) so ProductV3 can collect the card DOM nodes for
  * its stack→spread GSAP reveal without needing forwardRef boilerplate.
+ *
+ * `product` is the Shopify toListingCard() view-model (same as the PLP
+ * grid), plus `shortDescription`. The "+" button calls `onQuickAdd(product)`
+ * to open ProductV3's ProductFormPopup for a size pick before Add to Cart.
  */
 export default function ProductV3Card({
   product,
@@ -35,10 +28,10 @@ export default function ProductV3Card({
   return (
     <article
       ref={ref}
-      className={`relative flex w-full flex-col overflow-hidden lg:will-change-transform ${className}`}
+      className={`relative flex w-full flex-col overflow-hidden will-change-transform ${className}`}
     >
       <div
-        className="absolute inset-0 border border-white/[0.16] bg-white/[0.22] sm:border-0 sm:bg-[rgba(140,174,191,0.55)] lg:bg-[rgba(140,174,191,0.5)] lg:backdrop-blur-[57.5px]"
+        className="absolute inset-0 border border-white/[0.16] bg-white/[0.16] backdrop-blur-[12.85px] sm:border-0 sm:bg-[rgba(140,174,191,0.5)] sm:backdrop-blur-[57.5px]"
         aria-hidden="true"
       />
 
@@ -47,15 +40,13 @@ export default function ProductV3Card({
           src={product.image}
           alt={product.name}
           draggable={false}
-          loading="lazy"
-          decoding="async"
           className="relative z-10 h-[142px] w-auto object-contain sm:h-[82%]"
         />
       </div>
 
       <div className="relative flex flex-1 flex-col gap-2 p-3 sm:gap-3 sm:p-5">
         <div>
-          <h3 className="line-clamp-2 [font-family:var(--font-body)] text-base font-bold uppercase tracking-[1.12px] text-white sm:text-lg sm:font-semibold sm:normal-case sm:tracking-[-0.02em]">
+          <h3 className="[font-family:var(--font-body)] text-base font-bold uppercase tracking-[1.12px] text-white sm:text-lg sm:font-semibold sm:normal-case sm:tracking-[-0.02em]">
             {product.name}
           </h3>
           <p className="mt-1 line-clamp-2 [font-family:var(--font-body)] text-xs leading-[1.2] tracking-[0.12px] text-white/70 sm:text-[11px] sm:leading-snug sm:tracking-normal sm:text-white/60">

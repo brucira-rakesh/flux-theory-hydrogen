@@ -195,7 +195,6 @@ function CaptionPair({ id, caption, phase }) {
                 className="text-white [font-family:var(--font-title)] text-[clamp(0.85rem,4vw,1.1rem)] uppercase font-medium"
                 replayKey={replayKey}
                 play={isOnscreen}
-                blurSweep={isOnscreen}
               >
                 {subtitle}
               </AnimatedDescription>

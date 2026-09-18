@@ -10,6 +10,10 @@
   --font-body: 'Geist', sans-serif;
 }
 
+@theme {
+  --font-body: 'Geist', sans-serif;
+}
+
 /* Branded routes (PDP/shop/home) only load this sheet — not app.css.
    Kill macOS/Chrome trackpad rubber-band on the page X axis. */
 html,
@@ -33,12 +37,32 @@ body {
      Firefox uses scrollbar-width; legacy IE/Edge uses -ms-overflow-style. */
   scrollbar-width: none;
   -ms-overflow-style: none;
+  /* Block the rubber-band/bounce overscroll (macOS trackpads, mobile
+     pull-to-refresh) so scrolling stops dead at the top/bottom edge. */
+  overscroll-behavior-y: none;
 }
+
+/* WebKit/Blink (Chrome, Safari, Edge): hide the scrollbar track/thumb. */
 html::-webkit-scrollbar,
 body::-webkit-scrollbar {
   width: 0;
   height: 0;
   display: none;
+}
+
+@layer base {
+  p {
+    text-wrap: balance;
+  }
+}
+
+#root {
+  margin: 0;
+  width: 100%;
+  /* Scene pins its canvas as position:fixed and injects a tall scroll spacer
+     at the start of <main>. Keep #root in normal flow so ProductShelf /
+     KeyHighlights / Footer remain reachable after the carousel. */
+  overflow: visible;
 }
 
 /* ---------------------------------------------------------------------------
@@ -80,6 +104,18 @@ html[data-scroll-root-active] body {
   overscroll-behavior-y: none;
   scrollbar-width: none;
   -ms-overflow-style: none;
+}
+
+/* lenis/dist/lenis.css is loaded app-wide here (SmoothScroll.jsx imports it,
+   and CartDrawer pulls that module onto every route) and clips a stopped
+   Lenis root. On this container that makes it a non-scroller for the instant
+   between useScrollLock restoring overflow and lenis.start() — scrollTop
+   resets to 0, which CloudTransition reads as a reverse crossing and wipes
+   back to the hero (e.g. swiping past Scenev2mweb's last scene). flux-theory
+   dev never loads lenis.css, so keep this container scrollable as it is there. */
+[data-scroll-root].lenis.lenis-stopped:not(.lenis-autoToggle) {
+  overflow-x: clip;
+  overflow-y: auto;
 }
 
 [data-scroll-root]::-webkit-scrollbar {

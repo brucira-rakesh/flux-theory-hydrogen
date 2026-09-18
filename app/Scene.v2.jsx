@@ -1144,12 +1144,9 @@ function SceneContents({
           // state, so a scene change re-tints without re-rendering the Canvas.
           sceneIds={SCENE_IDS}
           progressRef={progressRef}
-          // Wireframe gizmos for all 11 lights, so the rig can actually be
-          // seen and dialled in against the bottle here the way it can on
-          // /bottle-studio (which passes showHelpers outright). Off by
-          // default even in dev — the "Bottle Studio Lights > Show helpers"
-          // checkbox in the debug panel still toggles it on at runtime when
-          // actually dialling in lights.
+          // Light gizmos stay off on the live homepage. `/bottle-studio`
+          // still passes showHelpers; `?debug` can toggle them here via the
+          // "Show helpers" checkbox.
           showHelpers={false}
         />
         <BottleRigV2

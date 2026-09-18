@@ -7,8 +7,6 @@ import {
   SWIPE_DEAD_ZONE_PX,
   TRANSITION_DURATION_SEC,
   getMwebHeroFramePath,
-  getMwebPreloadOrder,
-  getMwebReadyCount,
 } from "../../data/mwebHeroSequence";
 import {
   drawFrameCover,
@@ -17,7 +15,6 @@ import {
 } from "../../utils/frameSequence";
 import { createSequenceLoader } from "../../utils/sequenceLoader";
 import {
-  SCROLL_ROOT_SELECTOR,
   getScrollRoot,
   getScrollY,
   scrollRootTo,
@@ -27,7 +24,6 @@ import {
   acquireScrollLock,
   releaseScrollLock,
 } from "../../hooks/useScrollLock";
-import { scrollNavState } from "../../utils/scrollNavState";
 
 /** How long the scroll that carries the page off this section takes once
  *  the pin is released. Roughly the carousel's own commit duration, so
@@ -84,41 +80,6 @@ const PIN_LOOKAHEAD_FRAMES = 2;
  *  should land on the line exactly rather than jump the last few pixels. */
 const PIN_LOOKAHEAD_MIN_VELOCITY_PX = 12;
 
-/** Start downloading frames once the section is within this many viewports
- *  of the screen — not at first paint of the whole HomeV3 tree, so intro
- *  decode work is not competing with 383 mweb webps from boot. */
-const PRELOAD_ROOT_MARGIN = "150% 0px";
-
-/** Keep the idle loop alive only while the section is actually near the
- *  viewport. Offscreen (Product / Video / Footer) cancels rAF entirely. */
-const PAINT_ROOT_MARGIN = "25% 0px";
-
-/**
- * Live scrollport for HomeV3 mobile observers / scroll listeners.
- *
- * Prefer `getScrollRoot()`, but fall back to a DOM query: StrictMode can
- * clear elementMode in a layout-effect cleanup before passive effects
- * re-subscribe, and a null root makes IntersectionObserver use the viewport
- * — which Chrome then clips against the overflow scroller, so off-screen
- * sections never report intersecting.
- */
-function getObserverScrollRoot() {
-  const fromFlag = getScrollRoot();
-  if (fromFlag instanceof Element) return fromFlag;
-  const fromDom = document.querySelector(SCROLL_ROOT_SELECTOR);
-  return fromDom instanceof Element ? fromDom : null;
-}
-
-/** True when `el` is within `viewports` of the visible scrollport (viewport
- *  coords — works the same for document scroll and `[data-scroll-root]`). */
-function isNearScrollport(el, viewports) {
-  if (!el) return false;
-  const rect = el.getBoundingClientRect();
-  const vh = window.innerHeight || 1;
-  const pad = vh * viewports;
-  return rect.top < vh + pad && rect.bottom > -pad;
-}
-
 /** Decelerating ease — the commit lands softly on the target frame instead
  *  of snapping to a stop at a constant rate. */
 function easeOutCubic(t) {
@@ -165,7 +126,6 @@ export function useScenev2mweb() {
   const commitElapsedRef = useRef(0);
 
   const dragStartYRef = useRef(0);
-  const lastPointerYRef = useRef(0);
   const pointerIdRef = useRef(null);
 
   const rafRef = useRef(null);
@@ -176,14 +136,6 @@ export function useScenev2mweb() {
   const [ready, setReady] = useState(false);
   const [activeSceneIndex, setActiveSceneIndex] = useState(0);
   const isReducedMotion = prefersReducedMotion();
-  /** True once the section has approached the viewport — starts the
-   *  deferred frame preload. Sticky once tripped so a brief scroll past
-   *  does not cancel an in-flight download. */
-  const [preloadArmed, setPreloadArmed] = useState(false);
-  /** Section intersects (with PAINT_ROOT_MARGIN). Drives whether the idle
-   *  rAF loop is allowed to run at all. */
-  const [nearViewport, setNearViewport] = useState(true);
-  const nearViewportRef = useRef(true);
 
   // -- pin bookkeeping -----------------------------------------------------
   // `pinned` is the state copy for rendering (it drives touch-action, see
@@ -197,34 +149,6 @@ export function useScenev2mweb() {
    *  from ProductV3 re-pin and walk the scenes backwards. */
   const armedDownRef = useRef(true);
   const armedUpRef = useRef(false);
-  /**
-   * Arming the upward crossing is also a claim ON it: the seam marker sits
-   * exactly on our pin line, so CloudTransition watches the very same
-   * crossing and — subscribing to Lenis first, with its `!isScrollLocked()`
-   * guard useless once we have released the lock — would otherwise win it
-   * and wipe back to the top of the page instead of letting us re-pin.
-   * Published as one write with the ref so the two can never disagree; see
-   * scrollNavState.suppressSeamReverse.
-   */
-  const setArmedUp = useCallback((value) => {
-    armedUpRef.current = value;
-    scrollNavState.suppressSeamReverse = value;
-  }, []);
-  /**
-   * True from unpin(1) until that exit scroll has actually left the section.
-   * The exit tween crosses the same line the pin probe watches; without this
-   * a single backward tick of the tween (or leftover fling) re-pins and the
-   * user never reaches ProductV3.
-   */
-  const forwardExitRef = useRef(null);
-  /**
-   * Last-scene forward exit (window touchmove / wheel) must not fire on the
-   * same gesture that just re-pinned us from ProductV3. That scroll-up is
-   * also an upward finger move; without this latch it called unpin(1) on the
-   * next touchmove and snapped the grid back into view.
-   * Armed only by a touchstart/wheel that begins while already pinned.
-   */
-  const lastSceneExitArmedRef = useRef(false);
   /** Scroll offset at which the section's top sits on the viewport top —
    *  the position the pin snaps to and holds. */
   const lockYRef = useRef(0);
@@ -246,151 +170,9 @@ export function useScenev2mweb() {
     lenisRef.current = lenis ?? null;
   }, [ready, lenis]);
 
-  // -- approach / visibility -----------------------------------------------
-
-  // Arm frame preload once the section is ~1.5 viewports away. Geometry +
-  // scroll listeners are the source of truth — IntersectionObserver against
-  // `[data-scroll-root]` is unreliable here (StrictMode null-root races, and
-  // Lenis toggling overflow on the same node can suppress IO callbacks).
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) {
-      setPreloadArmed(true);
-      return undefined;
-    }
-
-    let cancelled = false;
-    let armed = false;
-    const preloadViewports = 1.5;
-
-    const arm = () => {
-      if (cancelled || armed) return;
-      armed = true;
-      setPreloadArmed(true);
-      teardown();
-    };
-
-    const check = () => {
-      if (isNearScrollport(el, preloadViewports)) arm();
-    };
-
-    let raf = 0;
-    let io = null;
-    const timers = [];
-    let scroller = null;
-
-    const onScroll = () => check();
-
-    const teardown = () => {
-      cancelAnimationFrame(raf);
-      for (const id of timers) window.clearTimeout(id);
-      timers.length = 0;
-      scroller?.removeEventListener("scroll", onScroll);
-      window.removeEventListener("scroll", onScroll);
-      io?.disconnect();
-      io = null;
-    };
-
-    const bindScroller = () => {
-      scroller?.removeEventListener("scroll", onScroll);
-      scroller = getObserverScrollRoot();
-      scroller?.addEventListener("scroll", onScroll, { passive: true });
-    };
-
-    bindScroller();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    check();
-    raf = requestAnimationFrame(() => {
-      bindScroller();
-      check();
-    });
-    // Layout after intro / Lenis mount can shift the section a frame late.
-    timers.push(window.setTimeout(check, 0));
-    timers.push(window.setTimeout(check, 250));
-
-    if (typeof IntersectionObserver !== "undefined") {
-      io = new IntersectionObserver(
-        ([entry]) => {
-          if (entry?.isIntersecting) arm();
-        },
-        {
-          root: getObserverScrollRoot(),
-          rootMargin: PRELOAD_ROOT_MARGIN,
-        },
-      );
-      io.observe(el);
-    }
-
-    return () => {
-      cancelled = true;
-      teardown();
-    };
-  }, []);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) {
-      nearViewportRef.current = true;
-      setNearViewport(true);
-      return undefined;
-    }
-
-    let cancelled = false;
-    let scroller = null;
-    let raf = 0;
-    const paintViewports = 0.25;
-
-    const apply = (near) => {
-      if (cancelled) return;
-      if (near === nearViewportRef.current) return;
-      nearViewportRef.current = near;
-      setNearViewport(near);
-    };
-
-    const check = () => apply(isNearScrollport(el, paintViewports));
-
-    const onScroll = () => check();
-
-    const bindScroller = () => {
-      scroller?.removeEventListener("scroll", onScroll);
-      scroller = getObserverScrollRoot();
-      scroller?.addEventListener("scroll", onScroll, { passive: true });
-    };
-
-    bindScroller();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    check();
-    raf = requestAnimationFrame(() => {
-      bindScroller();
-      check();
-    });
-
-    let io = null;
-    if (typeof IntersectionObserver !== "undefined") {
-      io = new IntersectionObserver(
-        ([entry]) => apply(Boolean(entry?.isIntersecting)),
-        {
-          root: getObserverScrollRoot(),
-          rootMargin: PAINT_ROOT_MARGIN,
-        },
-      );
-      io.observe(el);
-    }
-
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(raf);
-      scroller?.removeEventListener("scroll", onScroll);
-      window.removeEventListener("scroll", onScroll);
-      io?.disconnect();
-    };
-  }, []);
-
   // -- preload ---------------------------------------------------------------
 
   useEffect(() => {
-    if (!preloadArmed) return undefined;
-
     const loader = createSequenceLoader({
       frameCount: FRAME_COUNT,
       getFramePath: getMwebHeroFramePath,
@@ -398,23 +180,19 @@ export function useScenev2mweb() {
     loaderRef.current = loader;
     let cancelled = false;
 
-    // Gate on the first scene's idle loop only — canvas paints ASAP. Load
-    // order prefers every scene's loop, then whip ranges, so a forward
-    // swipe finds frames without waiting on the whole 383-frame download.
-    loader
-      .preloadSequence(undefined, {
-        readyCount: getMwebReadyCount(),
-        order: getMwebPreloadOrder(),
-      })
-      .then(() => {
-        if (!cancelled) setReady(true);
-      });
+    // Gate on the first 20 frames only — enough to cover the first scene's
+    // idle loop range — so the canvas paints something as soon as it can
+    // instead of sitting blank until all 383 frames finish downloading.
+    // The rest keep loading in the background on this same loader instance.
+    loader.preloadSequence(undefined, { readyCount: 20 }).then(() => {
+      if (!cancelled) setReady(true);
+    });
 
     return () => {
       cancelled = true;
       loaderRef.current = null;
     };
-  }, [preloadArmed]);
+  }, []);
 
   // -- paint -------------------------------------------------------------
 
@@ -494,45 +272,7 @@ export function useScenev2mweb() {
   useEffect(() => {
     if (isReducedMotion) return undefined;
 
-    // Offscreen and not holding the pin: do not keep a 24fps canvas alive
-    // while the user scrolls Product / Video / Footer.
-    if (!nearViewport && !pinned) {
-      if (rafRef.current != null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-      lastTsRef.current = 0;
-      return undefined;
-    }
-
-    // Near the viewport but unpinned and idle: freeze on the last painted
-    // frame. Only the pin / an in-flight commit needs the continuous loop.
-    const loopActive = () =>
-      pinnedRef.current || phaseRef.current === "committing";
-
-    if (!loopActive()) {
-      paint();
-      if (rafRef.current != null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-      lastTsRef.current = 0;
-      return undefined;
-    }
-
     const tick = (timestamp) => {
-      if (!nearViewportRef.current && !pinnedRef.current) {
-        rafRef.current = null;
-        lastTsRef.current = 0;
-        return;
-      }
-      if (!loopActive()) {
-        paint();
-        rafRef.current = null;
-        lastTsRef.current = 0;
-        return;
-      }
-
       const dtMs = lastTsRef.current
         ? Math.min(timestamp - lastTsRef.current, 64)
         : 16.67;
@@ -552,17 +292,8 @@ export function useScenev2mweb() {
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
-      lastTsRef.current = 0;
     };
-  }, [
-    ready,
-    isReducedMotion,
-    nearViewport,
-    pinned,
-    stepIdle,
-    stepCommitting,
-    paint,
-  ]);
+  }, [ready, isReducedMotion, stepIdle, stepCommitting, paint]);
 
   // -- pin -----------------------------------------------------------------
 
@@ -576,12 +307,7 @@ export function useScenev2mweb() {
     const instance = lenisRef.current;
     if (instance) {
       if (durationSec <= 0) {
-        // The pin holds overflow:hidden. Lenis's max scroll can still be the
-        // pin line until it remeasures — a scrollTo then clamps and the page
-        // never reaches ProductV3.
-        instance.resize?.();
         instance.scrollTo(y, { immediate: true, force: true });
-        scrollRootTo(y);
       } else {
         instance.scrollTo(y, { duration: durationSec, force: true });
       }
@@ -671,10 +397,6 @@ export function useScenev2mweb() {
         pinY ?? Math.round(getScrollY() + el.getBoundingClientRect().top);
       pinnedRef.current = true;
       setPinned(true);
-      // The scroll/fling that carried us onto this pin must not also count
-      // as "swipe up to leave the last scene" — that was snapping ProductV3
-      // back into view the moment the user scrolled up into the sequence.
-      lastSceneExitArmedRef.current = false;
       // The reading that got us here must not survive into the next
       // approach, or a stale projection could re-pin off it — see the probe.
       velocityRef.current = 0;
@@ -690,15 +412,11 @@ export function useScenev2mweb() {
       startSettle();
 
       // Disarm the direction we came in on, so the snap itself can't read
-      // back as another crossing. setArmedUp(false) also drops the seam
-      // claim — re-assert it. While this pin holds the page, the marker
-      // sits on our top edge; a leaked scroll must not be a reverse wipe
-      // back to the intro. Only unpin(-1) is allowed to release that claim.
+      // back as another crossing.
       if (direction > 0) armedDownRef.current = false;
-      else setArmedUp(false);
-      scrollNavState.suppressSeamReverse = true;
+      else armedUpRef.current = false;
     },
-    [scrollPageTo, startSettle, setArmedUp],
+    [scrollPageTo, startSettle],
   );
 
   /**
@@ -730,62 +448,18 @@ export function useScenev2mweb() {
       setPinned(false);
       velocityRef.current = 0;
       armedDownRef.current = false;
-      lastSceneExitArmedRef.current = false;
+      armedUpRef.current = direction > 0;
+      releaseScrollLock(lenisRef.current);
 
       const el = containerRef.current;
       const height = el?.offsetHeight ?? window.innerHeight;
-      const bottom = el?.getBoundingClientRect().bottom ?? height;
-      // Live bottom, not lockY + height. lockY is the pin line and can be a
-      // frame behind the scroller; scrolling to a stale target above the
-      // current offset is an upward crossing of the seam, which is the
-      // reverse wipe back to the intro.
-      const product = document.getElementById("home-product");
-      const productTop = product
-        ? Math.round(getScrollY() + product.getBoundingClientRect().top)
-        : null;
-      // Prefer the product grid itself over section-bottom math. The two
-      // should coincide; if they don't, the grid is what the exit has to
-      // land on.
       const target =
         direction > 0
-          ? (productTop ?? Math.round(getScrollY() + bottom) + 8)
+          ? lockYRef.current + height
           : Math.max(0, lockYRef.current - window.innerHeight);
-
-      if (direction > 0) {
-        // Leaving DOWN. Claim the seam (so the reverse wipe cannot teleport
-        // to the intro) and disarm the forward latch. That latch is still
-        // armed if the pin grabbed the page before the hero wipe consumed
-        // it — releasing the lock and scrolling down then satisfies every
-        // forward-trigger condition and the wipe snaps the page back onto
-        // this pin instead of into ProductV3.
-        setArmedUp(true);
-        scrollNavState.syncSeamAfterJump?.(false);
-        // Already clear of the section (the pin lost a fling and the page
-        // is sitting on ProductV3 with scroll still locked). Pulling back
-        // to the seam is the loop. Just hand the page over.
-        if (bottom > 8) {
-          forwardExitRef.current = {
-            until: performance.now() + (EXIT_DURATION_SEC + 0.4) * 1000,
-            target,
-          };
-        }
-      } else {
-        forwardExitRef.current = null;
-        setArmedUp(false);
-      }
-
-      releaseScrollLock(lenisRef.current);
-      // Already sitting on ProductV3 — scrolling back to a computed seam
-      // target is the loop. Only move when the grid is still below the fold.
-      if (direction < 0 || bottom > 8) {
-        // Forward is an instant snap, not a 1.1s tween. The tween was the
-        // window the cloud wipe used to yank the page back onto the pin.
-        // Reverse stays a tween so it can carry the seam marker across
-        // CloudTransition's reverse line.
-        scrollPageTo(target, direction > 0 ? 0 : EXIT_DURATION_SEC);
-      }
+      scrollPageTo(target, EXIT_DURATION_SEC);
     },
-    [scrollPageTo, stopSettle, setArmedUp],
+    [scrollPageTo, stopSettle],
   );
 
   /** Discover's action — the one way past the carousel that doesn't wait
@@ -797,10 +471,6 @@ export function useScenev2mweb() {
     }
     const el = containerRef.current;
     if (!el) return;
-    // Same reason unpin(1) disarms the latch: a downward scroll from here
-    // is otherwise a fresh hero-wipe trigger and never reaches ProductV3.
-    scrollNavState.syncSeamAfterJump?.(false);
-    scrollNavState.suppressSeamReverse = true;
     const target = getScrollY() + el.getBoundingClientRect().bottom;
     scrollPageTo(target, EXIT_DURATION_SEC);
   }, [scrollPageTo, unpin]);
@@ -838,19 +508,6 @@ export function useScenev2mweb() {
     const rect = el.getBoundingClientRect();
     const pinY = Math.round(scrollY + rect.top);
     lockYRef.current = pinY;
-
-    // A forward exit owns the scroller until it has cleared this section.
-    // Recapturing mid-tween is what walks the user back into the sequence
-    // instead of letting ProductV3 come on screen.
-    const exit = forwardExitRef.current;
-    if (exit) {
-      const cleared =
-        performance.now() > exit.until ||
-        scrollY >= exit.target - 2 ||
-        rect.bottom <= 0;
-      if (cleared) forwardExitRef.current = null;
-      else return;
-    }
 
     // Crossing test BEFORE the fully-above/below re-arms below, and this
     // order is the whole point: one tick of a fast flick can carry the page
@@ -912,8 +569,8 @@ export function useScenev2mweb() {
     // Fully below us (back up in the hero) / fully above us (down in
     // ProductV3): re-arm the crossing that would bring us back.
     if (rect.top >= window.innerHeight) armedDownRef.current = true;
-    else if (rect.bottom <= 0) setArmedUp(true);
-  }, [isReducedMotion, pin, setArmedUp]);
+    else if (rect.bottom <= 0) armedUpRef.current = true;
+  }, [isReducedMotion, pin]);
 
   useLenis(probe);
 
@@ -940,9 +597,6 @@ export function useScenev2mweb() {
         pinnedRef.current = false;
         releaseScrollLock(lenisRef.current);
       }
-      // Never leave the seam claimed by a section that has gone away, or
-      // CloudTransition's reverse wipe stays suppressed for the next route.
-      scrollNavState.suppressSeamReverse = false;
     },
     [],
   );
@@ -969,11 +623,6 @@ export function useScenev2mweb() {
     const el = containerRef.current;
     if (!el) return undefined;
 
-    // Reset on each pointerdown. A cancelled touch fires pointercancel AND
-    // touchend; consuming once is what keeps that pair from stepping twice.
-    let gestureConsumed = false;
-    let tracking = false;
-
     const onPointerDown = (event) => {
       // Only while the section holds the page — unpinned, a drag here is
       // the user scrolling the page past us and none of our business.
@@ -992,28 +641,23 @@ export function useScenev2mweb() {
         // no-op — see above
       }
       dragStartYRef.current = event.clientY;
-      lastPointerYRef.current = event.clientY;
-      gestureConsumed = false;
-      tracking = true;
     };
 
-    const onPointerMove = (event) => {
+    const endGesture = (event) => {
       if (pointerIdRef.current !== event.pointerId) return;
-      lastPointerYRef.current = event.clientY;
-    };
+      pointerIdRef.current = null;
+      try {
+        el.releasePointerCapture?.(event.pointerId);
+      } catch {
+        // no-op — see onPointerDown's setPointerCapture try/catch
+      }
 
-    // Shared by pointerup, pointercancel, and touchend. The scroll lock
-    // preventDefaults touchmove while pinned, and iOS answers that by
-    // cancelling the pointer instead of firing pointerup — often with
-    // clientY 0. Without a fallback the last swipe never calls unpin and
-    // the page stays locked on the final scene.
-    const commitSwipe = (endY) => {
-      if (!tracking || gestureConsumed || !pinnedRef.current) return;
-      if (!Number.isFinite(endY)) return;
-
-      const deltaY = endY - dragStartYRef.current;
+      // Nothing scrubs live while the finger is down — only the released
+      // gesture's net direction matters, past a small dead zone that tells
+      // a real swipe apart from a tap/jitter. There is no further distance
+      // or velocity threshold: any swipe past that commits.
+      const deltaY = event.clientY - dragStartYRef.current;
       if (Math.abs(deltaY) < SWIPE_DEAD_ZONE_PX) return;
-      gestureConsumed = true;
 
       // Swiping UP (finger moves toward the top, deltaY negative) advances
       // to the next scene — the same "swipe up for next" convention as a
@@ -1037,124 +681,14 @@ export function useScenev2mweb() {
       }
     };
 
-    const endGesture = (event) => {
-      if (pointerIdRef.current !== event.pointerId) return;
-      pointerIdRef.current = null;
-      try {
-        el.releasePointerCapture?.(event.pointerId);
-      } catch {
-        // no-op — see onPointerDown's setPointerCapture try/catch
-      }
-
-      // Nothing scrubs live while the finger is down — only the released
-      // gesture's net direction matters, past a small dead zone that tells
-      // a real swipe apart from a tap/jitter. There is no further distance
-      // or velocity threshold: any swipe past that commits.
-      // A cancelled pointer often reports 0,0. That is not a swipe to the
-      // top of the screen — use the last move we actually saw.
-      const cancelledAtOrigin =
-        event.type === "pointercancel" &&
-        event.clientX === 0 &&
-        event.clientY === 0;
-      commitSwipe(cancelledAtOrigin ? lastPointerYRef.current : event.clientY);
-      // touchend follows pointerup on touch screens and may be the only
-      // event with a real coordinate. Don't drop tracking until then.
-      // A mouse has no touchend, so this gesture is over.
-      if (event.pointerType === "mouse") tracking = false;
-    };
-
-    const onTouchEnd = (event) => {
-      const touch = event.changedTouches?.[0];
-      if (touch) commitSwipe(touch.clientY);
-      tracking = false;
-    };
-
     el.addEventListener("pointerdown", onPointerDown);
-    el.addEventListener("pointermove", onPointerMove);
     el.addEventListener("pointerup", endGesture);
     el.addEventListener("pointercancel", endGesture);
-    el.addEventListener("touchend", onTouchEnd);
-    el.addEventListener("touchcancel", onTouchEnd);
-
-    // Window capture, registered before the scroll lock's own listeners
-    // (those are added later, when the pin is taken). A last-scene swipe or
-    // wheel otherwise never becomes an exit: the lock eats the event, and
-    // iOS often cancels pointerup so the element handler never sees it.
-    let windowTouchStartY = null;
-    const onWindowTouchStart = (event) => {
-      // Only a gesture that BEGINS while pinned can exit the last scene.
-      // A scroll-up from ProductV3 starts unpinned, then re-pins mid-touch —
-      // that same finger move must not be read as "swipe up for next".
-      if (!pinnedRef.current) {
-        windowTouchStartY = null;
-        lastSceneExitArmedRef.current = false;
-        return;
-      }
-      windowTouchStartY = event.touches?.[0]?.clientY ?? null;
-      lastSceneExitArmedRef.current = true;
-    };
-    const exitIfLastScene = (forward) => {
-      if (!forward || !pinnedRef.current || !ready) return false;
-      if (!lastSceneExitArmedRef.current) return false;
-      if (phaseRef.current !== "idle") return false;
-      if (sceneIndexRef.current < SCENES.length - 1) return false;
-      lastSceneExitArmedRef.current = false;
-      unpin(1);
-      return true;
-    };
-    const onWindowTouchMove = (event) => {
-      if (!pinnedRef.current) {
-        windowTouchStartY = null;
-        return;
-      }
-      const y = event.touches?.[0]?.clientY;
-      if (y == null || windowTouchStartY == null) return;
-      const movedUp = windowTouchStartY - y;
-      if (movedUp < SWIPE_DEAD_ZONE_PX) return;
-      if (!exitIfLastScene(true)) return;
-      windowTouchStartY = null;
-      if (event.cancelable) event.preventDefault();
-      event.stopImmediatePropagation();
-    };
-    const onWindowWheel = (event) => {
-      // Wheel gestures don't share a touchstart — arm on the first downward
-      // tick while pinned so a scroll-up into the pin cannot exit, but a
-      // deliberate scroll-down on the last scene still can.
-      if (event.deltaY <= 0) return;
-      if (!pinnedRef.current) return;
-      lastSceneExitArmedRef.current = true;
-      if (!exitIfLastScene(true)) return;
-      if (event.cancelable) event.preventDefault();
-      event.stopImmediatePropagation();
-    };
-
-    window.addEventListener("touchstart", onWindowTouchStart, {
-      capture: true,
-      passive: true,
-    });
-    window.addEventListener("touchmove", onWindowTouchMove, {
-      capture: true,
-      passive: false,
-    });
-    window.addEventListener("wheel", onWindowWheel, {
-      capture: true,
-      passive: false,
-    });
 
     return () => {
       el.removeEventListener("pointerdown", onPointerDown);
-      el.removeEventListener("pointermove", onPointerMove);
       el.removeEventListener("pointerup", endGesture);
       el.removeEventListener("pointercancel", endGesture);
-      el.removeEventListener("touchend", onTouchEnd);
-      el.removeEventListener("touchcancel", onTouchEnd);
-      window.removeEventListener("touchstart", onWindowTouchStart, {
-        capture: true,
-      });
-      window.removeEventListener("touchmove", onWindowTouchMove, {
-        capture: true,
-      });
-      window.removeEventListener("wheel", onWindowWheel, { capture: true });
     };
   }, [ready, isReducedMotion, beginCommit, unpin]);
 

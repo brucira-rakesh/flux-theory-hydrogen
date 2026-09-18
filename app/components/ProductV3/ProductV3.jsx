@@ -1,16 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-// import bgVideoDesktop from "../../assets/home/product-bg-desktop.mp4";
 import bgVideoDesktop from "../../assets/ranbir/bg-v3-hero.mp4";
 import bgImageMobile from "../../assets/home/product-bg-mb.webp";
 import { prefersReducedMotion } from "../../hooks/useSpotlight";
 import { useIsDesktop } from "../../hooks/useIsDesktop";
 import { useScrollLock } from "../../hooks/useScrollLock";
 import AnimatedTitle from "../AnimatedTitle/AnimatedTitle";
+import ProductV3Card from "./ProductV3Card";
 import ProductFormPopup from "../Shop/ProductFormPopup";
 import "../Shop/Shop.css";
-import ProductV3Card from "./ProductV3Card";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -19,27 +18,29 @@ gsap.registerPlugin(ScrollTrigger);
  * (spread final state), used by HomeV3Page between the carousel and
  * VideoHeroV3.
  *
- * `products` is fetched server-side from Shopify (see the `loader` in
- * app/lib/homeRoute.jsx → fetchHomeProductCards in app/lib/storefrontCatalog.js)
- * — the same toListingCard() view-model the PLP grid uses, in Figma node
- * 2810-2496's left-to-right order (the-sport/the-lover/the-sage/the-rebel/
- * the-dreamer).
- *
  * A single-viewport section that sits in normal scroll flow — no
  * ScrollTrigger pin/scrub, same as VideoHeroV3. The five cards start
  * fanned into one stack at the row's center (matching 2810-2976, which only
  * ever shows the top card) and animate out to their grid slots (2810-2496)
  * once the section scrolls into view, playing exactly once.
+ *
+ * `products` is fetched server-side from Shopify (see the `loader` in
+ * app/lib/homeRoute.jsx → fetchHomeProductCards in app/lib/storefrontCatalog.js)
+ * — the same toListingCard() view-model the PLP grid uses, in Figma node
+ * 2810-2496's left-to-right order (the-sport/the-lover/the-sage/the-rebel/
+ * the-dreamer).
  */
 export default function ProductV3({ products = [] }) {
   const sectionRef = useRef(null);
   const cardRefs = useRef([]);
   cardRefs.current = [];
   const isDesktop = useIsDesktop();
-  const centerIndex = (products.length - 1) / 2;
-  // Same "+" -> quick-add popup flow as the PLP grid (ProductCard.jsx /
-  // ShopPage.jsx) — these products have real size variants, so Add to Cart
-  // needs a size pick, not a single default-variant add.
+  // A handle that doesn't resolve in the connected store renders no card, so
+  // centerIndex must match the rendered count.
+  const cardProducts = products.filter(Boolean);
+  const centerIndex = (cardProducts.length - 1) / 2;
+  // Same "+" -> quick-add popup flow as the PLP grid — these products have
+  // real size variants, so Add to Cart needs a size pick first.
   const [activeProduct, setActiveProduct] = useState(null);
   useScrollLock(Boolean(activeProduct));
 
@@ -123,7 +124,6 @@ export default function ProductV3({ products = [] }) {
 
   return (
     <section
-      id="home-product"
       ref={sectionRef}
       className="relative z-[21] min-h-dvh w-full overflow-hidden bg-[#0d1b24] lg:h-dvh"
     >
@@ -142,8 +142,6 @@ export default function ProductV3({ products = [] }) {
           src={bgImageMobile}
           alt=""
           aria-hidden="true"
-          loading="lazy"
-          decoding="async"
           className="absolute inset-0 h-full w-full object-cover object-center"
         />
       )}
@@ -172,18 +170,15 @@ export default function ProductV3({ products = [] }) {
         </div>
 
         <div className="grid w-full max-w-[1400px] grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 lg:gap-6">
-          {products.map((product, index) => {
-            if (!product) return null;
-            return (
-              <ProductV3Card
-                key={product.id ?? index}
-                product={product}
-                ref={registerCard}
-                onQuickAdd={setActiveProduct}
-                quickAddOpen={activeProduct?.listId === product.listId}
-              />
-            );
-          })}
+          {cardProducts.map((product, index) => (
+            <ProductV3Card
+              key={product.id ?? index}
+              product={product}
+              ref={registerCard}
+              onQuickAdd={setActiveProduct}
+              quickAddOpen={activeProduct?.listId === product.listId}
+            />
+          ))}
         </div>
       </div>
 

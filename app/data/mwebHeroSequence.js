@@ -37,9 +37,7 @@
 // case the bake fades/settles oddly right at the end).
 // ============================================================================
 
-// Named prefix — not bare `*.webp` — so a stray `.webp` in the folder
-// cannot land at index 0 and shift every SCENES frame off by one.
-const modules = import.meta.glob("../assets/mweb-hero-seq/Mweb_Hero_*.webp", {
+const modules = import.meta.glob("../assets/mweb-hero-seq/*.webp", {
   eager: true,
   import: "default",
 });
@@ -96,44 +94,6 @@ function resolveScenes(scenes) {
 }
 
 export const SCENES = resolveScenes(SCENES_1_INDEXED);
-
-/**
- * Priority load order for the mweb reel: each scene's idle loop first (so
- * the canvas can paint ASAP), then each scene's outgoing whip range, then
- * any leftover frames. Used by useScenev2mweb's deferred preload.
- */
-export function getMwebPreloadOrder() {
-  const seen = new Set();
-  const order = [];
-  const pushRange = (from, to) => {
-    const start = Math.min(from, to);
-    const end = Math.max(from, to);
-    for (let i = start; i <= end; i += 1) {
-      if (i < 0 || i > LAST_FRAME || seen.has(i)) continue;
-      seen.add(i);
-      order.push(i);
-    }
-  };
-
-  for (const scene of SCENES) {
-    pushRange(scene.start, scene.loopEnd);
-  }
-  for (const scene of SCENES) {
-    if (scene.end > scene.loopEnd) pushRange(scene.loopEnd + 1, scene.end);
-  }
-  for (let i = 0; i < FRAME_COUNT; i += 1) {
-    if (!seen.has(i)) order.push(i);
-  }
-  return order;
-}
-
-/** How many priority frames cover the first scene's idle loop — enough for
- *  the ready gate without waiting on whip pans or later personas. */
-export function getMwebReadyCount() {
-  const first = SCENES[0];
-  if (!first) return 20;
-  return Math.max(1, first.loopEnd - first.start + 1);
-}
 
 // --- Playback feel ──────────────────────────────────────────────────────────
 
