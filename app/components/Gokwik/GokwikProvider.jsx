@@ -6,6 +6,7 @@ import {
   GOKWIK_SDK_POLL_MS,
   GOKWIK_SDK_TIMEOUT_MS,
   getGokwikMerchantInfo,
+  getGokwikCheckoutPayload,
   getGokwikPublicConfig,
   getGokwikSdkSrc,
   installGokwikCustomCheckoutTrigger,
@@ -170,10 +171,13 @@ export function GokwikProvider({children}) {
         throw new Error(message);
       }
 
-      window.merchantInfo = {
-        ...getGokwikMerchantInfo(gokwikConfig),
-        cart: {id: cartId},
-      };
+      const payload = getGokwikCheckoutPayload(gokwikConfig, cartId);
+      try {
+        window.localStorage.setItem('shopifyCartId', payload.cart.id);
+      } catch {
+        // Private mode — GoKwik still gets the GID on merchantInfo.
+      }
+      window.merchantInfo = payload;
       window.triggerGokwikCustomCheckout();
     },
     [gokwikConfig],

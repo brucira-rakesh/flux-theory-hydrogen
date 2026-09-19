@@ -52,9 +52,18 @@ declare global {
     mid: string;
     environment: 'production' | 'sandbox';
     type: 'merchantInfo';
+    isHydrogen?: boolean;
     storeId?: string;
     fbpixel?: string;
+    storefrontToken?: string;
     cart?: {id: string};
+    merchantParams?: {
+      merchantCheckoutId?: string;
+      customerToken?: string;
+      cartId?: string;
+      storeId?: string;
+      storefrontToken?: string;
+    };
   }
 
   interface Window {

@@ -116,6 +116,9 @@ export function getGokwikPublicConfig(env = {}) {
       cleanGokwikValue(env.PUBLIC_GOKWIK_FB_PIXEL_IDS) ||
       cleanGokwikValue(import.meta.env.PUBLIC_GOKWIK_FB_PIXEL_IDS) ||
       cleanGokwikValue(GOKWIK_FB_PIXEL_IDS),
+    storefrontToken:
+      cleanGokwikValue(env.PUBLIC_STOREFRONT_API_TOKEN) ||
+      cleanGokwikValue(import.meta.env.PUBLIC_STOREFRONT_API_TOKEN),
   };
 }
 
@@ -132,7 +135,7 @@ export function getGokwikMerchantInfo(config) {
   const environment =
     typeof config === 'string'
       ? normalizeGokwikEnv(config)
-      : config?.environment || 'sandbox';
+      : config?.environment || 'production';
   const mid =
     typeof config === 'string'
       ? cleanGokwikValue(GOKWIK_MERCHANT_ID)
@@ -145,16 +148,50 @@ export function getGokwikMerchantInfo(config) {
     typeof config === 'string'
       ? ''
       : cleanGokwikValue(config?.fbpixel);
+  const storefrontToken =
+    typeof config === 'string'
+      ? ''
+      : cleanGokwikValue(config?.storefrontToken);
 
   /** @type {GokwikMerchantInfo} */
   const merchantInfo = {
     mid,
     environment,
     type: 'merchantInfo',
+    isHydrogen: true,
   };
   if (storeId) merchantInfo.storeId = storeId;
   if (fbpixel) merchantInfo.fbpixel = fbpixel;
+  if (storefrontToken) merchantInfo.storefrontToken = storefrontToken;
   return merchantInfo;
+}
+
+/**
+ * Checkout payload GoKwik v4's iframe reads as
+ * `merchantInfo.merchantParams.merchantCheckoutId`. Without that object the
+ * widget throws. Hydrogen Scenario 2 uses the Storefront cart GID as the
+ * checkout id (there is no Ajax cart token).
+ *
+ * @param {ReturnType<typeof getGokwikPublicConfig>} config
+ * @param {string} cartId
+ * @returns {GokwikMerchantInfo}
+ */
+export function getGokwikCheckoutPayload(config, cartId) {
+  const id = decodeURIComponent(String(cartId || '').trim());
+  const base = getGokwikMerchantInfo(config);
+  /** @type {NonNullable<GokwikMerchantInfo['merchantParams']>} */
+  const merchantParams = {
+    merchantCheckoutId: id,
+    cartId: id,
+  };
+  if (base.storeId) merchantParams.storeId = base.storeId;
+  if (base.storefrontToken) merchantParams.storefrontToken = base.storefrontToken;
+
+  return {
+    ...base,
+    cart: {id},
+    merchantParams,
+  };
 }
 
 /**
