@@ -391,6 +391,31 @@ button.reset:hover:not(:has(> *)) {
   align-items: center;
   display: flex;
 }
+
+.cart-checkout-button {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 46px;
+  margin-top: 0.75rem;
+  border: 0;
+  background: #000;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cart-checkout-button:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+
+.cart-checkout-button:hover:not(:disabled),
+.cart-checkout-button:focus-visible:not(:disabled) {
+  background: #222;
+}
+
 /*
 * --------------------------------------------------
 * components/Search

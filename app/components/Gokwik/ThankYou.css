@@ -1,0 +1,58 @@
+.thank-you-page {
+  min-height: 100vh;
+  background: #fff;
+  color: #000;
+  font-family: var(--font-body, 'Geist', sans-serif);
+}
+
+.thank-you-main {
+  width: min(100%, 36rem);
+  margin: 0 auto;
+  padding: 8rem 1.5rem 4.5rem;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.thank-you-eyebrow {
+  margin: 0 0 0.75rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.thank-you-title {
+  margin: 0;
+  font-family: var(--font-title, 'Oswald', sans-serif);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+.thank-you-copy {
+  margin: 1rem 0 2rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.thank-you-cta {
+  display: inline-grid;
+  place-items: center;
+  height: 46px;
+  padding: 0 1.5rem;
+  background: #000;
+  color: #fff;
+  text-decoration: none;
+  text-transform: uppercase;
+  font-family: var(--font-title, 'Oswald', sans-serif);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.thank-you-cta:hover,
+.thank-you-cta:focus-visible {
+  background: #222;
+}

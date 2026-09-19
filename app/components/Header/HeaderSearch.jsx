@@ -7,7 +7,7 @@ import {
 } from '~/components/SearchFormPredictive';
 import {SearchResultsPredictive} from '~/components/SearchResultsPredictive';
 import {urlWithTrackingParams} from '~/lib/search';
-import {moneySymbol} from '~/lib/storefrontCatalog';
+import {toListingCard} from '~/lib/storefrontCatalog';
 import ProductCard from '~/components/Shop/ProductCard';
 import {useSmoothScrollLock} from '~/components/SmoothScroll/SmoothScroll';
 import '~/components/Shop/Shop.css';
@@ -367,21 +367,15 @@ function LinkGroup({label, items, hrefFor, onNavigate}) {
 }
 
 function toPredictiveCard(product, term) {
-  const variant = product.selectedOrFirstAvailableVariant;
-  const price = variant?.price;
-  const image = variant?.image;
-
+  const card = toListingCard(product);
   return {
-    id: product.id,
-    listId: product.id,
-    name: product.title,
-    image: image?.url,
+    ...card,
+    image:
+      card.image || product.selectedOrFirstAvailableVariant?.image?.url,
     href: urlWithTrackingParams({
-      baseUrl: `/products/${product.handle}`,
+      baseUrl: card.href,
       trackingParams: product.trackingParameters,
       term,
     }),
-    price: Number(price?.amount ?? 0),
-    currency: moneySymbol(price?.currencyCode),
   };
 }

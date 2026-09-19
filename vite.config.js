@@ -1,4 +1,4 @@
-import {cp} from 'node:fs/promises';
+import {cp, readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {dirname, join} from 'node:path';
 import {defineConfig} from 'vite';
@@ -98,11 +98,51 @@ function oxygenPublicAssets() {
   };
 }
 
-export default defineConfig({
+/**
+ * MiniOxygen keeps the CLI env snapshot from process start. New `.env` keys
+ * (like PUBLIC_GOKWIK_MERCHANT_ID) therefore miss context.env until a full
+ * `shopify hydrogen dev` restart. Pass only defined GoKwik PUBLIC_ vars so a
+ * Vite `.env` reload can update the worker without overwriting CLI bindings.
+ *
+ * Read the file directly — Vite `loadEnv(..., '')` copies all of `process.env`
+ * on top of `.env`, so a stale CLI snapshot would pin PUBLIC_GOKWIK_ENV.
+ */
+async function gokwikOxygenEnv() {
+  const keys = [
+    'PUBLIC_GOKWIK_ENV',
+    'PUBLIC_GOKWIK_MERCHANT_ID',
+    'PUBLIC_GOKWIK_STORE_ID',
+    'PUBLIC_GOKWIK_FB_PIXEL_IDS',
+  ];
+  /** @type {Record<string, string>} */
+  const env = {};
+  let file = '';
+  try {
+    file = await readFile(join(process.cwd(), '.env'), 'utf8');
+  } catch {
+    return env;
+  }
+  /** @type {Record<string, string>} */
+  const parsed = {};
+  for (const line of file.split(/\r?\n/)) {
+    if (!line || line.startsWith('#') || !line.includes('=')) continue;
+    const eq = line.indexOf('=');
+    const key = line.slice(0, eq).trim();
+    const value = line.slice(eq + 1).trim().replace(/^['"]|['"]$/g, '');
+    if (key) parsed[key] = value;
+  }
+  for (const key of keys) {
+    const value = String(parsed[key] || '').trim();
+    if (value) env[key] = value;
+  }
+  return env;
+}
+
+export default defineConfig(async () => ({
   plugins: [
     tailwindcss(),
     hydrogen(),
-    oxygen(),
+    oxygen({env: await gokwikOxygenEnv()}),
     reactRouter(),
     glsl(),
     oxygenWorkerPlatform(),
@@ -159,4 +199,4 @@ export default defineConfig({
   server: {
     allowedHosts: ['.trycloudflare.com', '.tryhydrogen.dev'],
   },
-});
+}));

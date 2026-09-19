@@ -4,6 +4,7 @@ import {SearchForm} from '~/components/SearchForm';
 import ProductCard from '~/components/Shop/ProductCard';
 import {getEmptyPredictiveSearchResult} from '~/lib/search';
 import {urlWithTrackingParams} from '~/lib/search';
+import {toListingCard} from '~/lib/storefrontCatalog';
 import '~/components/Shop/Shop.css';
 import '~/styles/search.css';
 
@@ -180,27 +181,17 @@ export default function SearchPage() {
   );
 }
 
-function moneySymbol(currencyCode) {
-  return currencyCode === 'INR' ? '₹' : currencyCode || '₹';
-}
-
 function toSearchProductCard(product, term) {
-  const variant = product.selectedOrFirstAvailableVariant;
-  const price = variant?.price;
-  const image = variant?.image;
-
+  const card = toListingCard(product);
   return {
-    id: product.id,
-    listId: product.id,
-    name: product.title,
-    image: image?.url,
+    ...card,
+    image:
+      card.image || product.selectedOrFirstAvailableVariant?.image?.url,
     href: urlWithTrackingParams({
-      baseUrl: `/products/${product.handle}`,
+      baseUrl: card.href,
       trackingParams: product.trackingParameters,
       term,
     }),
-    price: Number(price?.amount ?? 0),
-    currency: moneySymbol(price?.currencyCode),
   };
 }
 
@@ -217,6 +208,38 @@ const SEARCH_PRODUCT_FRAGMENT = `#graphql
     title
     trackingParameters
     vendor
+    featuredImage {
+      url
+      altText
+      width
+      height
+    }
+    priceRange {
+      minVariantPrice {
+        amount
+        currencyCode
+      }
+    }
+    options {
+      name
+      optionValues {
+        name
+      }
+    }
+    variants(first: 20) {
+      nodes {
+        id
+        availableForSale
+        price {
+          amount
+          currencyCode
+        }
+        selectedOptions {
+          name
+          value
+        }
+      }
+    }
     selectedOrFirstAvailableVariant(
       selectedOptions: []
       ignoreUnknownOptions: true
@@ -431,6 +454,38 @@ const PREDICTIVE_SEARCH_PRODUCT_FRAGMENT = `#graphql
     title
     handle
     trackingParameters
+    featuredImage {
+      url
+      altText
+      width
+      height
+    }
+    priceRange {
+      minVariantPrice {
+        amount
+        currencyCode
+      }
+    }
+    options {
+      name
+      optionValues {
+        name
+      }
+    }
+    variants(first: 20) {
+      nodes {
+        id
+        availableForSale
+        price {
+          amount
+          currencyCode
+        }
+        selectedOptions {
+          name
+          value
+        }
+      }
+    }
     selectedOrFirstAvailableVariant(
       selectedOptions: []
       ignoreUnknownOptions: true

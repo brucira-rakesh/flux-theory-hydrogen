@@ -1,5 +1,5 @@
 import {Suspense, useEffect, useId, useRef, useState} from 'react';
-import {Await, Link, useFetcher} from 'react-router';
+import {Await, Link, useFetcher, useRouteLoaderData} from 'react-router';
 import {CartForm, useOptimisticCart} from '@shopify/hydrogen';
 import gsap from 'gsap';
 import {useSmoothScrollLock} from '../SmoothScroll/SmoothScroll';
@@ -8,12 +8,17 @@ import {
   cartCompareSubtotal,
   cartLinePricing,
   cartLinesForMerchandise,
-  cartProgressFromAmount,
   formatMoneyDisplay,
-  moneyAmount,
+  shouldShowSizeSelect,
   uniqueOffersFromCart,
   withoutShopifyDefaultTitleOptions,
 } from '~/lib/storefrontCatalog';
+import {
+  calculateCartProgress,
+  cartProgressMessage,
+} from '~/lib/cartProgress';
+import {GokwikCheckoutButton} from '~/components/Gokwik/GokwikCheckoutButton';
+import CustomSelect from '~/components/Shop/CustomSelect';
 import iconOfferCopy from '~/assets/pdp/offers/icon-copy.svg';
 import './CartDrawer.css';
 
@@ -118,7 +123,8 @@ function CartDrawerPanel({cart: originalCart, open, onClose}) {
   const subtotal = cart?.cost?.subtotalAmount;
   const subtotalPricing = cartCompareSubtotal(cart);
   const offers = uniqueOffersFromCart(cart);
-  const progress = cartProgressFromAmount(moneyAmount(subtotal));
+  const root = useRouteLoaderData('root');
+  const progress = calculateCartProgress(cart, root?.cartProgressTiers ?? []);
   const productKey = lines
     .map((line) => line?.merchandise?.product?.id)
     .filter(Boolean)
@@ -168,7 +174,12 @@ function CartDrawerPanel({cart: originalCart, open, onClose}) {
             </div>
           ) : (
             <>
-              <CartDrawerProgress progress={progress} />
+              {progress ? (
+                <CartDrawerProgress
+                  progress={progress}
+                  currencyCode={subtotal?.currencyCode}
+                />
+              ) : null}
               <ul className="cart-drawer__lines">
                 {lines.map((line) => (
                   <CartDrawerLine key={line.id} line={line} onNavigate={handleClose} />
@@ -209,10 +220,13 @@ function CartDrawerPanel({cart: originalCart, open, onClose}) {
                 ) : null}
               </span>
             </div>
-            {cart?.checkoutUrl ? (
-              <a className="cart-drawer__checkout" href={cart.checkoutUrl}>
+            {cart?.id ? (
+              <GokwikCheckoutButton
+                cartId={cart.id}
+                className="cart-drawer__checkout"
+              >
                 Checkout
-              </a>
+              </GokwikCheckoutButton>
             ) : (
               <p className="cart-drawer__hint">Checkout will appear once the bag is ready.</p>
             )}
@@ -223,42 +237,101 @@ function CartDrawerPanel({cart: originalCart, open, onClose}) {
   );
 }
 
-function CartDrawerProgress({progress}) {
-  const {percent, next, remaining, unlocked, tiers, max} = progress;
-  const message = next
-    ? `You're ₹${Math.ceil(remaining).toLocaleString('en-IN')} away from ${next.label}`
-    : `You've unlocked ${unlocked.map((tier) => tier.label).join(' + ')}`;
+function CartDrawerProgress({progress, currencyCode = 'INR'}) {
+  const {progressPercent, nextTier, tiers, lastThreshold, cartValue} =
+    progress;
+  const complete = !nextTier;
+  const message = cartProgressMessage(progress, currencyCode);
+  const rewardTier = nextTier ?? tiers[tiers.length - 1] ?? null;
 
   return (
-    <div className="cart-drawer__progress" aria-label="Cart rewards">
+    <div
+      className={`cart-drawer__progress${complete ? ' is-complete' : ''}`}
+      aria-label="Cart rewards"
+    >
       <p className="cart-drawer__progress-copy">{message}</p>
+      <CartDrawerProgressReward tier={rewardTier} />
       <div
         className="cart-drawer__progress-track"
         role="progressbar"
         aria-valuemin={0}
-        aria-valuemax={max}
-        aria-valuenow={Math.round(progress.value)}
+        aria-valuemax={lastThreshold}
+        aria-valuenow={cartValue}
         aria-valuetext={message}
       >
         <span
           className="cart-drawer__progress-fill"
-          style={{width: `${percent}%`}}
+          style={{width: `${progressPercent}%`}}
         />
         {tiers.map((tier, index) => {
-          const reached = progress.value >= tier.amount;
+          const reached = cartValue >= tier.thresholdValue;
           const isEnd = index === tiers.length - 1;
+          const position =
+            lastThreshold > 0 ? (tier.thresholdValue / lastThreshold) * 100 : 100;
           return (
             <span
               key={tier.id}
               className={`cart-drawer__progress-tick${reached ? ' is-reached' : ''}${isEnd ? ' is-end' : ''}`}
-              style={{left: `${(tier.amount / max) * 100}%`}}
+              style={{left: `${position}%`}}
+              title={tierRewardTitle(tier)}
             >
-              <span className="cart-drawer__progress-dot" />
+              <span className="cart-drawer__progress-dot" aria-hidden="true">
+                {reached ? (
+                  <svg viewBox="0 0 12 12" width="8" height="8">
+                    <path
+                      d="M2.4 6.2 4.9 8.6 9.6 3.4"
+                      fill="none"
+                      stroke="#fff"
+                      strokeWidth="1.7"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                ) : null}
+              </span>
               <span className="cart-drawer__progress-label">{tier.label}</span>
             </span>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function tierRewardTitle(tier) {
+  const parts = [tier.rewardProduct?.title, tier.rewardText].filter(Boolean);
+  return parts.length ? parts.join(' — ') : undefined;
+}
+
+function CartDrawerProgressReward({tier}) {
+  if (!tier) return null;
+  const product = tier.rewardProduct;
+  const text = tier.rewardText;
+  // FLAG: when both are present, text is treated as a caption for the
+  // product (gift label), not a second independent reward.
+  if (!product && !text) return null;
+
+  return (
+    <div className="cart-drawer__progress-reward">
+      {product?.handle ? (
+        <Link
+          to={`/products/${product.handle}`}
+          className="cart-drawer__progress-reward-product"
+        >
+          {product.imageUrl ? (
+            <img src={product.imageUrl} alt={product.imageAlt || ''} />
+          ) : null}
+          {product.title ? <span>{product.title}</span> : null}
+        </Link>
+      ) : product?.title ? (
+        <span className="cart-drawer__progress-reward-product">
+          {product.imageUrl ? (
+            <img src={product.imageUrl} alt={product.imageAlt || ''} />
+          ) : null}
+          <span>{product.title}</span>
+        </span>
+      ) : null}
+      {text ? <p className="cart-drawer__progress-reward-text">{text}</p> : null}
     </div>
   );
 }
@@ -414,52 +487,88 @@ function CartDrawerUpsell({open, productKey, onNavigate}) {
       <h3 className="cart-drawer__upsell-title">You May Also Like</h3>
       <ul className="cart-drawer__upsell-rail">
         {products.map((product) => (
-          <li key={product.id} className="cart-drawer__upsell-item">
-            <Link
-              to={product.href}
-              className="cart-drawer__upsell-media"
-              onClick={onNavigate}
-            >
-              {product.image ? (
-                <img src={product.image} alt="" />
-              ) : (
-                <span className="cart-drawer__thumb-empty" />
-              )}
-            </Link>
-            <Link
-              to={product.href}
-              className="cart-drawer__upsell-name"
-              onClick={onNavigate}
-            >
-              {product.name}
-            </Link>
-            <div className="cart-drawer__upsell-row">
-              <p className="cart-drawer__upsell-price">
-                {formatMoneyDisplay(product.money) ||
-                  `${product.currency}${Number(product.price).toLocaleString('en-IN')}`}
-              </p>
-              {product.variantGid ? (
-                <CartForm
-                  route="/cart"
-                  action={CartForm.ACTIONS.LinesAdd}
-                  inputs={{
-                    lines: cartLinesForMerchandise(product.variantGid, 1),
-                  }}
-                >
-                  <button
-                    type="submit"
-                    className="cart-drawer__upsell-add"
-                    aria-label={`Add ${product.name}`}
-                  >
-                    Add
-                  </button>
-                </CartForm>
-              ) : null}
-            </div>
-          </li>
+          <CartDrawerUpsellItem
+            key={product.id}
+            product={product}
+            onNavigate={onNavigate}
+          />
         ))}
       </ul>
     </section>
+  );
+}
+
+function CartDrawerUpsellItem({product, onNavigate}) {
+  const sizes = product.sizes ?? [];
+  const showPicker = shouldShowSizeSelect(sizes);
+  const [size, setSize] = useState(product.defaultSize ?? sizes[0] ?? '');
+  const selected = showPicker ? product.variantBySize?.[size] ?? null : null;
+  const merchandiseId = selected?.id ?? product.variantGid;
+  const priceAmount = selected?.priceAmount ?? product.price;
+  const currency = selected?.priceCurrency ?? product.currency;
+  const pickerLabel = product.variantOptionLabel ?? 'Pack';
+
+  return (
+    <li className="cart-drawer__upsell-item">
+      <Link
+        to={product.href}
+        className="cart-drawer__upsell-media"
+        onClick={onNavigate}
+      >
+        {product.image ? (
+          <img src={product.image} alt="" />
+        ) : (
+          <span className="cart-drawer__thumb-empty" />
+        )}
+      </Link>
+      <Link
+        to={product.href}
+        className="cart-drawer__upsell-name"
+        onClick={onNavigate}
+      >
+        {product.name}
+      </Link>
+      <div className="cart-drawer__upsell-meta">
+        <p className="cart-drawer__upsell-price">
+          {currency}
+          {Number(priceAmount).toLocaleString('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
+        </p>
+        {showPicker ? (
+          <CustomSelect
+            className="cart-drawer__upsell-select"
+            align="right"
+            ariaLabel={`Select ${String(pickerLabel).toLowerCase()} for ${product.name}`}
+            options={sizes.map((option) => ({id: option, label: option}))}
+            value={size}
+            onChange={setSize}
+          />
+        ) : null}
+      </div>
+      {merchandiseId ? (
+        <div className="cart-drawer__upsell-atc">
+          <CartForm
+            key={merchandiseId}
+            route="/cart"
+            action={CartForm.ACTIONS.LinesAdd}
+            inputs={{
+              lines: cartLinesForMerchandise(merchandiseId, 1),
+            }}
+          >
+            <button
+              type="submit"
+              className="cart-drawer__upsell-add"
+              aria-label={`Add ${product.name}`}
+              disabled={selected ? selected.availableForSale === false : false}
+            >
+              Add
+            </button>
+          </CartForm>
+        </div>
+      ) : null}
+    </li>
   );
 }
 
@@ -483,46 +592,50 @@ function CartDrawerLine({line, onNavigate}) {
         )}
       </Link>
       <div className="cart-drawer__meta">
-        <Link to={href} className="cart-drawer__name" onClick={onNavigate}>
-          {title}
-        </Link>
-        {optionLabel ? <p className="cart-drawer__option">{optionLabel}</p> : null}
-        <p className="cart-drawer__price">
-          {payable ? (
-            <span className="cart-drawer__price-current">
-              {formatMoneyDisplay(payable)}
-            </span>
-          ) : null}
-          {compareTotal ? (
-            <s className="cart-drawer__price-compare">
-              {formatMoneyDisplay(compareTotal)}
-            </s>
-          ) : null}
-          {percentOff != null ? (
-            <span className="cart-drawer__price-badge">{percentOff}% OFF</span>
-          ) : null}
-        </p>
-        <div className="cart-drawer__qty" role="group" aria-label={`Quantity for ${title}`}>
-          <div className="cart-drawer__qty-control">
-            <CartQtyButton
-              lineId={line.id}
-              quantity={Math.max(1, line.quantity - 1)}
-              disabled={line.quantity <= 1 || isOptimistic}
-              label="Decrease quantity"
-            >
-              −
-            </CartQtyButton>
-            <span className="cart-drawer__qty-value">{line.quantity}</span>
-            <CartQtyButton
-              lineId={line.id}
-              quantity={line.quantity + 1}
-              disabled={isOptimistic}
-              label="Increase quantity"
-            >
-              +
-            </CartQtyButton>
-          </div>
+        <div className="cart-drawer__title-row">
+          <Link to={href} className="cart-drawer__name" onClick={onNavigate}>
+            {title}
+          </Link>
           <CartRemoveButton lineId={line.id} disabled={isOptimistic} />
+        </div>
+        {optionLabel ? <p className="cart-drawer__option">{optionLabel}</p> : null}
+        <div className="cart-drawer__price-row">
+          <p className="cart-drawer__price">
+            {payable ? (
+              <span className="cart-drawer__price-current">
+                {formatMoneyDisplay(payable)}
+              </span>
+            ) : null}
+            {compareTotal ? (
+              <s className="cart-drawer__price-compare">
+                {formatMoneyDisplay(compareTotal)}
+              </s>
+            ) : null}
+            {percentOff != null ? (
+              <span className="cart-drawer__price-badge">{percentOff}% OFF</span>
+            ) : null}
+          </p>
+          <div className="cart-drawer__qty" role="group" aria-label={`Quantity for ${title}`}>
+            <div className="cart-drawer__qty-control">
+              <CartQtyButton
+                lineId={line.id}
+                quantity={Math.max(1, line.quantity - 1)}
+                disabled={line.quantity <= 1 || isOptimistic}
+                label="Decrease quantity"
+              >
+                −
+              </CartQtyButton>
+              <span className="cart-drawer__qty-value">{line.quantity}</span>
+              <CartQtyButton
+                lineId={line.id}
+                quantity={line.quantity + 1}
+                disabled={isOptimistic}
+                label="Increase quantity"
+              >
+                +
+              </CartQtyButton>
+            </div>
+          </div>
         </div>
       </div>
     </li>
@@ -566,9 +679,22 @@ function CartRemoveButton({lineId, disabled}) {
       <button
         type="submit"
         className="cart-drawer__remove"
+        aria-label="Remove"
         disabled={disabled}
       >
-        Remove
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path
+            fill="currentColor"
+            d="M 10 2 L 9 3 L 4 3 L 4 5 L 5 5 L 5 20 C 5 20.522222 5.1913289 21.05461 5.5683594 21.431641 C 5.9453899 21.808671 6.4777778 22 7 22 L 17 22 C 17.522222 22 18.05461 21.808671 18.431641 21.431641 C 18.808671 21.05461 19 20.522222 19 20 L 19 5 L 20 5 L 20 3 L 15 3 L 14 2 L 10 2 z M 7 5 L 17 5 L 17 20 L 7 20 L 7 5 z M 9 7 L 9 18 L 11 18 L 11 7 L 9 7 z M 13 7 L 13 18 L 15 18 L 15 7 L 13 7 z"
+          />
+        </svg>
       </button>
     </CartForm>
   );

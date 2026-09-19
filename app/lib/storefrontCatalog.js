@@ -53,12 +53,6 @@ export const FREE_SHIPPING_THRESHOLD = 300;
 export const SHIPPING_FEE_NOTE = '+₹49 Shipping Fee';
 export const FREE_SHIPPING_NOTE = 'Free Shipping';
 
-/** Spend thresholds shown on the cart progress bar (INR). */
-export const CART_PROGRESS_TIERS = [
-  {id: 'free-shipping', amount: FREE_SHIPPING_THRESHOLD, label: 'Free Shipping'},
-  {id: 'order-off', amount: 999, label: '10% Off'},
-];
-
 /**
  * Unique merchandising offers from products currently in the cart.
  * Same shape as PDP `activeOffersFromMetafield`.
@@ -80,20 +74,6 @@ export function uniqueOffersFromCart(cart) {
 }
 
 /**
- * Cart subtotal vs {@link CART_PROGRESS_TIERS} for the drawer progress bar.
- */
-export function cartProgressFromAmount(amount) {
-  const value = Math.max(0, Number(amount) || 0);
-  const tiers = CART_PROGRESS_TIERS;
-  const max = tiers[tiers.length - 1]?.amount || 1;
-  const percent = Math.min(100, (value / max) * 100);
-  const unlocked = tiers.filter((tier) => value >= tier.amount);
-  const next = tiers.find((tier) => value < tier.amount) ?? null;
-  const remaining = next ? Math.max(0, next.amount - value) : 0;
-  return {value, percent, unlocked, next, remaining, max, tiers};
-}
-
-/**
  * Shipping copy for a pack swatch. Driven by projected cart value after
  * adding this variant (existing lines of the same product are replaced).
  */
@@ -103,6 +83,21 @@ export function packShippingNote(amount) {
   return value < FREE_SHIPPING_THRESHOLD
     ? SHIPPING_FEE_NOTE
     : FREE_SHIPPING_NOTE;
+}
+
+/** Default pack on listing cards, quick-add, and PDP when the option exists. */
+export const PREFERRED_PACK_VALUE = 'Pack of 2';
+
+/**
+ * Prefer Pack of 2 on listing cards so price, ATC, and the picker match.
+ * Falls back to the first available variant when that pack is missing.
+ * @param {Array<{sizeValue?: string, availableForSale?: boolean}>} variants
+ */
+export function preferredListingVariant(variants) {
+  const nodes = variants ?? [];
+  const packOf2 = nodes.find((variant) => variant.sizeValue === PREFERRED_PACK_VALUE);
+  if (packOf2) return packOf2;
+  return nodes.find((variant) => variant.availableForSale) ?? nodes[0] ?? null;
 }
 
 /** Variant matching a Pack option label (e.g. "Pack of 1"). */
@@ -477,6 +472,7 @@ export function toListingCard(product, featuredOrder = 0) {
         sizeValue: sizeValue ? String(sizeValue) : undefined,
         priceAmount: moneyAmount(v?.price),
         priceCurrency: moneySymbol(v?.price?.currencyCode),
+        currencyCode: v?.price?.currencyCode,
       };
     })
     .filter((v) => Boolean(v?.id));
@@ -488,8 +484,7 @@ export function toListingCard(product, featuredOrder = 0) {
       return acc;
     }, {});
 
-  const defaultVariant =
-    variants.find((v) => v.availableForSale) ?? variants[0] ?? null;
+  const defaultVariant = preferredListingVariant(variants);
   const defaultSize = defaultVariant?.sizeValue ?? sizes[0];
 
   // Fallback: when variants aren't present (legacy queries), use the current
@@ -497,6 +492,12 @@ export function toListingCard(product, featuredOrder = 0) {
   const variantGid = defaultVariant?.id ?? product.selectedOrFirstAvailableVariant?.id;
   const currency = defaultVariant?.priceCurrency ?? moneySymbol(money?.currencyCode);
   const price = defaultVariant?.priceAmount ?? moneyAmount(money);
+  const listingMoney = defaultVariant
+    ? {
+        amount: String(defaultVariant.priceAmount),
+        currencyCode: defaultVariant.currencyCode || money?.currencyCode,
+      }
+    : money;
   return {
     id: product.id,
     handle: product.handle,
@@ -504,7 +505,7 @@ export function toListingCard(product, featuredOrder = 0) {
     name: product.title,
     price,
     currency,
-    money,
+    money: listingMoney,
     image: product.featuredImage?.url,
     href: `/products/${product.handle}`,
     sizes,

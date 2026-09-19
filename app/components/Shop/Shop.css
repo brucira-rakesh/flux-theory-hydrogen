@@ -31,8 +31,9 @@
   position: relative;
   isolation: isolate;
   width: 100%;
-  min-height: min(100svh, 52rem);
-  height: 72svh;
+  height: 50svh;
+  max-height: 50svh;
+  min-height: 0;
   overflow: hidden;
   color: #fff;
   background: #111;
@@ -79,7 +80,7 @@
   width: min(100%, 1920px);
   min-height: 100%;
   margin: 0 auto;
-  padding: 7.5rem 22px 2.5rem;
+  padding: 5.5rem 22px 1.5rem;
 }
 
 .shop-page--banner .shop-hero__title {
@@ -877,6 +878,21 @@ a.product-card__name:focus-visible {
   box-sizing: border-box;
 }
 
+.product-form-popup.is-closing {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  /* Drop below the cart drawer (130) as soon as ATC is clicked. */
+  z-index: 120;
+}
+
+.product-form-popup.is-closing .product-form-popup__backdrop,
+.product-form-popup.is-closing .product-form-popup__panel {
+  opacity: 0 !important;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .product-form-popup__backdrop {
   position: absolute;
   inset: 0;
@@ -1313,12 +1329,13 @@ a.product-card__name:focus-visible {
   }
 
   .shop-banner {
-    height: 70svh;
-    min-height: 28rem;
+    height: 50svh;
+    max-height: 50svh;
+    min-height: 0;
   }
 
   .shop-banner__copy {
-    padding: 5.5rem 16px 1.75rem;
+    padding: 4.5rem 16px 1.25rem;
   }
 
   .shop-page:not(.shop-page--banner) > .shop-hero {

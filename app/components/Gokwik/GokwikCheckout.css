@@ -1,0 +1,33 @@
+.gokwik-checkout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.gokwik-checkout > button {
+  width: 100%;
+}
+
+.gokwik-checkout__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #8a1f11;
+}
+
+.gokwik-checkout__retry {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.gokwik-checkout__retry:hover,
+.gokwik-checkout__retry:focus-visible {
+  opacity: 0.75;
+}

@@ -69,7 +69,8 @@ function isLightSurfacePath(pathname) {
     pathname.startsWith('/old-pdp') ||
     pathname.startsWith('/account') ||
     pathname === '/about-us' ||
-    pathname === '/the-brand'
+    pathname === '/the-brand' ||
+    pathname === '/thank-you'
   )
 }
 

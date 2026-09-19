@@ -15,11 +15,14 @@ import {
   HEADER_QUERY,
   MENU_QUERY,
 } from '~/lib/fragments';
+import {loadCartProgressTiers} from '~/lib/cartProgress';
 import resetStyles from '~/styles/reset.css?url';
 import appStyles from '~/styles/app.css?url';
 import tailwindCss from './styles/tailwind.css?url';
 import {PageLayout} from './components/PageLayout';
 import {CartProvider} from './components/Cart/CartProvider';
+import {GokwikProvider} from './components/Gokwik/GokwikProvider';
+import {getGokwikPublicConfig} from './lib/gokwik';
 
 /**
  * Flux Theory URLs (Step 5). These render a bare <Outlet /> — no Hydrogen
@@ -45,6 +48,7 @@ function isBrandedPath(pathname) {
   if (pathname === '/about-us') return true;
   if (pathname === '/the-brand') return true;
   if (pathname === '/account' || pathname.startsWith('/account/')) return true;
+  if (pathname === '/thank-you') return true;
   return false;
 }
 
@@ -128,7 +132,7 @@ export async function loader(args) {
     const {storefront} = args.context;
     // Nav menus change in Admin — CacheShort so removals/additions show up
     // quickly instead of sticking for weeks under CacheLong.
-    const [navMenu, footerMenus] = await Promise.all([
+    const [navMenu, footerMenus, cartProgressTiers] = await Promise.all([
       storefront
         .query(MENU_QUERY, {
           cache: storefront.CacheShort(),
@@ -141,6 +145,7 @@ export async function loader(args) {
           variables: FOOTER_MENU_HANDLES,
         })
         .catch(() => null),
+      loadCartProgressTiers(storefront),
     ]);
 
     return {
@@ -154,6 +159,9 @@ export async function loader(args) {
       publicStoreDomain: env.PUBLIC_STORE_DOMAIN,
       shop: null,
       consent: null,
+      cartProgressTiers,
+      // Public GoKwik config only — merchantInfo.cart is set client-side at checkout.
+      gokwik: getGokwikPublicConfig(env),
     };
   }
 
@@ -182,6 +190,9 @@ export async function loader(args) {
       country: args.context.storefront.i18n.country,
       language: args.context.storefront.i18n.language,
     },
+    // Environment only — merchantInfo/cartId are set client-side, never here.
+    // Public GoKwik config only — merchantInfo.cart is set client-side at checkout.
+    gokwik: getGokwikPublicConfig(env),
   };
 }
 
@@ -193,17 +204,17 @@ export async function loader(args) {
 async function loadCriticalData({context}) {
   const {storefront} = context;
 
-  const [header] = await Promise.all([
+  const [header, cartProgressTiers] = await Promise.all([
     storefront.query(HEADER_QUERY, {
       cache: storefront.CacheShort(),
       variables: {
         headerMenuHandle: 'main-menu', // Adjust to your header menu handle
       },
     }),
-    // Add other queries here, so that they are loaded in parallel
+    loadCartProgressTiers(storefront),
   ]);
 
-  return {header};
+  return {header, cartProgressTiers};
 }
 
 /**
@@ -256,7 +267,9 @@ export function Layout({children}) {
         <Links />
       </head>
       <body>
-        {children}
+        <GokwikProvider>
+          {children}
+        </GokwikProvider>
         <Scripts nonce={nonce} />
       </body>
     </html>

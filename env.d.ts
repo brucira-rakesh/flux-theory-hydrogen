@@ -27,6 +27,47 @@ declare global {
     SHOPIFY_APP_CLIENT_ID?: string;
     /** Dev Dashboard app client secret (server-only). */
     SHOPIFY_APP_CLIENT_SECRET?: string;
+    /** GoKwik checkout environment: `production` or `sandbox` (default). */
+    PUBLIC_GOKWIK_ENV?: string;
+    /** Alias for PUBLIC_GOKWIK_ENV (Vite-style). */
+    VITE_GOKWIK_ENV?: string;
+    /** GoKwik merchant id (public, used only on the client as merchantInfo.mid). */
+    PUBLIC_GOKWIK_MERCHANT_ID?: string;
+    /** Optional override for Shopify numeric store id. Falls back to SHOP_ID. */
+    PUBLIC_GOKWIK_STORE_ID?: string;
+    /** Optional comma-separated Meta pixel ids. */
+    PUBLIC_GOKWIK_FB_PIXEL_IDS?: string;
+    SHOP_ID?: string;
+  }
+
+  interface ImportMetaEnv {
+    readonly PUBLIC_GOKWIK_ENV?: string;
+    readonly VITE_GOKWIK_ENV?: string;
+    readonly PUBLIC_GOKWIK_MERCHANT_ID?: string;
+    readonly PUBLIC_GOKWIK_STORE_ID?: string;
+    readonly PUBLIC_GOKWIK_FB_PIXEL_IDS?: string;
+  }
+
+  interface GokwikMerchantInfo {
+    mid: string;
+    environment: 'production' | 'sandbox';
+    type: 'merchantInfo';
+    storeId?: string;
+    fbpixel?: string;
+    cart?: {id: string};
+  }
+
+  interface Window {
+    merchantInfo?: GokwikMerchantInfo;
+    gokwikCheckoutApp?: unknown;
+    gokwikSdk?: {
+      initCheckout?: (payload: unknown) => void;
+      on?: (event: string, handler: (...args: unknown[]) => void) => void;
+      emit?: (event: string, payload?: unknown) => void;
+      close?: () => void;
+      getCheckoutState?: () => unknown;
+    };
+    triggerGokwikCustomCheckout?: () => void;
   }
 }
 

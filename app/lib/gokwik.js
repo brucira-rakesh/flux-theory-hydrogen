@@ -1,0 +1,272 @@
+/**
+ * GoKwik custom checkout — Scenario 2 (no Shopify Ajax cart APIs).
+ *
+ * Merchant identifiers stay as explicit placeholders until replaced.
+ * Environment is the only runtime switch (sandbox | production).
+ * Cart GIDs and customer PII must never be attached here — cart is set
+ * client-side at checkout time only; PII is never written to merchantInfo.
+ */
+
+export const GOKWIK_SDK_TIMEOUT_MS = 10_000;
+export const GOKWIK_SDK_POLL_MS = 150;
+export const GOKWIK_SCRIPT_ID = 'gokwik-sdk';
+
+/** Replace with the GoKwik merchant id from the merchant dashboard. */
+export const GOKWIK_MERCHANT_ID = '<YOUR-MERCHANT-ID>';
+
+/** Replace with the Shopify store numeric id. */
+export const GOKWIK_STORE_ID = '<SHOPIFY_STORE_ID>';
+
+/** Replace with comma-separated Meta pixel ids, or leave the placeholder. */
+export const GOKWIK_FB_PIXEL_IDS = '<FB_PIXEL_IDS_COMMA_SEPARATED>';
+
+const CART_GID_PATTERN = /^gid:\/\/shopify\/Cart\/[^\s/]+$/;
+
+/**
+ * Origins the GoKwik SDK and checkout iframe load from.
+ * `*.gokwik.co` does not cover `sandbox.pdp.gokwik.co` (two subdomain levels).
+ */
+export const GOKWIK_CSP_ORIGINS = [
+  'https://gokwik.co',
+  'https://*.gokwik.co',
+  'https://gkx.gokwik.co',
+  'https://pdp.gokwik.co',
+  'https://*.pdp.gokwik.co',
+  'https://sandbox.pdp.gokwik.co',
+  'https://dev.pdp.gokwik.co',
+  'https://qa.pdp.gokwik.co',
+  'https://gokwik.io',
+  'https://*.gokwik.io',
+  'https://*.dev.gokwik.io',
+  'https://api-gw-v4.dev.gokwik.io',
+  'https://gokwik.in',
+  'https://*.gokwik.in',
+  'https://*.dev.gokwik.in',
+];
+
+/**
+ * @param {unknown} value
+ * @returns {'production' | 'sandbox'}
+ */
+export function normalizeGokwikEnv(value) {
+  return String(value || '').trim().toLowerCase() === 'production'
+    ? 'production'
+    : 'sandbox';
+}
+
+/**
+ * Client-bundle fallback when root loader data is unavailable.
+ * Prefer `PUBLIC_GOKWIK_ENV` from the Oxygen/Hydrogen env (via root loader).
+ * @returns {'production' | 'sandbox'}
+ */
+export function readGokwikEnvFromMeta() {
+  return normalizeGokwikEnv(
+    import.meta.env.PUBLIC_GOKWIK_ENV || import.meta.env.VITE_GOKWIK_ENV,
+  );
+}
+
+/**
+ * @param {'production' | 'sandbox'} environment
+ */
+export function getGokwikSdkSrc(environment) {
+  return environment === 'production'
+    ? 'https://pdp.gokwik.co/v4/build/gokwik.js'
+    : 'https://sandbox.pdp.gokwik.co/v4/build/gokwik.js';
+}
+
+/**
+ * Drop angle-bracket placeholders and empty strings so they never go to GoKwik.
+ * @param {unknown} value
+ * @returns {string}
+ */
+function cleanGokwikValue(value) {
+  const next = String(value ?? '').trim();
+  if (!next) return '';
+  if (next.includes('<') || next.includes('>')) return '';
+  if (next.startsWith('YOUR-') || next.startsWith('SHOPIFY_')) return '';
+  return next;
+}
+
+/**
+ * Public GoKwik config from Oxygen/Hydrogen env. No cart, no customer fields.
+ * @param {Partial<Env> | undefined} env
+ */
+export function getGokwikPublicConfig(env = {}) {
+  const environment = normalizeGokwikEnv(
+    env.PUBLIC_GOKWIK_ENV ||
+      env.VITE_GOKWIK_ENV ||
+      import.meta.env.PUBLIC_GOKWIK_ENV ||
+      import.meta.env.VITE_GOKWIK_ENV,
+  );
+  return {
+    environment,
+    mid:
+      cleanGokwikValue(env.PUBLIC_GOKWIK_MERCHANT_ID) ||
+      cleanGokwikValue(import.meta.env.PUBLIC_GOKWIK_MERCHANT_ID) ||
+      cleanGokwikValue(GOKWIK_MERCHANT_ID),
+    storeId:
+      cleanGokwikValue(env.PUBLIC_GOKWIK_STORE_ID) ||
+      cleanGokwikValue(env.SHOP_ID) ||
+      cleanGokwikValue(import.meta.env.PUBLIC_GOKWIK_STORE_ID) ||
+      cleanGokwikValue(GOKWIK_STORE_ID),
+    fbpixel:
+      cleanGokwikValue(env.PUBLIC_GOKWIK_FB_PIXEL_IDS) ||
+      cleanGokwikValue(import.meta.env.PUBLIC_GOKWIK_FB_PIXEL_IDS) ||
+      cleanGokwikValue(GOKWIK_FB_PIXEL_IDS),
+  };
+}
+
+/**
+ * Base merchantInfo only — no cart, no customer fields.
+ * @param {{
+ *   environment: 'production' | 'sandbox';
+ *   mid?: string;
+ *   storeId?: string;
+ *   fbpixel?: string;
+ * }} config
+ */
+export function getGokwikMerchantInfo(config) {
+  const environment =
+    typeof config === 'string'
+      ? normalizeGokwikEnv(config)
+      : config?.environment || 'sandbox';
+  const mid =
+    typeof config === 'string'
+      ? cleanGokwikValue(GOKWIK_MERCHANT_ID)
+      : cleanGokwikValue(config?.mid) || cleanGokwikValue(GOKWIK_MERCHANT_ID);
+  const storeId =
+    typeof config === 'string'
+      ? ''
+      : cleanGokwikValue(config?.storeId);
+  const fbpixel =
+    typeof config === 'string'
+      ? ''
+      : cleanGokwikValue(config?.fbpixel);
+
+  /** @type {GokwikMerchantInfo} */
+  const merchantInfo = {
+    mid,
+    environment,
+    type: 'merchantInfo',
+  };
+  if (storeId) merchantInfo.storeId = storeId;
+  if (fbpixel) merchantInfo.fbpixel = fbpixel;
+  return merchantInfo;
+}
+
+/**
+ * @param {unknown} config
+ * @returns {boolean}
+ */
+export function isGokwikMerchantConfigured(config) {
+  const mid =
+    config && typeof config === 'object'
+      ? cleanGokwikValue(config.mid)
+      : '';
+  return Boolean(mid);
+}
+
+/**
+ * @param {unknown} cartId
+ * @returns {cartId is string}
+ */
+export function isShopifyCartGid(cartId) {
+  return typeof cartId === 'string' && CART_GID_PATTERN.test(cartId);
+}
+
+/**
+ * True once GoKwik's v4 UI is mounted, or the checkout stub is present.
+ * @returns {boolean}
+ */
+export function isGokwikCheckoutReady() {
+  if (typeof window === 'undefined') return false;
+  return Boolean(
+    window.gokwikCheckoutApp ||
+      (window.gokwikSdk && typeof window.gokwikSdk.initCheckout === 'function'),
+  );
+}
+
+/**
+ * Hydrogen CSP blocks the SDK's nonce-less inline stub. Install the same
+ * postMessage API first so v4 skips that injection (`if (!window.gokwikSdk)`).
+ */
+export function installGokwikSdkStub() {
+  if (typeof window === 'undefined') return;
+  if (window.gokwikSdk && typeof window.gokwikSdk.initCheckout === 'function') {
+    return;
+  }
+
+  /** @type {Record<string, Array<(payload?: unknown) => void>>} */
+  const listeners = {};
+
+  window.gokwikSdk = {
+    initCheckout(payload) {
+      window.postMessage(payload, window.location.href);
+    },
+    on(eventName, handler) {
+      if (!eventName || typeof handler !== 'function') return;
+      listeners[eventName] = listeners[eventName] || [];
+      listeners[eventName].push(handler);
+    },
+    emit(eventName, payload) {
+      (listeners[eventName] || []).forEach((handler) => handler(payload));
+    },
+    close() {
+      window.postMessage('gk-merchant-close', window.location.href);
+    },
+  };
+}
+
+/**
+ * Scenario 2 entrypoint expected by GoKwik custom checkout docs.
+ */
+export function installGokwikCustomCheckoutTrigger() {
+  if (typeof window === 'undefined') return;
+  if (typeof window.triggerGokwikCustomCheckout === 'function') return;
+
+  window.triggerGokwikCustomCheckout = function triggerGokwikCustomCheckout() {
+    if (!window.gokwikSdk || typeof window.gokwikSdk.initCheckout !== 'function') {
+      throw new Error(
+        'GoKwik SDK is not ready. Cannot call triggerGokwikCustomCheckout().',
+      );
+    }
+    window.gokwikSdk.initCheckout(window.merchantInfo);
+  };
+}
+
+/**
+ * Copy Hydrogen's nonce onto scripts GoKwik injects later (src tags, etc.).
+ * @param {string | undefined} nonce
+ * @returns {() => void}
+ */
+export function installGokwikScriptNonceStamp(nonce) {
+  if (typeof window === 'undefined' || !nonce) return () => {};
+
+  const proto = Node.prototype;
+  const appendChild = proto.appendChild;
+  const insertBefore = proto.insertBefore;
+
+  const stamp = (node) => {
+    if (!node || node.nodeName !== 'SCRIPT') return;
+    const src = typeof node.src === 'string' ? node.src : '';
+    const fromGokwik =
+      node.id === 'gokwik-sdk-script' || src.includes('gokwik.co');
+    if (!fromGokwik) return;
+    node.nonce = nonce;
+    node.setAttribute('nonce', nonce);
+  };
+
+  proto.appendChild = function patchedAppendChild(child) {
+    stamp(child);
+    return appendChild.call(this, child);
+  };
+  proto.insertBefore = function patchedInsertBefore(newNode, referenceNode) {
+    stamp(newNode);
+    return insertBefore.call(this, newNode, referenceNode);
+  };
+
+  return () => {
+    proto.appendChild = appendChild;
+    proto.insertBefore = insertBefore;
+  };
+}

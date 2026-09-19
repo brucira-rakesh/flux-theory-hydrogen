@@ -1,6 +1,7 @@
 import {CartForm, Money} from '@shopify/hydrogen';
 import {useEffect, useId, useRef, useState} from 'react';
 import {useFetcher} from 'react-router';
+import {GokwikCheckoutButton} from '~/components/Gokwik/GokwikCheckoutButton';
 
 /**
  * @param {CartSummaryProps}
@@ -37,22 +38,22 @@ export function CartSummary({cart, layout}) {
         giftCardHeadingId={giftCardHeadingId}
         giftCardInputId={giftCardInputId}
       />
-      <CartCheckoutActions checkoutUrl={cart?.checkoutUrl} />
+      <CartCheckoutActions cart={cart} />
     </div>
   );
 }
 
 /**
- * @param {{checkoutUrl?: string}}
+ * @param {{cart?: OptimisticCart<CartApiQueryFragment | null> | null}}
  */
-function CartCheckoutActions({checkoutUrl}) {
-  if (!checkoutUrl) return null;
+function CartCheckoutActions({cart}) {
+  if (!cart?.id) return null;
 
   return (
     <div>
-      <a href={checkoutUrl} target="_self">
-        <p>Continue to Checkout &rarr;</p>
-      </a>
+      <GokwikCheckoutButton cartId={cart.id} className="cart-checkout-button">
+        Continue to Checkout →
+      </GokwikCheckoutButton>
       <br />
     </div>
   );

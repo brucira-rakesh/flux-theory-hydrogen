@@ -31,6 +31,7 @@ import {
   activeOffersFromMetafield,
   applySelectedVariant,
   giftBundleFromMetafield,
+  PREFERRED_PACK_VALUE,
   toListingCard,
   toPdpViewModel,
   withoutShopifyDefaultTitleOptions,
@@ -108,11 +109,6 @@ export async function action({request, context, params}) {
 
   return data({ok: true});
 }
-
-/**
- * @param {Route.LoaderArgs}
- */
-const PREFERRED_PACK_VALUE = 'Pack of 2';
 
 /**
  * Default SELECT PACK to "Pack of 2" when the URL does not already pick a pack

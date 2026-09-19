@@ -41,6 +41,7 @@ export default function ProductFormPopup({
   const [size, setSize] = useState(initialSize ?? product.defaultSize ?? sizes[0] ?? '')
   const [quantity, setQuantity] = useState(initialQuantity ?? 1)
   const { openCart } = useCartDrawer()
+  const rootRef = useRef(null)
   const showSizeSelect = shouldShowSizeSelect(sizes)
   const sizeOptions = sizes.map((option) => ({ id: option, label: option }))
 
@@ -111,7 +112,19 @@ export default function ProductFormPopup({
     return () => ctx.revert()
   }, [])
 
+  const hideOverlay = () => {
+    const root = rootRef.current
+    if (root) root.classList.add('is-closing')
+    // Kill the enter tween so GSAP inline opacity can't keep the panel visible.
+    gsap.killTweensOf([backdropRef.current, panelRef.current])
+    if (backdropRef.current) gsap.set(backdropRef.current, {opacity: 0, overwrite: true})
+    if (panelRef.current) gsap.set(panelRef.current, {opacity: 0, overwrite: true})
+  }
+
   const handleAdded = () => {
+    // Hide via DOM (no setState) so CartForm can still submit this click,
+    // then open the drawer. Unmount happens in onSuccess.
+    hideOverlay()
     openCart()
     onAdd?.(product, { size, quantity })
   }
@@ -128,7 +141,7 @@ export default function ProductFormPopup({
   }
 
   const ui = (
-    <div className="product-form-popup" role="presentation">
+    <div ref={rootRef} className="product-form-popup" role="presentation">
       <button
         ref={backdropRef}
         type="button"

@@ -2,6 +2,7 @@ import {ServerRouter} from 'react-router';
 import {isbot} from 'isbot';
 import {renderToReadableStream} from 'react-dom/server';
 import {createContentSecurityPolicy} from '@shopify/hydrogen';
+import {GOKWIK_CSP_ORIGINS} from '~/lib/gokwik';
 
 /**
  * @param {Request} request
@@ -41,12 +42,17 @@ export default async function handleRequest(
       'https://shopify.com',
       // Draco/Basis WASM — Oxygen 404s same-origin .wasm; loaders use jsDelivr.
       'https://cdn.jsdelivr.net',
+      ...GOKWIK_CSP_ORIGINS,
     ],
     workerSrc: ["'self'", 'blob:'],
     connectSrc: [
       'blob:',
       'https://cdn.jsdelivr.net',
+      ...GOKWIK_CSP_ORIGINS,
+      'wss://*.gokwik.co',
+      'wss://*.pdp.gokwik.co',
     ],
+    frameSrc: [...GOKWIK_CSP_ORIGINS],
     // Without an explicit img-src, images fall under default-src and Judge.me
     // review CDN photos are blocked (broken <img> on the reviews wall).
     imgSrc: [
@@ -60,6 +66,7 @@ export default async function handleRequest(
       'https://review-images.judgeme.com',
       'https://*.judgeme.com',
       'https://judgeme.imgix.net',
+      ...GOKWIK_CSP_ORIGINS,
     ],
     mediaSrc: [
       "'self'",
