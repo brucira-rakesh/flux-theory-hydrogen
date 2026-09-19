@@ -139,7 +139,7 @@ export function GokwikProvider({children}) {
   }, [isGokwikReady]);
 
   const triggerCheckout = useCallback(
-    (cartId) => {
+    (cartId, checkoutUrl) => {
       if (!isShopifyCartGid(cartId)) {
         const message =
           'GoKwik checkout requires a Storefront Cart GID in the format gid://shopify/Cart/<CARTID>.';
@@ -171,7 +171,7 @@ export function GokwikProvider({children}) {
         throw new Error(message);
       }
 
-      const payload = getGokwikCheckoutPayload(gokwikConfig, cartId);
+      const payload = getGokwikCheckoutPayload(gokwikConfig, cartId, checkoutUrl);
       try {
         window.localStorage.setItem('shopifyCartId', payload.cart.id);
       } catch {

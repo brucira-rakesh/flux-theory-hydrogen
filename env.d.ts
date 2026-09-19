@@ -53,9 +53,11 @@ declare global {
     environment: 'production' | 'sandbox';
     type: 'merchantInfo';
     isHydrogen?: boolean;
+    merchantPlatform?: string;
     storeId?: string;
     fbpixel?: string;
     storefrontToken?: string;
+    checkoutUrl?: string;
     cart?: {id: string};
     merchantParams?: {
       merchantCheckoutId?: string;

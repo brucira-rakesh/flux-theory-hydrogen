@@ -8,12 +8,14 @@ import './GokwikCheckout.css';
  *
  * @param {{
  *   cartId?: string | null;
+ *   checkoutUrl?: string | null;
  *   className?: string;
  *   children?: React.ReactNode;
  * }} props
  */
 export function GokwikCheckoutButton({
   cartId,
+  checkoutUrl,
   className,
   children = 'Checkout',
 }) {
@@ -31,7 +33,7 @@ export function GokwikCheckoutButton({
   const handleClick = () => {
     setActionError('');
     try {
-      triggerCheckout(cartId);
+      triggerCheckout(cartId, checkoutUrl);
     } catch (error) {
       setActionError(
         error instanceof Error

@@ -51,7 +51,11 @@ function CartCheckoutActions({cart}) {
 
   return (
     <div>
-      <GokwikCheckoutButton cartId={cart.id} className="cart-checkout-button">
+      <GokwikCheckoutButton
+        cartId={cart.id}
+        checkoutUrl={cart.checkoutUrl}
+        className="cart-checkout-button"
+      >
         Continue to Checkout →
       </GokwikCheckoutButton>
       <br />

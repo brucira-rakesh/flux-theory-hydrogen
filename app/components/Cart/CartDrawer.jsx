@@ -223,6 +223,7 @@ function CartDrawerPanel({cart: originalCart, open, onClose}) {
             {cart?.id ? (
               <GokwikCheckoutButton
                 cartId={cart.id}
+                checkoutUrl={cart.checkoutUrl}
                 className="cart-drawer__checkout"
               >
                 Checkout

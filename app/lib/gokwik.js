@@ -167,31 +167,66 @@ export function getGokwikMerchantInfo(config) {
 }
 
 /**
+ * GoKwik guest/initiate sends merchant_checkout_id to Shopify as a checkout
+ * token. A Storefront GID (`gid://shopify/Cart/...`) 500s there. Prefer the
+ * `/cart/c/<token>` segment from checkoutUrl; otherwise strip the GID prefix.
+ *
+ * @param {string} cartId
+ * @param {string} [checkoutUrl]
+ */
+export function gokwikMerchantCheckoutId(cartId, checkoutUrl) {
+  const decoded = decodeURIComponent(String(cartId || '').trim());
+  const rawUrl = String(checkoutUrl || '').trim();
+  if (rawUrl) {
+    try {
+      const parsed = new URL(rawUrl);
+      const cartPermalink = parsed.pathname.match(/\/cart\/c\/([^/]+)/);
+      if (cartPermalink?.[1]) {
+        const token = decodeURIComponent(cartPermalink[1]);
+        const key = parsed.searchParams.get('key');
+        return key ? `${token}?key=${key}` : token;
+      }
+      const checkoutToken = parsed.pathname.match(
+        /\/checkouts\/(?:cn\/)?([^/]+)/,
+      );
+      if (checkoutToken?.[1]) return decodeURIComponent(checkoutToken[1]);
+    } catch {
+      // Fall through to the GID token.
+    }
+  }
+  return decoded.replace(/^gid:\/\/shopify\/Cart\//, '');
+}
+
+/**
  * Checkout payload GoKwik v4's iframe reads as
- * `merchantInfo.merchantParams.merchantCheckoutId`. Without that object the
- * widget throws. Hydrogen Scenario 2 uses the Storefront cart GID as the
- * checkout id (there is no Ajax cart token).
+ * `merchantInfo.merchantParams.merchantCheckoutId`.
  *
  * @param {ReturnType<typeof getGokwikPublicConfig>} config
  * @param {string} cartId
+ * @param {string} [checkoutUrl]
  * @returns {GokwikMerchantInfo}
  */
-export function getGokwikCheckoutPayload(config, cartId) {
+export function getGokwikCheckoutPayload(config, cartId, checkoutUrl) {
   const id = decodeURIComponent(String(cartId || '').trim());
+  const checkoutId = gokwikMerchantCheckoutId(id, checkoutUrl);
   const base = getGokwikMerchantInfo(config);
   /** @type {NonNullable<GokwikMerchantInfo['merchantParams']>} */
   const merchantParams = {
-    merchantCheckoutId: id,
+    merchantCheckoutId: checkoutId,
     cartId: id,
   };
   if (base.storeId) merchantParams.storeId = base.storeId;
   if (base.storefrontToken) merchantParams.storefrontToken = base.storefrontToken;
 
-  return {
+  /** @type {GokwikMerchantInfo} */
+  const payload = {
     ...base,
+    merchantPlatform: 'hydrogen',
     cart: {id},
     merchantParams,
   };
+  if (checkoutUrl) payload.checkoutUrl = checkoutUrl;
+  return payload;
 }
 
 /**
