@@ -11,11 +11,11 @@ export const GOKWIK_SDK_TIMEOUT_MS = 10_000;
 export const GOKWIK_SDK_POLL_MS = 150;
 export const GOKWIK_SCRIPT_ID = 'gokwik-sdk';
 
-/** Replace with the GoKwik merchant id from the merchant dashboard. */
-export const GOKWIK_MERCHANT_ID = '<YOUR-MERCHANT-ID>';
+/** Public GoKwik merchant id (safe on the client). Oxygen env can override. */
+export const GOKWIK_MERCHANT_ID = '19vy0os7mdkc';
 
-/** Replace with the Shopify store numeric id. */
-export const GOKWIK_STORE_ID = '<SHOPIFY_STORE_ID>';
+/** Shopify numeric shop id. Oxygen `SHOP_ID` / PUBLIC_GOKWIK_STORE_ID override. */
+export const GOKWIK_STORE_ID = '85024014548';
 
 /** Replace with comma-separated Meta pixel ids, or leave the placeholder. */
 export const GOKWIK_FB_PIXEL_IDS = '<FB_PIXEL_IDS_COMMA_SEPARATED>';
@@ -49,9 +49,12 @@ export const GOKWIK_CSP_ORIGINS = [
  * @returns {'production' | 'sandbox'}
  */
 export function normalizeGokwikEnv(value) {
-  return String(value || '').trim().toLowerCase() === 'production'
-    ? 'production'
-    : 'sandbox';
+  const next = String(value || '').trim().toLowerCase();
+  if (next === 'sandbox' || next === 'development' || next === 'dev') {
+    return 'sandbox';
+  }
+  // Live Oxygen often has no PUBLIC_GOKWIK_ENV; this merchant is production.
+  return 'production';
 }
 
 /**

@@ -157,10 +157,10 @@ export function GokwikProvider({children}) {
       installGokwikCustomCheckoutTrigger();
 
       if (!isGokwikMerchantConfigured(gokwikConfig)) {
-        const message =
-          'GoKwik merchant ID is not configured. Set PUBLIC_GOKWIK_MERCHANT_ID.';
-        console.error(message);
-        throw new Error(message);
+        console.error(
+          'GoKwik merchant ID is not configured. Set PUBLIC_GOKWIK_MERCHANT_ID on the Hydrogen environment.',
+        );
+        throw new Error('Checkout is temporarily unavailable. Please try again.');
       }
 
       if (typeof window.triggerGokwikCustomCheckout !== 'function') {
