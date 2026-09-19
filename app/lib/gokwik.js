@@ -167,39 +167,68 @@ export function getGokwikMerchantInfo(config) {
 }
 
 /**
- * GoKwik guest/initiate sends merchant_checkout_id to Shopify as a checkout
- * token. A Storefront GID (`gid://shopify/Cart/...`) 500s there. Prefer the
- * `/cart/c/<token>` segment from checkoutUrl; otherwise strip the GID prefix.
+ * Storefront Cart has no `shortKey` field. The cart secret is on `cart.id`:
+ * `gid://shopify/Cart/<token>?key=<cart-secret>`
+ * (`CartApiQuery.id`; live shape `…?key=<32-char hex>`).
+ *
+ * `cart.checkoutUrl` also has a `key` query param — that is a different
+ * checkout-permalink secret (much longer) and must never be used here.
+ *
+ * GoKwik v4 `guest/initiate` sends
+ * `merchant_platform_creds.merchant_checkout_id` from
+ * `merchantParams.merchantCheckoutId`. Shopify cart lookups expect the
+ * GID body: `<token>?key=<cart-secret>` (separator `?key=`).
  *
  * @param {string} cartId
- * @param {string} [checkoutUrl]
  */
-export function gokwikMerchantCheckoutId(cartId, checkoutUrl) {
+export function gokwikMerchantCheckoutId(cartId) {
   const decoded = decodeURIComponent(String(cartId || '').trim());
-  const rawUrl = String(checkoutUrl || '').trim();
-  if (rawUrl) {
-    try {
-      const parsed = new URL(rawUrl);
-      const cartPermalink = parsed.pathname.match(/\/cart\/c\/([^/]+)/);
-      if (cartPermalink?.[1]) {
-        const token = decodeURIComponent(cartPermalink[1]);
-        const key = parsed.searchParams.get('key');
-        return key ? `${token}?key=${key}` : token;
-      }
-      const checkoutToken = parsed.pathname.match(
-        /\/checkouts\/(?:cn\/)?([^/]+)/,
-      );
-      if (checkoutToken?.[1]) return decodeURIComponent(checkoutToken[1]);
-    } catch {
-      // Fall through to the GID token.
-    }
-  }
-  return decoded.replace(/^gid:\/\/shopify\/Cart\//, '');
+  if (!decoded) return '';
+
+  const gidBody = decoded.replace(/^gid:\/\/shopify\/Cart\//, '');
+  const queryAt = gidBody.indexOf('?');
+  const token = (queryAt === -1 ? gidBody : gidBody.slice(0, queryAt)).replace(
+    /^\/+/,
+    '',
+  );
+  if (!token) return '';
+
+  if (queryAt === -1) return token;
+
+  const cartKey = new URLSearchParams(gidBody.slice(queryAt + 1)).get('key');
+  return cartKey ? `${token}?key=${cartKey}` : token;
+}
+
+/**
+ * @param {string} cartId
+ * @param {string} merchantCheckoutId
+ */
+function logGokwikMerchantCheckoutId(cartId, merchantCheckoutId) {
+  const queryAt = merchantCheckoutId.indexOf('?');
+  const token =
+    queryAt === -1 ? merchantCheckoutId : merchantCheckoutId.slice(0, queryAt);
+  const cartKey =
+    queryAt === -1
+      ? ''
+      : new URLSearchParams(merchantCheckoutId.slice(queryAt + 1)).get('key') ||
+        '';
+  console.info('[GoKwik] merchantCheckoutId', {
+    source: 'cart.id',
+    format: cartKey ? 'token?key=<cart-secret>' : 'token',
+    token,
+    cartKeyLength: cartKey.length,
+    usedPermalinkKey: false,
+    merchantCheckoutId,
+    cartId,
+  });
 }
 
 /**
  * Checkout payload GoKwik v4's iframe reads as
  * `merchantInfo.merchantParams.merchantCheckoutId`.
+ *
+ * `checkoutUrl` is forwarded as a separate field only — it is never parsed
+ * for merchantCheckoutId.
  *
  * @param {ReturnType<typeof getGokwikPublicConfig>} config
  * @param {string} cartId
@@ -208,7 +237,8 @@ export function gokwikMerchantCheckoutId(cartId, checkoutUrl) {
  */
 export function getGokwikCheckoutPayload(config, cartId, checkoutUrl) {
   const id = decodeURIComponent(String(cartId || '').trim());
-  const checkoutId = gokwikMerchantCheckoutId(id, checkoutUrl);
+  const checkoutId = gokwikMerchantCheckoutId(id);
+  logGokwikMerchantCheckoutId(id, checkoutId);
   const base = getGokwikMerchantInfo(config);
   /** @type {NonNullable<GokwikMerchantInfo['merchantParams']>} */
   const merchantParams = {
